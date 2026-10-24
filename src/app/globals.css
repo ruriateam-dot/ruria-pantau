@@ -54,3 +54,14 @@ svg text{fill:var(--muted);font-size:10px}
 .hm{display:grid;grid-template-columns:110px repeat(4,minmax(110px,1fr));gap:6px;min-width:560px}.hmh{text-align:center;display:grid}.hmh span{font-size:11px;color:var(--muted)}.hmn{display:flex;align-items:center;font-weight:600}
 .hmc{border-radius:8px;padding:8px 10px;display:grid;gap:2px}.hmc b{font-size:16px}.hmc span{font-size:11px;opacity:.85}.hmc.none{border:1px dashed var(--line);color:var(--muted);place-items:center;font-size:12px}
 .hmc.l0{background:color-mix(in srgb,var(--accent) 10%,var(--panel))}.hmc.l1{background:color-mix(in srgb,var(--accent) 25%,var(--panel))}.hmc.l2{background:color-mix(in srgb,var(--accent) 45%,var(--panel))}.hmc.l3{background:color-mix(in srgb,var(--accent) 70%,var(--panel));color:#fff}.hmc.l4{background:var(--accent);color:#fff}
+/* pemilih periode: dua kolom rapi, area klik besar */
+.ppop{display:grid;grid-template-columns:200px 220px;align-items:start}
+.ppop .pre button{width:100%;padding:10px 12px;border-radius:8px;font-size:15px}
+.ppop .pre button:hover{background:var(--bg)}
+.ppop .pre select,.ppop .cust input{width:100%}
+.ppop .cust button{width:100%;padding:10px}
+@media (max-width:560px){.ppop{grid-template-columns:1fr;left:auto;right:0}.ppop .pre{border-right:0;border-bottom:1px solid var(--line)}}
+.loading{font-size:13px;color:var(--accent);font-weight:600;animation:blink 1s infinite alternate}
+@keyframes blink{from{opacity:1}to{opacity:.4}}
+@media (prefers-reduced-motion:reduce){.loading{animation:none}}
+.filters[aria-busy="true"] ~ *{opacity:.6}
