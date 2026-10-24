@@ -21,7 +21,7 @@ export async function setupAdmin(_prev: string | null, form: FormData): Promise<
   const pw = String(form.get("password") || "");
   if (!nama || !email) return "Isi nama dan email.";
   if (pw.length < 10) return "Password minimal 10 karakter.";
-  const r = await exec("insert into users (email, nama, peran, password_hash) values (?, ?, 'admin', ?)", [email, nama, await hash(pw)]);
+  const r = await exec("insert into users (email, nama, peran, password_hash) values (?, ?, 'superadmin', ?)", [email, nama, await hash(pw)]);
   await startSession(r.insertId);
   redirect("/dashboard");
 }

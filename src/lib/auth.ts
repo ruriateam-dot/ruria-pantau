@@ -6,7 +6,10 @@ import bcrypt from "bcryptjs";
 import { q, exec } from "./db";
 
 export const COOKIE = "rp_sesi";
-export type User = { id: number; email: string; nama: string; peran: "admin" | "anggota" };
+export type Peran = "superadmin" | "admin" | "klien";
+export type User = { id: number; email: string; nama: string; peran: Peran };
+export const PERAN_LABEL: Record<string, string> = { superadmin: "Superadmin", admin: "Admin Ruria", klien: "Tim klien" };
+export const isStaff = (u: { peran: string } | null | undefined) => u?.peran === "superadmin" || u?.peran === "admin";
 
 export async function getUser(): Promise<User | null> {
   const t = (await cookies()).get(COOKIE)?.value;
@@ -23,7 +26,7 @@ export async function requireUser() {
 
 export async function requireAdmin() {
   const u = await getUser();
-  return u?.peran === "admin" ? u : null;
+  return isStaff(u) ? u : null;
 }
 
 export async function startSession(userId: number) {
@@ -50,8 +53,13 @@ export async function hasUsers() {
 
 /* Klien yang boleh dilihat akun ini (admin: semua) */
 export async function allowedClients(u: User): Promise<string[]> {
-  const r = u.peran === "admin"
+  const r = isStaff(u)
     ? await q<{ id: string }>("select id from clients")
     : await q<{ id: string }>("select client_id id from client_members where user_id = ?", [u.id]);
   return r.map((x) => x.id);
+}
+
+export async function requireSuper() {
+  const u = await getUser();
+  return u?.peran === "superadmin" ? u : null;
 }

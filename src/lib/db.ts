@@ -29,6 +29,10 @@ async function ready() {
       for (const s of stmts) await pool().query(s);
       // Perubahan kolom (aman untuk MySQL dan MariaDB)
       const cols = async (t: string) => ((await pool().query("select column_name c from information_schema.columns where table_schema = database() and table_name = ?", [t]))[0] as { c: string }[]).map((x) => x.c.toLowerCase());
+      // Peran: superadmin (pemilik), admin (tim Ruria), klien (tim klien)
+      await pool().query("update users set peran = 'klien' where peran = 'anggota'");
+      const sa = (await pool().query("select count(*) n from users where peran = 'superadmin'"))[0] as { n: number }[];
+      if (!sa[0].n) await pool().query("update users set peran = 'superadmin' where peran = 'admin' order by id limit 1");
       if (!(await cols("stores")).includes("akun")) {
         await pool().query("alter table stores add column akun varchar(120) null");
         // Akun Shopee yang sudah diketahui dari file arsip
