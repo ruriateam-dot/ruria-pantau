@@ -36,8 +36,8 @@ export default async function Dashboard({ searchParams }: { searchParams: SP }) 
     if (tab === "sum") body = await SumTab(R, clients);
     else if (tab === "toko") {
       const ts = st.filter((s) => s.platform !== "CPAS");
-      const { data: prod } = await sb.rpc("produk_ringkas", { p_stores: ts.map((s) => s.id), p_from: R.from, p_to: R.to, p_pf: R.pf, p_pt: R.pt });
-      body = <><TokoTab R={R} stores={ts} sales={D.sales} /><ProdukSection R={R} rows={(prod ?? []) as Prod[]} stores={ts} /></>;
+      const { data: prod, error: prodErr } = await sb.rpc("produk_ringkas", { p_stores: ts.map((s) => s.id), p_from: R.from, p_to: R.to, p_pf: R.pf, p_pt: R.pt });
+      body = <><TokoTab R={R} stores={ts} sales={D.sales} /><ProdukSection R={R} rows={(prod ?? []) as Prod[]} stores={ts} err={prodErr?.message} /></>;
     }
     else if (tab === "iklan") body = <IklanTab R={R} stores={st} ads={D.ads} sales={D.sales} target={c.target_roas} />;
     else if (tab === "live") body = <LiveTab R={R} live={D.live} brand={sp.b} plat={sp.p} />;
@@ -180,9 +180,10 @@ function LiveTab({ R, live, brand, plat }: { R: Range; live: Live[]; brand?: str
 
 /* ---------------- Analisa produk ---------------- */
 type Prod = { produk: string; gmv: number; qty: number; pesanan: number; gmv_prev: number; qty_prev: number; toko: string[] | null; varian_top: string | null; varian_qty: number | null; hari_jual: number; terakhir: string | null };
-function ProdukSection({ R, rows, stores }: { R: Range; rows: Prod[]; stores: Store[] }) {
+function ProdukSection({ R, rows, stores, err }: { R: Range; rows: Prod[]; stores: Store[]; err?: string }) {
+  if (err) return <div className="card"><h2>Analisa produk</h2><p className="err">Data produk gagal dimuat: {err}</p></div>;
   if (!rows.length) return (
-    <div className="card"><h2>Analisa produk</h2><p className="muted">Belum ada data penjualan per produk untuk pilihan ini. Data produk berasal dari ekspor pesanan (Shopee &quot;Pesanan Saya → Ekspor&quot;, TikTok &quot;Pesanan → Ekspor&quot;). Saat ini baru tersedia untuk CV Cahaya, Januari–September 2026.</p></div>);
+    <div className="card"><h2>Analisa produk</h2><p className="muted">Belum ada data penjualan per produk untuk pilihan ini. Data produk berasal dari ekspor pesanan (Shopee &quot;Pesanan Saya → Ekspor&quot;, TikTok &quot;Pesanan → Ekspor&quot;). Arsip tersedia untuk CV Cahaya, Just Fluff, dan PMG (2026).</p></div>);
   const P = rows.map((r) => ({ ...r, gmv: +r.gmv, gmv_prev: +r.gmv_prev, qty: +r.qty, qty_prev: +r.qty_prev, pesanan: +r.pesanan }));
   const tot = P.reduce((a, r) => a + r.gmv, 0) || 1;
   let cum = 0;

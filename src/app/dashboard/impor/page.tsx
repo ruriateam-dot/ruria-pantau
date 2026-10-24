@@ -1,26 +1,25 @@
 "use client";
-import { useActionState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { importSeed, importProduk } from "./actions";
+import { runImport } from "@/components/AutoImport";
+import { autoMark } from "./actions";
 
 export default function ImporPage() {
-  const [msg, action, pending] = useActionState(async () => importSeed(), null as string | null);
-  const [msg2, action2, pending2] = useActionState(async () => importProduk(), null as string | null);
+  const [state, setState] = useState<{ status: "run" | "ok" | "err"; msg: string } | null>(null);
+  const start = async () => {
+    try {
+      const r = await runImport((m) => setState({ status: "run", msg: m }));
+      if (r.ok) await autoMark();
+      setState({ status: r.ok ? "ok" : "err", msg: r.ok ? "Selesai. Semua data arsip sudah masuk." : r.msg });
+    } catch { setState({ status: "err", msg: "Koneksi terputus. Klik Impor lagi; data yang sudah masuk tidak akan dobel." }); }
+  };
   return (
-    <main className="wrap">
+    <main className="wrap dv">
       <p><Link href="/dashboard">← Kembali ke dashboard</Link></p>
-      <h1>Impor data awal 2026</h1>
-      <p className="muted">Memasukkan arsip yang sudah diolah: penjualan harian, iklan, dan sesi live untuk Cahaya, PMG, Just Fluff, Organic Treasure, dan VOIE. Aman dijalankan ulang: data yang sama akan diganti, bukan dobel.</p>
-      <form action={action}>
-        <button type="submit" disabled={pending}>{pending ? "Mengimpor… (bisa 1–2 menit)" : "Impor sekarang"}</button>
-      </form>
-      {msg && <p role="status" className={msg.startsWith("Selesai") ? "ok" : "err"}>{msg}</p>}
-      <h2 style={{ marginTop: 32 }}>Data produk (CV Cahaya)</h2>
-      <p className="muted">Penjualan per produk dan varian per hari, Jan–Sep 2026, untuk bagian Analisa Produk. Jalankan file <code>0003_produk.sql</code> di SQL Editor Supabase sebelum menekan tombol ini.</p>
-      <form action={action2}>
-        <button type="submit" disabled={pending2}>{pending2 ? "Mengimpor produk… (bisa 2–3 menit)" : "Impor data produk"}</button>
-      </form>
-      {msg2 && <p role="status" className={msg2.startsWith("Selesai") ? "ok" : "err"}>{msg2}</p>}
+      <h1>Impor data arsip</h1>
+      <p className="muted">Memasukkan arsip yang sudah diolah: penjualan harian, iklan, sesi live, dan penjualan per produk. Biasanya berjalan otomatis saat admin membuka dashboard; pakai halaman ini kalau ingin mengulang. Aman dijalankan ulang: data yang sama diganti, bukan dobel.</p>
+      <div><button type="button" disabled={state?.status === "run"} onClick={start}>{state?.status === "run" ? "Mengimpor…" : "Impor sekarang"}</button></div>
+      {state && <div className={"autoimp " + state.status} role="status">{state.status === "run" && <span className="spin" aria-hidden="true" />}{state.msg}</div>}
     </main>
   );
 }
