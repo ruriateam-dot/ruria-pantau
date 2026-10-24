@@ -117,3 +117,5 @@ body.is-loading .dv{opacity:.5;pointer-events:none;transition:opacity .15s}
 .tim .chk label { display: inline-flex !important; flex-direction: row !important; align-items: center; gap: 6px; width: auto; }
 .tim .chk input[type=checkbox] { width: 16px; height: 16px; padding: 0; flex: none; }
 .tim .badge { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); font-weight: 600; }
+.linkbox { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0; }
+.linkbox code { font-size: 12px; word-break: break-all; background: var(--bg); padding: 4px 8px; border-radius: 6px; color: var(--fg); }

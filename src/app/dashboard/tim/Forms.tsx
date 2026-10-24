@@ -1,6 +1,6 @@
 "use client";
 import { useActionState, useState } from "react";
-import { addUser, setAccess, resetPassword, removeUser, changeOwn, addLink, revokeLink } from "./actions";
+import { addUser, setAccess, resetPassword, removeUser, changeOwn, addLink, revokeLink, sendLink } from "./actions";
 
 type C = { id: string; nama: string };
 type U = { id: number; email: string; nama: string; peran: string; klien: string[] };
@@ -8,7 +8,14 @@ const LABEL: Record<string, string> = { superadmin: "Superadmin", admin: "Admin 
 const roles = (me: string) => (me === "superadmin" ? ["klien", "admin"] : ["klien"]);
 
 function Msg({ m }: { m: string | null }) {
-  return m ? <p className={/salah|minimal|Hanya|Tidak|tidak|Pilih|sudah terdaftar|Untuk akun/.test(m) ? "err" : "ok"} role="status">{m}</p> : null;
+  const [cp, setCp] = useState(false);
+  if (!m) return null;
+  const url = m.match(/https?:\/\/\S+/)?.[0];
+  const bad = /salah|minimal|Hanya|Tidak |tidak berwenang|Pilih|sudah terdaftar|Untuk akun|tidak ditemukan/.test(m);
+  return <div className={bad ? "err" : "ok"} role="status">
+    <p style={{ margin: "6px 0" }}>{url ? m.replace(url, "").trim() : m}</p>
+    {url && <p className="linkbox"><code>{url}</code> <button type="button" className="ghost" onClick={() => { navigator.clipboard?.writeText(url); setCp(true); }}>{cp ? "Tersalin ✓" : "Salin link"}</button></p>}
+  </div>;
 }
 function Klien({ clients, sel }: { clients: C[]; sel: string[] }) {
   return <div className="chk">{clients.map((c) => <label key={c.id}><input type="checkbox" name="klien" value={c.id} defaultChecked={sel.includes(c.id)} /> {c.nama}</label>)}</div>;
@@ -27,9 +34,9 @@ export function AddUser({ clients, me }: { clients: C[]; me: string }) {
     <div className="grid2">
       <label>Nama<input name="nama" required /></label>
       <label>Email<input name="email" type="email" required /></label>
-      <label>Password awal<input name="password" type="text" minLength={10} required autoComplete="off" /></label>
       <label>Peran<RoleSel me={me} value={peran} onChange={setPeran} /></label>
     </div>
+    <p className="muted small">Orangnya akan menerima email undangan untuk membuat password sendiri.</p>
     {peran === "klien" && <><p className="muted small">Klien yang bisa dilihat dan dipakai:</p><Klien clients={clients} sel={[]} /></>}
     <Msg m={m} /><button disabled={p}>{p ? "Menyimpan…" : "Tambah"}</button>
   </form>;
@@ -39,6 +46,7 @@ export function UserRow({ u, clients, me, editable }: { u: U; clients: C[]; me: 
   const [m1, a1, p1] = useActionState(setAccess, null);
   const [m2, a2, p2] = useActionState(resetPassword, null);
   const [m3, a3, p3] = useActionState(removeUser, null);
+  const [m4, a4, p4] = useActionState(sendLink, null);
   const [peran, setPeran] = useState(u.peran);
   const info = u.peran === "klien" ? u.klien.map((k) => clients.find((c) => c.id === k)?.nama ?? k).join(", ") || "belum ada klien" : "semua klien";
   if (!editable) return <div className="card urow"><b>{u.nama}</b> <span className="muted">{u.email}</span> <span className="badge">{LABEL[u.peran] ?? u.peran}</span> <span className="muted small">{info}</span></div>;
@@ -48,8 +56,10 @@ export function UserRow({ u, clients, me, editable }: { u: U; clients: C[]; me: 
       <label>Peran <RoleSel me={me} value={peran} onChange={setPeran} /></label>
       {peran === "klien" && <Klien clients={clients} sel={u.klien} />}
       <Msg m={m1} /><button disabled={p1}>Simpan akses</button></form>
+    <form action={a4} className="inline"><input type="hidden" name="id" value={u.id} />
+      <button disabled={p4}>{p4 ? "Mengirim…" : "Kirim link atur password ke email"}</button><Msg m={m4} /></form>
     <form action={a2} className="inline"><input type="hidden" name="id" value={u.id} />
-      <input name="password" type="text" placeholder="Password baru (min. 10)" minLength={10} required autoComplete="off" /><button disabled={p2}>Ganti password</button><Msg m={m2} /></form>
+      <input name="password" type="text" placeholder="Atau isi password baru langsung (min. 10)" minLength={10} required autoComplete="off" /><button disabled={p2}>Ganti password</button><Msg m={m2} /></form>
     <form action={a3} className="inline" onSubmit={(e) => { if (!confirm(`Hapus akun ${u.nama}?`)) e.preventDefault(); }}>
       <input type="hidden" name="id" value={u.id} /><button className="danger" disabled={p3}>Hapus akun</button><Msg m={m3} /></form>
   </details>;

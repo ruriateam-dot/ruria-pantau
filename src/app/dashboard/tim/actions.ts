@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { randomBytes } from "crypto";
 import { exec, q } from "@/lib/db";
 import { requireAdmin, requireUser, hash, verify, type User } from "@/lib/auth";
+import { passwordLink, sendInvite } from "@/lib/mail";
 
 const done = (m: string) => { revalidatePath("/dashboard/tim"); return m; };
 
@@ -20,16 +21,19 @@ export async function addUser(_p: string | null, f: FormData): Promise<string | 
   const me = await requireAdmin();
   if (!me) return "Hanya admin.";
   const email = String(f.get("email") || "").trim().toLowerCase(), nama = String(f.get("nama") || "").trim();
-  const peran = String(f.get("peran") || "klien"), pw = String(f.get("password") || "");
+  const peran = String(f.get("peran") || "klien");
   const klien = f.getAll("klien").map(String);
   if (!canGive(me, peran)) return "Anda tidak berwenang membuat akun dengan peran ini.";
   if (!email || !nama) return "Isi nama dan email.";
-  if (pw.length < 10) return "Password minimal 10 karakter.";
   if (peran === "klien" && !klien.length) return "Pilih minimal satu klien untuk tim klien.";
   if ((await q("select id from users where email = ?", [email])).length) return "Email ini sudah terdaftar.";
-  const r = await exec("insert into users (email, nama, peran, password_hash) values (?, ?, ?, ?)", [email, nama, peran, await hash(pw)]);
+  // Password acak yang tidak diketahui siapa pun; orangnya membuat password sendiri lewat link
+  const r = await exec("insert into users (email, nama, peran, password_hash) values (?, ?, ?, ?)", [email, nama, peran, await hash(randomBytes(24).toString("hex"))]);
   if (peran === "klien") await exec("insert into client_members (client_id, user_id) values ?", [klien.map((c) => [c, r.insertId])]);
-  return done(`Akun ${nama} dibuat. Berikan email dan password-nya langsung ke orangnya.`);
+  const link = await passwordLink(r.insertId);
+  const sent = await sendInvite(email, nama, link, me.nama, true);
+  return done(sent ? `Akun ${nama} dibuat. Undangan sudah dikirim ke ${email}.`
+    : `Akun ${nama} dibuat. Email belum bisa dikirim otomatis, jadi kirim link ini ke orangnya (berlaku 3 hari, sekali pakai): ${link}`);
 }
 
 export async function setAccess(_p: string | null, f: FormData): Promise<string | null> {
@@ -55,6 +59,17 @@ export async function resetPassword(_p: string | null, f: FormData): Promise<str
   await exec("update users set password_hash = ? where id = ?", [await hash(pw), id]);
   await exec("delete from sessions where user_id = ?", [id]);
   return done("Password diganti. Akun tersebut perlu login ulang.");
+}
+
+export async function sendLink(_p: string | null, f: FormData): Promise<string | null> {
+  const me = await requireAdmin();
+  if (!me) return "Hanya admin.";
+  const id = Number(f.get("id"));
+  const t = await target(me, id); if (t.err) return t.err;
+  const u = (await q<{ email: string; nama: string }>("select email, nama from users where id = ?", [id]))[0];
+  const link = await passwordLink(id);
+  const sent = await sendInvite(u.email, u.nama, link, me.nama, false);
+  return done(sent ? `Link atur password dikirim ke ${u.email}.` : `Email belum bisa dikirim otomatis. Kirim link ini ke ${u.nama} (berlaku 3 hari, sekali pakai): ${link}`);
 }
 
 export async function removeUser(_p: string | null, f: FormData): Promise<string | null> {
