@@ -33,7 +33,11 @@ export default async function Dashboard({ searchParams }: { searchParams: SP }) 
     platforms = [...new Set(D.stores.map((s) => s.platform))].filter((p) => p !== "CPAS" || tab === "iklan");
     const st = D.stores.filter((s) => (!sp.b || s.brand === sp.b) && (!sp.p || s.platform === sp.p));
     if (tab === "sum") body = await SumTab(R, clients);
-    else if (tab === "toko") body = <TokoTab R={R} stores={st.filter((s) => s.platform !== "CPAS")} sales={D.sales} />;
+    else if (tab === "toko") {
+      const ts = st.filter((s) => s.platform !== "CPAS");
+      const { data: prod } = await sb.rpc("produk_ringkas", { p_stores: ts.map((s) => s.id), p_from: R.from, p_to: R.to, p_pf: R.pf, p_pt: R.pt });
+      body = <><TokoTab R={R} stores={ts} sales={D.sales} /><ProdukSection R={R} rows={(prod ?? []) as Prod[]} stores={ts} /></>;
+    }
     else if (tab === "iklan") body = <IklanTab R={R} stores={st} ads={D.ads} sales={D.sales} target={c.target_roas} />;
     else if (tab === "live") body = <LiveTab R={R} live={D.live} brand={sp.b} plat={sp.p} />;
   }
@@ -170,5 +174,43 @@ function LiveTab({ R, live, brand, plat }: { R: Range; live: Live[]; brand?: str
       {hs.slice(0, 10).map((h, i) => [<div key={h.k} className="hmn">{h.k}</div>, ...cells[i].map((c, j) => c.g === null ? <div key={j} className="hmc none">Tidak live</div> : <div key={j} className={"hmc l" + Math.min(4, Math.floor((c.g / mx) * 5))}><b>{fk(c.g)}</b><span>Rp{fk(c.v.g)} · {jm(c.v.j)}</span></div>)])}
     </div></div><p className="muted small">Angka besar = GMV per jam. Baris kecil = total GMV · durasi. Dikelompokkan menurut jam mulai live.</p></div>
     <div className="card"><h2>GMV live per {B[0].f === B[0].t ? "hari" : "bulan"}</h2><Bars title="GMV live" labels={B.map((x) => x.l)} series={[ser("gmv_shopee"), ser("gmv_tiktok")]} colors={["var(--warn)", "var(--accent)"]} /><p className="muted small"><span style={{ color: "var(--warn)" }}>■</span> Shopee <span style={{ color: "var(--accent)" }}>■</span> TikTok</p></div>
+  </>);
+}
+
+/* ---------------- Analisa produk ---------------- */
+type Prod = { produk: string; gmv: number; qty: number; pesanan: number; gmv_prev: number; qty_prev: number; toko: string[] | null; varian_top: string | null; varian_qty: number | null; hari_jual: number; terakhir: string | null };
+function ProdukSection({ R, rows, stores }: { R: Range; rows: Prod[]; stores: Store[] }) {
+  if (!rows.length) return (
+    <div className="card"><h2>Analisa produk</h2><p className="muted">Belum ada data penjualan per produk untuk pilihan ini. Data produk berasal dari ekspor pesanan (Shopee &quot;Pesanan Saya → Ekspor&quot;, TikTok &quot;Pesanan → Ekspor&quot;). Saat ini baru tersedia untuk CV Cahaya, Januari–September 2026.</p></div>);
+  const P = rows.map((r) => ({ ...r, gmv: +r.gmv, gmv_prev: +r.gmv_prev, qty: +r.qty, qty_prev: +r.qty_prev, pesanan: +r.pesanan }));
+  const tot = P.reduce((a, r) => a + r.gmv, 0) || 1;
+  let cum = 0;
+  const st = P.map((r) => { cum += r.gmv; const ch = pct(r.gmv, r.gmv_prev);
+    const status = r.gmv === 0 && r.qty_prev >= 10 ? "stop" : r.gmv_prev === 0 && r.gmv > 0 ? "baru" : cum - r.gmv < tot * 0.8 && r.gmv > 0 ? "andalan" : ch <= -30 && r.gmv_prev > tot * 0.005 ? "turun" : ch >= 30 && r.gmv > tot * 0.005 ? "naik" : "biasa";
+    return { ...r, ch, status, share: (r.gmv / tot) * 100 }; });
+  const sold = st.filter((r) => r.gmv > 0), andalan = st.filter((r) => r.status === "andalan"), stop = st.filter((r) => r.status === "stop"), turun = st.filter((r) => r.status === "turun").sort((a, b) => a.gmv - a.gmv_prev - (b.gmv - b.gmv_prev)), naik = st.filter((r) => r.status === "naik").sort((a, b) => b.gmv - b.gmv_prev - (a.gmv - a.gmv_prev)), baru = st.filter((r) => r.status === "baru");
+  const top5 = sold.slice(0, 5).reduce((a, r) => a + r.share, 0);
+  const short = (s: string) => (s.length > 60 ? s.slice(0, 58) + "…" : s);
+  const tokoName = (ids: string[] | null) => (ids ?? []).map((i) => { const s = stores.find((x) => x.id === i); return s ? `${s.brand} ${s.platform === "TikTok" ? "TT" : "SP"}` : ""; }).join(", ");
+  const pill: Record<string, React.ReactNode> = { andalan: <span className="pill good">Andalan</span>, naik: <span className="pill good">Naik</span>, turun: <span className="pill warn">Turun</span>, stop: <span className="pill bad">Berhenti terjual</span>, baru: <span className="pill mute">Baru terjual</span>, biasa: <span className="pill mute">Stabil</span> };
+  const row = (r: (typeof st)[number]) => <tr key={r.produk}><td className="wrapcell" title={r.produk}>{short(r.produk)}<div className="muted small">{tokoName(r.toko)}</div></td><td className="n">{fmt(r.gmv)}</td><td className="n">{r.qty.toLocaleString("id")}</td><td className={"n " + (r.ch >= 0 ? "up" : "dn")}>{r.gmv_prev ? `${r.ch >= 0 ? "+" : ""}${r.ch.toFixed(0)}%` : "–"}</td><td className="n">{r.share.toFixed(1)}%</td><td className="wrapcell small">{r.varian_top && r.varian_top !== "-" ? `${r.varian_top} (${r.varian_qty})` : "–"}</td><td>{pill[r.status]}</td></tr>;
+  const head = <thead><tr><th>Produk</th><th className="n">GMV</th><th className="n">Qty</th><th className="n">Δ GMV</th><th className="n">Porsi</th><th>Varian terlaris</th><th>Status</th></tr></thead>;
+  return (<>
+    <h2 style={{ margin: "8px 0 0" }}>Analisa produk</h2>
+    <Insight src="Data asli, dari ekspor pesanan"
+      sum={[`${sold.length} produk terjual ${R.label.toLowerCase()}; ${andalan.length} produk andalan menyumbang 80% GMV.`, `5 produk teratas = ${top5.toFixed(0)}% GMV. Terlaris: ${short(sold[0]?.produk ?? "-")} (${sold[0] ? sold[0].share.toFixed(0) : 0}%).`]}
+      ana={[...(top5 > 60 ? ["Ketergantungan pada sedikit produk tinggi; kalau satu produk andalan kosong stok, GMV langsung terpukul."] : []),
+        ...turun.slice(0, 2).map((r) => `${short(r.produk)} turun ${Math.abs(r.ch).toFixed(0)}% (${fmt(r.gmv_prev)} → ${fmt(r.gmv)}).`),
+        ...naik.slice(0, 2).map((r) => `${short(r.produk)} naik ${r.ch.toFixed(0)}% (${fmt(r.gmv_prev)} → ${fmt(r.gmv)}).`),
+        ...(stop.length ? [`${stop.length} produk yang laku di periode pembanding tidak terjual sama sekali sekarang.`] : [])]}
+      next={[...(stop.length ? [`Cek stok dan status listing: ${stop.slice(0, 3).map((r) => short(r.produk)).join("; ")}.`] : []),
+        ...turun.slice(0, 2).map((r) => `${short(r.produk)}: cek stok varian, harga, dan iklan.`),
+        ...(naik.length ? [`Tambah stok dan exposure untuk ${short(naik[0].produk)} selagi naik.`] : []),
+        ...(baru.length ? [`Pantau ${baru.length} produk yang baru mulai terjual; dorong yang responnya bagus.`] : []),
+        "Pastikan varian terlaris produk andalan tidak kosong stok."]} />
+    <div className="card"><h2>Produk teratas · {R.label}</h2><div className="tbl"><table>{head}<tbody>{st.filter((r) => r.gmv > 0).slice(0, 30).map(row)}</tbody></table></div>
+      {st.length > 30 && <details><summary className="small" style={{ cursor: "pointer", marginTop: 8 }}>Tampilkan semua ({st.length} produk)</summary><div className="tbl"><table>{head}<tbody>{st.slice(30).map(row)}</tbody></table></div></details>}
+      <p className="muted small">Andalan = produk teratas yang bersama-sama menyumbang 80% GMV. Berhenti terjual = laku ≥10 unit di periode pembanding, 0 di periode ini (cek stok atau listing). Pembanding: {R.sub}.</p>
+    </div>
   </>);
 }

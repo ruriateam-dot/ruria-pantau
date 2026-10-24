@@ -1,6 +1,7 @@
 "use server";
 import { createClient } from "@/lib/supabase/server";
 import seed from "@/data/seed.json";
+import seedProduk from "@/data/seed_produk.json";
 
 type Seed = {
   stores: { id: string; client_id: string; brand: string; platform: string }[];
@@ -52,4 +53,21 @@ export async function importSeed(): Promise<string> {
     .map((c) => ({ client_id: c, jenis: "arsip-2026", nama_file: "data awal dari dashboard artifact", oleh: user.id })));
 
   return `Selesai: ${S.stores.length} toko, ${S.sales.length.toLocaleString("id")} baris penjualan harian, ${S.ads.length.toLocaleString("id")} baris iklan, ${S.live.length.toLocaleString("id")} sesi live.`;
+}
+
+export async function importProduk(): Promise<string> {
+  const sb = await createClient();
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return "Sesi login habis. Muat ulang halaman lalu login lagi.";
+  const { data: me } = await sb.from("profiles").select("peran").eq("id", user.id).single();
+  if (me?.peran !== "admin") return "Hanya admin yang bisa mengimpor data.";
+  const P = seedProduk as unknown as { produk: string[]; rows: [string, string, number, string, number, number, number][] };
+  for (const part of chunk(P.rows, 2000)) {
+    const r = await sb.from("product_sales").upsert(part.map(([store_id, tanggal, pi, varian, qty, gmv, pesanan]) =>
+      ({ store_id, tanggal, produk: P.produk[pi], varian, qty, gmv, pesanan, diupload_oleh: user.id })));
+    if (r.error) return r.error.message.includes("product_sales") && r.error.message.includes("does not exist")
+      ? "Tabel produk belum dibuat. Jalankan file 0003_produk.sql di SQL Editor Supabase dulu."
+      : `Gagal di tahap produk: ${r.error.message}`;
+  }
+  return `Selesai: ${P.rows.length.toLocaleString("id")} baris penjualan produk per hari (${P.produk.length} produk, CV Cahaya, Jan–Sep 2026).`;
 }
