@@ -114,3 +114,6 @@ body.is-loading .dv{opacity:.5;pointer-events:none;transition:opacity .15s}
 .tim .tw { overflow-x: auto; max-width: 100%; }
 .tim td { white-space: normal; vertical-align: top; }
 .tim .card { min-width: 0; overflow: hidden; }
+.tim .chk label { display: inline-flex !important; flex-direction: row !important; align-items: center; gap: 6px; width: auto; }
+.tim .chk input[type=checkbox] { width: 16px; height: 16px; padding: 0; flex: none; }
+.tim .badge { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); font-weight: 600; }
