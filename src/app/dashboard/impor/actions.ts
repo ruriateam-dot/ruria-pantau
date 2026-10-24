@@ -4,6 +4,7 @@ import seed from "@/data/seed.json";
 import seedProduk from "@/data/seed_produk.json";
 
 type Seed = {
+  clients?: { id: string; nama: string; modul: string[]; target_roas: number | null }[];
   stores: { id: string; client_id: string; brand: string; platform: string }[];
   sales: [string, string, number, number, number | null, string][];
   ads: [string, string, string, string, number, number, number][];
@@ -12,7 +13,7 @@ type Seed = {
 const S = seed as unknown as Seed;
 
 // Naikkan angka ini setiap kali file di src/data diperbarui
-const DATA_VERSION = "2026-10-24c";
+const DATA_VERSION = "2026-10-24d";
 const chunk = <T,>(a: T[], n: number) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
 
 export async function importSeed(): Promise<string> {
@@ -24,7 +25,9 @@ export async function importSeed(): Promise<string> {
 
   const fail = (step: string, msg: string) => `Gagal di tahap ${step}: ${msg}`;
 
-  let r = await sb.from("stores").upsert(S.stores);
+  let r = S.clients?.length ? await sb.from("clients").upsert(S.clients) : { error: null };
+  if (r.error) return fail("klien", r.error.message);
+  r = await sb.from("stores").upsert(S.stores);
   if (r.error) return fail("toko", r.error.message);
 
   for (const part of chunk(S.sales, 1000)) {
@@ -78,7 +81,7 @@ export async function importProdukPart(part: number): Promise<{ ok: boolean; msg
       ({ store_id, tanggal, produk: P.produk[pi], varian, qty, gmv, pesanan, diupload_oleh: user.id })));
     if (r.error) return { ok: false, parts, msg: r.error.message.includes("does not exist") ? "Tabel produk belum dibuat. Jalankan file 0003_produk.sql di SQL Editor Supabase dulu." : `Gagal di bagian ${part + 1}: ${r.error.message}` };
   }
-  return { ok: true, parts, msg: part + 1 >= parts ? `Selesai: ${P.rows.length.toLocaleString("id")} baris produk (${P.produk.length} produk; CV Cahaya, Just Fluff, PMG).` : "" };
+  return { ok: true, parts, msg: part + 1 >= parts ? `Selesai: ${P.rows.length.toLocaleString("id")} baris produk (${P.produk.length} produk; CV Cahaya, Just Fluff, PMG, PT Prima Kreasi Panel).` : "" };
 }
 
 /* Pembaruan otomatis per versi data */
