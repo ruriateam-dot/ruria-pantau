@@ -7,10 +7,10 @@ const g = globalThis as unknown as { _pool?: Pool; _ready?: Promise<void> };
 function pool() {
   if (!g._pool) {
     g._pool = mysql.createPool({
-      host: process.env.DB_HOST || "localhost",
+      host: (process.env.DB_HOST || "127.0.0.1").trim().replace(/^localhost$/i, "127.0.0.1"),
       port: Number(process.env.DB_PORT || 3306),
-      database: process.env.DB_NAME,
-      user: process.env.DB_USER,
+      database: process.env.DB_NAME?.trim(),
+      user: process.env.DB_USER?.trim(),
       password: process.env.DB_PASSWORD,
       connectionLimit: 5,
       dateStrings: true,
