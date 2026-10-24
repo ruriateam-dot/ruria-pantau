@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { logout } from "../login/actions";
 import Filters from "@/components/Filters";
+import { Tabs, LoadingBar } from "@/components/Nav";
 import { Kpi, Insight, Bars } from "@/components/ui";
 import { loadClient, freshness, type Sale, type Ad, type Live, type Store } from "@/lib/data";
 import { resolvePeriod, buckets, fmt, pct, jm, tgl, addDays, dayDiff, todayWIB, type Range } from "@/lib/period";
@@ -39,6 +40,7 @@ export default async function Dashboard({ searchParams }: { searchParams: SP }) 
 
   return (
     <>
+      <LoadingBar />
       <header className="dh">
         <div className="wrap top">
           <b>Ruria Pantau</b>
@@ -47,9 +49,7 @@ export default async function Dashboard({ searchParams }: { searchParams: SP }) 
           <form action={logout}><button type="submit" className="ghost">Keluar</button></form>
         </div>
         <div className="wrap"><Filters clients={clients} brands={brands} platforms={platforms} label={R.label} /></div>
-        <nav className="wrap tabs">
-          {TABS.filter(([k]) => k === "sum" || c?.modul.includes(k)).map(([k, l]) => <Link key={k} href={qs({ m: k })} className={"tab" + (k === tab ? " on" : "")}>{l}</Link>)}
-        </nav>
+        <Tabs active={tab} items={TABS.filter(([k]) => k === "sum" || c?.modul.includes(k)).map(([k, l]) => ({ k, l, href: "/dashboard" + qs({ m: k }) }))} />
       </header>
       <main className="wrap dv">{body}</main>
     </>

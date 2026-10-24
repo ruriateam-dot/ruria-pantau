@@ -1,19 +1,19 @@
 "use client";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useSearchParams } from "next/navigation";
+import { useNav } from "./Nav";
+import { useEffect, useRef, useState } from "react";
 import { BLNF, todayWIB, prevMonth } from "@/lib/period";
 
 type C = { id: string; nama: string; modul: string[] };
 export default function Filters({ clients, brands, platforms, label }: { clients: C[]; brands: string[]; platforms: string[]; label: string }) {
-  const router = useRouter();
   const sp = useSearchParams();
   const get = (k: string, d: string) => sp.get(k) ?? d;
-  const [pending, start] = useTransition();
+  const { pending, go } = useNav();
   const set = (patch: Record<string, string>) => {
     const q = new URLSearchParams(sp.toString());
     for (const [k, v] of Object.entries(patch)) { if (v) q.set(k, v); else q.delete(k); }
     setOpen(false);
-    start(() => router.push("/dashboard?" + q.toString(), { scroll: false }));
+    go("/dashboard?" + q.toString());
   };
   const per = get("per", "yday");
   const [open, setOpen] = useState(false);
@@ -61,7 +61,6 @@ export default function Filters({ clients, brands, platforms, label }: { clients
           </div>
         )}
       </div>
-      {pending && <span className="loading" role="status">Memuat data…</span>}
     </div>
   );
 }
