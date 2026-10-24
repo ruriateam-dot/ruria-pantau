@@ -13,7 +13,7 @@ type Seed = {
 const S = seed as unknown as Seed;
 
 // Naikkan angka ini setiap kali file di src/data diperbarui
-const DATA_VERSION = "2026-10-24d";
+const DATA_VERSION = "2026-10-24e";
 const chunk = <T,>(a: T[], n: number) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
 
 export async function importSeed(): Promise<string> {
@@ -72,14 +72,14 @@ async function adminUser() {
 
 /* Impor produk bertahap: satu panggilan = satu bagian, supaya tidak kena batas waktu */
 export async function importProdukPart(part: number): Promise<{ ok: boolean; msg: string; parts: number }> {
-  const P = seedProduk as unknown as { produk: string[]; rows: [string, string, number, string, number, number, number][] };
+  const P = seedProduk as unknown as { produk: string[]; rows: [string, string, number, string, number, number, number, string, string][] };
   const parts = Math.ceil(P.rows.length / PART);
   const { sb, user, err } = await adminUser();
   if (!user) return { ok: false, msg: err, parts };
   for (const c of chunk(P.rows.slice(part * PART, (part + 1) * PART), 2000)) {
-    const r = await sb.from("product_sales").upsert(c.map(([store_id, tanggal, pi, varian, qty, gmv, pesanan]) =>
-      ({ store_id, tanggal, produk: P.produk[pi], varian, qty, gmv, pesanan, diupload_oleh: user.id })));
-    if (r.error) return { ok: false, parts, msg: r.error.message.includes("does not exist") ? "Tabel produk belum dibuat. Jalankan file 0003_produk.sql di SQL Editor Supabase dulu." : `Gagal di bagian ${part + 1}: ${r.error.message}` };
+    const r = await sb.from("product_sales").upsert(c.map(([store_id, tanggal, pi, varian, qty, gmv, pesanan, sku, grup]) =>
+      ({ store_id, tanggal, produk: P.produk[pi], varian, qty, gmv, pesanan, sku: sku ?? "", grup: grup || null, diupload_oleh: user.id })));
+    if (r.error) return { ok: false, parts, msg: r.error.message.includes("does not exist") ? "Tabel produk belum siap. Jalankan file 0003_produk.sql dan 0005_sku.sql di SQL Editor Supabase dulu." : `Gagal di bagian ${part + 1}: ${r.error.message}` };
   }
   return { ok: true, parts, msg: part + 1 >= parts ? `Selesai: ${P.rows.length.toLocaleString("id")} baris produk (${P.produk.length} produk; CV Cahaya, Just Fluff, PMG, PT Prima Kreasi Panel).` : "" };
 }
