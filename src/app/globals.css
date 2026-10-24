@@ -81,3 +81,6 @@ body.is-loading .dv{opacity:.5;pointer-events:none;transition:opacity .15s}
 .mg button:hover:not(:disabled){background:var(--bg)}.mg button:disabled{color:var(--line);opacity:1}
 .mg button.on{color:var(--bad);font-weight:700}
 @media (max-width:600px){.ppop{flex-direction:column;position:fixed;left:16px;right:16px;top:120px;max-height:75vh;overflow:auto}.pre{border-right:0;border-bottom:1px solid var(--line)}.ppanel{width:auto}}
+.autoimp{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:14px;padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel)}
+.autoimp.run{color:var(--muted)}.autoimp.ok{border-color:var(--accent);color:var(--accent);font-weight:600}.autoimp.err{border-color:var(--bad);color:var(--bad)}
+.autoimp button{padding:6px 12px}

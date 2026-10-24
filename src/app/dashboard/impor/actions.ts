@@ -11,6 +11,8 @@ type Seed = {
 };
 const S = seed as unknown as Seed;
 
+// Naikkan angka ini setiap kali file di src/data diperbarui
+const DATA_VERSION = "2026-10-24b";
 const chunk = <T,>(a: T[], n: number) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
 
 export async function importSeed(): Promise<string> {
@@ -70,4 +72,22 @@ export async function importProduk(): Promise<string> {
       : `Gagal di tahap produk: ${r.error.message}`;
   }
   return `Selesai: ${P.rows.length.toLocaleString("id")} baris penjualan produk per hari (${P.produk.length} produk, CV Cahaya, Jan–Sep 2026).`;
+}
+
+/* Impor otomatis: dijalankan sekali per versi data saat admin membuka dashboard */
+export async function autoImport(): Promise<{ status: "skip" | "ok" | "err"; msg: string }> {
+  const sb = await createClient();
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return { status: "skip", msg: "" };
+  const { data: me } = await sb.from("profiles").select("peran").eq("id", user.id).single();
+  if (me?.peran !== "admin") return { status: "skip", msg: "" };
+  const tag = "data-otomatis:" + DATA_VERSION;
+  const { data: done } = await sb.from("uploads").select("id").eq("jenis", tag).limit(1);
+  if (done?.length) return { status: "skip", msg: "" };
+  const a = await importSeed();
+  if (!a.startsWith("Selesai")) return { status: "err", msg: a };
+  const b = await importProduk();
+  if (!b.startsWith("Selesai")) return { status: "err", msg: b };
+  await sb.from("uploads").insert({ client_id: "cahaya", jenis: tag, nama_file: "pembaruan data dari Claude", oleh: user.id });
+  return { status: "ok", msg: "Data terbaru dari Claude sudah dimasukkan. Muat ulang halaman untuk melihatnya." };
 }

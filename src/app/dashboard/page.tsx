@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { logout } from "../login/actions";
 import Filters from "@/components/Filters";
 import { Tabs, LoadingBar } from "@/components/Nav";
+import AutoImport from "@/components/AutoImport";
 import { Kpi, Insight, Bars } from "@/components/ui";
 import { loadClient, freshness, type Sale, type Ad, type Live, type Store } from "@/lib/data";
 import { resolvePeriod, buckets, fmt, pct, jm, tgl, addDays, dayDiff, todayWIB, type Range } from "@/lib/period";
@@ -55,7 +56,7 @@ export default async function Dashboard({ searchParams }: { searchParams: SP }) 
         <div className="wrap"><Filters clients={clients} brands={brands} platforms={platforms} label={R.label} /></div>
         <Tabs active={tab} items={TABS.filter(([k]) => k === "sum" || c?.modul.includes(k)).map(([k, l]) => ({ k, l, href: "/dashboard" + qs({ m: k }) }))} />
       </header>
-      <main className="wrap dv">{body}</main>
+      <main className="wrap dv">{isAdmin && <AutoImport />}{body}</main>
     </>
   );
 }
