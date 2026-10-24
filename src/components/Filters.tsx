@@ -4,7 +4,7 @@ import { useNav } from "./Nav";
 import Period from "./Period";
 
 type C = { id: string; nama: string; modul: string[] };
-export default function Filters({ base = "/dashboard", clients, brands, platforms, label }: { base?: string; clients: C[]; brands: string[]; platforms: string[]; label: string }) {
+export default function Filters({ base = "/dashboard", clients, brands, platforms, label, hideClient }: { base?: string; clients: C[]; brands: string[]; platforms: string[]; label: string; hideClient?: boolean }) {
   const sp = useSearchParams();
   const get = (k: string, d: string) => sp.get(k) ?? d;
   const { pending, go } = useNav();
@@ -16,15 +16,15 @@ export default function Filters({ base = "/dashboard", clients, brands, platform
   const per = get("per", "yday");
   return (
     <div className="filters" aria-busy={pending}>
-      {clients.length > 1 && <select aria-label="Klien" value={get("c", clients[0]?.id ?? "")} onChange={(e) => set({ c: e.target.value, b: "", p: "" })}>
+      {!hideClient && clients.length > 1 && <select aria-label="Klien" value={get("c", clients[0]?.id ?? "")} onChange={(e) => set({ c: e.target.value, b: "", p: "" })}>
         {clients.map((c) => <option key={c.id} value={c.id}>{c.nama}</option>)}
       </select>}
-      <select aria-label="Toko" value={get("b", "")} onChange={(e) => set({ b: e.target.value })}>
+      {brands.length > 0 && <select aria-label="Toko" value={get("b", "")} onChange={(e) => set({ b: e.target.value })}>
         <option value="">Semua toko</option>{brands.map((b) => <option key={b}>{b}</option>)}
-      </select>
-      <select aria-label="Platform" value={get("p", "")} onChange={(e) => set({ p: e.target.value })}>
+      </select>}
+      {platforms.length > 0 && <select aria-label="Platform" value={get("p", "")} onChange={(e) => set({ p: e.target.value })}>
         <option value="">Semua platform</option>{platforms.map((p) => <option key={p}>{p}</option>)}
-      </select>
+      </select>}
       <Period per={per} label={label} onPick={(p) => set({ per: p })} />
     </div>
   );

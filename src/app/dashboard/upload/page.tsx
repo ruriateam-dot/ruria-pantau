@@ -1,4 +1,4 @@
-import Link from "next/link";
+import AppShell from "@/components/AppShell";
 import { requireUser, allowedClients } from "@/lib/auth";
 import { q } from "@/lib/db";
 import Uploader from "./Uploader";
@@ -21,10 +21,9 @@ export default async function UploadPage() {
   const clients = ok.length ? await q<{ id: string; nama: string }>("select id, nama from clients where id in (?) order by nama", [ok]) : [];
   const stores = ok.length ? await q<{ id: string; client_id: string; brand: string; platform: string }>("select id, client_id, brand, platform from stores where client_id in (?) and platform <> 'CPAS' order by brand, platform", [ok]) : [];
   const recent = await recentUploads();
-  return <>
-    <header className="dh"><div className="wrap top"><b>Ruria Pantau</b><Link href="/dashboard" className="hlink">← Kembali ke dashboard</Link></div></header>
+  return <AppShell user={u}>
+    <header className="dh"><div className="wrap top ctitle"><h1>Upload data</h1></div></header>
     <main className="wrap dv tim">
-      <h1>Upload data</h1>
       <p className="muted">Pilih klien dan toko, lalu masukkan file dari Seller Centre. Jenis file dikenali otomatis. Data di tanggal yang sama akan diperbarui, bukan dobel.</p>
       <Uploader clients={clients} stores={stores} />
       <div className="card"><h2>File yang dibutuhkan per tab</h2>
@@ -38,5 +37,5 @@ export default async function UploadPage() {
           : <p className="muted">Belum ada upload.</p>}
       </div>
     </main>
-  </>;
+  </AppShell>;
 }

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import AppShell from "@/components/AppShell";
 import { headers } from "next/headers";
 import { requireUser, isStaff, PERAN_LABEL } from "@/lib/auth";
 import { q } from "@/lib/db";
@@ -17,10 +17,9 @@ export default async function Tim() {
   const origin = `${h.get("x-forwarded-proto") ?? "https"}://${h.get("x-forwarded-host") ?? h.get("host")}`;
   const editable = (p: string, id: number) => id !== me.id && p !== "superadmin" && (me.peran === "superadmin" || p === "klien");
   const group = (p: string) => users.filter((u) => u.peran === p);
-  return <>
-    <header className="dh"><div className="wrap top"><b>Ruria Pantau</b><Link href="/dashboard" className="hlink">← Kembali ke dashboard</Link></div></header>
+  return <AppShell user={me}>
+    <header className="dh"><div className="wrap top ctitle"><h1>{staff ? "Kelola tim" : "Akun saya"}</h1></div></header>
     <main className="wrap dv tim">
-      <h1>{staff ? "Kelola tim" : "Akun saya"}</h1>
       <p className="muted">Masuk sebagai <b>{me.nama}</b> · {PERAN_LABEL[me.peran]}</p>
       {staff && <>
         <AddUser clients={clients} me={me.peran} />
@@ -32,5 +31,5 @@ export default async function Tim() {
       </>}
       <ChangeOwn />
     </main>
-  </>;
+  </AppShell>;
 }

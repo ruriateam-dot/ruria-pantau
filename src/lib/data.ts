@@ -64,3 +64,10 @@ export async function produkSku(storeIds: string[], from: string, to: string, pf
   }
   return out.sort((a, b) => b.gmv - a.gmv || b.gmv_prev - a.gmv_prev).slice(0, 300);
 }
+
+export type Cl = { id: string; nama: string; modul: string[]; target_roas: number | null };
+export async function clientsFor(ids: string[]): Promise<Cl[]> {
+  return ids.length ? (await q<{ id: string; nama: string; modul: string; target_roas: number | null }>("select id, nama, modul, target_roas from clients where id in (?) order by nama", [ids]))
+    .map((x) => ({ ...x, modul: x.modul.split(",") })) : [];
+}
+

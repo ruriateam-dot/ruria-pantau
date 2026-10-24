@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import DashboardView, { clientsFor } from "@/components/DashboardView";
+import DashboardView from "@/components/DashboardView";
+import { clientsFor } from "@/lib/data";
 import { q } from "@/lib/db";
 
 export const dynamic = "force-dynamic";

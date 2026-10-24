@@ -1,23 +1,18 @@
-import Link from "next/link";
-import { isStaff, PERAN_LABEL, type User } from "@/lib/auth";
+import { isStaff, type User } from "@/lib/auth";
 import { q } from "@/lib/db";
-import { logout } from "@/app/login/actions";
 import Filters from "@/components/Filters";
 import { Tabs, LoadingBar } from "@/components/Nav";
 import AutoImport from "@/components/AutoImport";
 import Affiliate from "@/components/Affiliate";
+import AppShell from "@/components/AppShell";
 import ProdukTable, { type PRow } from "@/components/ProdukTable";
-import { Kpi, Insight, Bars } from "@/components/ui";
-import { loadClient, freshness, produkSku, type Sale, type Ad, type Live, type Store } from "@/lib/data";
+import { Kpi, Insight, Bars, LineChart, Share } from "@/components/ui";
+import { clientsFor, loadClient, freshness, produkSku, type Sale, type Ad, type Live, type Store } from "@/lib/data";
 import { resolvePeriod, buckets, fmt, pct, jm, tgl, addDays, dayDiff, todayWIB, type Range } from "@/lib/period";
 
 type SPv = Record<string, string | undefined>;
 type Cl = { id: string; nama: string; modul: string[]; target_roas: number | null };
 
-export async function clientsFor(ids: string[]): Promise<Cl[]> {
-  return ids.length ? (await q<{ id: string; nama: string; modul: string; target_roas: number | null }>("select id, nama, modul, target_roas from clients where id in (?) order by nama", [ids]))
-    .map((x) => ({ ...x, modul: x.modul.split(",") })) : [];
-}
 const TABS: [string, string][] = [["sum", "Semua Klien"], ["toko", "Analisa Toko"], ["iklan", "Analisa Iklan"], ["live", "Livestream"], ["affiliate", "Affiliate"]];
 
 /* Dipakai oleh /dashboard (login) dan /lihat/[token] (klien tanpa login, hanya lihat) */
@@ -40,7 +35,7 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
     brands = [...new Set(D.stores.map((s) => s.brand))];
     platforms = [...new Set(D.stores.map((s) => s.platform))].filter((p) => p !== "CPAS" || tab === "iklan");
     const st = D.stores.filter((s) => (!sp.b || s.brand === sp.b) && (!sp.p || s.platform === sp.p));
-    if (tab === "sum") body = await SumTab(R, clients);
+    if (tab === "sum") body = await SumTab(R, clients, (id) => base + qs({ c: id, m: "toko", b: "", p: "" }));
     else if (tab === "toko") {
       const ts = st.filter((s) => s.platform !== "CPAS");
       let prod: Prod[] = [], prodErr: string | undefined;
@@ -56,28 +51,24 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
     else if (tab === "live") body = <LiveTab R={R} live={D.live} brand={sp.b} plat={sp.p} />;
   }
 
-  return (
-    <>
-      <LoadingBar />
-      <header className="dh">
-        <div className="wrap top">
-          <b>Ruria Pantau</b>
-          {share ? <span className="muted">Tampilan klien · hanya lihat</span> : <>
-            <Link href="/dashboard/upload" className="hlink">Upload data</Link><Link href="/dashboard/tim" className="hlink">{isAdmin ? "Kelola tim" : "Akun saya"}</Link>
-            <span className="muted">{profile?.nama} · {PERAN_LABEL[profile?.peran ?? ""]}</span>
-            <form action={logout}><button type="submit" className="ghost">Keluar</button></form>
-          </>}
-        </div>
-        <div className="wrap"><Filters base={base} clients={clients} brands={brands} platforms={platforms} label={R.label} /></div>
-        <Tabs active={tab} items={TABS.filter(([k]) => (k === "sum" && !share) || c?.modul.includes(k)).map(([k, l]) => ({ k, l, href: base + qs({ m: k }) }))} />
-      </header>
-      <main className="wrap dv">{isAdmin && <AutoImport />}{body}</main>
-    </>
+  const tabs = <Tabs active={tab} items={TABS.filter(([k]) => (k === "sum" && !share) || c?.modul.includes(k)).map(([k, l]) => ({ k, l, href: base + qs({ m: k }) }))} />;
+  const head = (
+    <header className="dh">
+      <div className="wrap top ctitle">
+        {share ? <><span className="logo" aria-hidden="true">R</span><b>Ruria Pantau</b><span className="muted">{c?.nama} · tampilan klien, hanya lihat</span></>
+          : <h1>{tab === "sum" ? "Semua klien" : c?.nama}</h1>}
+      </div>
+      <div className="wrap"><Filters base={base} clients={share ? [] : clients} hideClient brands={tab === "sum" ? [] : brands} platforms={tab === "sum" ? [] : platforms} label={R.label} /></div>
+      {tabs}
+    </header>
   );
+  const main = <main className="wrap dv">{isAdmin && <AutoImport />}{body}</main>;
+  if (share || !profile) return <><LoadingBar />{head}{main}</>;
+  return <AppShell user={profile} active={tab === "sum" ? undefined : c?.id} keep={{ m: sp.m, per: sp.per }}>{head}{main}</AppShell>;
 }
 
 /* ---------------- Semua klien ---------------- */
-async function SumTab(R: Range, clients: { id: string; nama: string; modul: string[] }[]) {
+async function SumTab(R: Range, clients: { id: string; nama: string; modul: string[] }[], href: (id: string) => string) {
   const F = await freshness(clients.map((c) => c.id));
   const yday = addDays(todayWIB(), -1);
   const badge = (d: string | null | undefined) => { if (!d) return <span className="pill mute">Belum ada data</span>; const lag = dayDiff(d, yday); return lag <= 0 ? <span className="pill good">Aman</span> : lag <= 3 ? <span className="pill warn">Kurang {lag} hari</span> : <span className="pill bad">Tertinggal {lag} hari</span>; };
@@ -85,7 +76,9 @@ async function SumTab(R: Range, clients: { id: string; nama: string; modul: stri
   const rows = await Promise.all(clients.filter((c) => c.modul.includes("toko")).map(async (c) => {
     const D = await loadClient(c.id, R.pf < R.from ? R.pf : R.from, R.to);
     const g = (a: string, b: string) => D.sales.filter((s) => s.tanggal >= a && s.tanggal <= b).reduce((x, s) => x + s.gmv, 0);
-    return { c, n: g(R.from, R.to), o: g(R.pf, R.pt) };
+    const ord = D.sales.filter((s) => s.tanggal >= R.from && s.tanggal <= R.to).reduce((x, s) => x + s.pesanan, 0);
+    const ad = D.ads.filter((a) => a.dari <= R.to && a.sampai >= R.from), biaya = ad.reduce((x, a) => x + a.biaya, 0), ag = ad.reduce((x, a) => x + a.gmv, 0);
+    return { c, n: g(R.from, R.to), o: g(R.pf, R.pt), ord, roas: biaya ? ag / biaya : null };
   }));
   rows.sort((a, b) => b.n - a.n);
   const tot = rows.reduce((a, r) => a + r.n, 0) || 1;
@@ -94,6 +87,12 @@ async function SumTab(R: Range, clients: { id: string; nama: string; modul: stri
     {rows.length > 0 && <Insight src="Data asli" sum={[`Total GMV klien ${fmt(tot)} (${R.label.toLowerCase()}).`, `Klien terbesar: ${rows[0].c.nama} (${(rows[0].n / tot * 100).toFixed(0)}%).`]}
       ana={[`Pertumbuhan terbaik: ${up.c.nama} (${pct(up.n, up.o).toFixed(1)}%).`, `Paling melemah: ${dn.c.nama} (${pct(dn.n, dn.o).toFixed(1)}%).`]}
       next={[`Review ${dn.c.nama} lebih dulu.`, "Pastikan data semua klien sudah masuk sampai kemarin (lihat Status data)."]} />}
+    <div className="ccards">{rows.map((r) => { const v = pct(r.n, r.o); const f = F.find((x) => x.client_id === r.c.id);
+      return <a key={r.c.id} className="ccard" href={href(r.c.id)}>
+        <div className="top"><h3>{r.c.nama}</h3>{badge(f?.penjualan)}</div>
+        <div className="cm"><div><span>GMV</span><b>{fmt(r.n)}</b></div><div><span>Perubahan</span><b className={v >= 0 ? "up" : "dn"}>{isFinite(v) ? `${v >= 0 ? "+" : ""}${v.toFixed(1)}%` : "–"}</b></div><div><span>ROAS iklan</span><b>{r.roas != null ? r.roas.toFixed(1) : "–"}</b></div></div>
+        <div className="muted small">{r.ord.toLocaleString("id")} pesanan · data terakhir {f?.penjualan ? `${tgl(f.penjualan)} ${f.penjualan.slice(0, 4)}` : "–"}</div>
+      </a>; })}</div>
     <div className="card"><h2>Status data terakhir</h2><p className="muted small">Aman kalau data sudah masuk sampai kemarin ({tgl(yday)} {yday.slice(0, 4)}).</p>
       <div className="tbl"><table><thead><tr><th>Klien</th><th>Penjualan</th><th></th><th>Iklan</th><th></th><th>Livestream</th><th></th></tr></thead>
         <tbody>{clients.map((c) => { const f = F.find((x) => x.client_id === c.id); return <tr key={c.id}><td>{c.nama}</td>{cell(c.modul.includes("toko"), f?.penjualan)}{cell(c.modul.includes("iklan"), f?.iklan)}{cell(c.modul.includes("live"), f?.live)}</tr>; })}</tbody></table></div></div>
@@ -113,6 +112,9 @@ function TokoTab({ R, stores, sales }: { R: Range; stores: Store[]; sales: Sale[
   const per = stores.map((s) => { const a = agg(R.from, R.to, s.id), b = agg(R.pf, R.pt, s.id); return { s, g: a.g, o: a.o, ch: pct(a.g, b.g) }; }).sort((a, b) => b.g - a.g);
   const B = buckets(R.from, R.to);
   const vals = B.map((b) => agg(b.f, b.t).g);
+  // Garis pembanding hanya kalau periode sendiri cukup panjang (tidak diperluas ke 30 hari)
+  const PB = dayDiff(R.from, R.to) >= 13 ? buckets(R.pf, R.pt) : null;
+  const prevVals = PB ? PB.map((b) => agg(b.f, b.t).g) : undefined;
   const last = S.reduce((m, s) => (s.tanggal > m ? s.tanggal : m), "");
   const worst = [...per].sort((a, b) => a.ch - b.ch)[0], best = [...per].sort((a, b) => b.ch - a.ch)[0];
   const dA = pct(aov, aovP), dC = pct(cr, crP);
@@ -128,7 +130,15 @@ function TokoTab({ R, stores, sales }: { R: Range; stores: Store[]; sales: Sale[
     <p className="note">Periode: {R.label}. {last ? `Data terakhir ${tgl(last)} ${last.slice(0, 4)}.` : "Belum ada data penjualan di periode ini."}</p>
     <Insight src="Data asli" sum={[`GMV ${fmt(n.g)}, ${pct(n.g, o.g) >= 0 ? "naik" : "turun"} ${Math.abs(pct(n.g, o.g)).toFixed(1)}% ${R.sub}.`, `${n.o.toLocaleString("id")} pesanan, AOV ${fmt(aov)}.`, ...(per.length > 1 ? [`Kontributor terbesar: ${per[0].s.brand} · ${per[0].s.platform} (${(per[0].g / (n.g || 1) * 100).toFixed(0)}%).`] : [])]} ana={ana} next={next} />
     <div className="kpis"><Kpi l="GMV" v={fmt(n.g)} d={pct(n.g, o.g)} sub={R.sub} /><Kpi l="Pesanan" v={n.o.toLocaleString("id")} d={pct(n.o, o.o)} sub={R.sub} /><Kpi l="AOV" v={fmt(aov)} d={dA} sub={R.sub} /><Kpi l="Konversi" v={isFinite(cr) ? cr.toFixed(2) + "%" : "–"} d={isFinite(dC) ? dC : undefined} sub={isFinite(cr) ? R.sub : "butuh data pengunjung semua toko"} /></div>
-    <div className="card"><h2>Tren GMV</h2><Bars title="Tren GMV" labels={B.map((b) => b.l)} series={[vals]} colors={["var(--accent)"]} /></div>
+    <div className="card"><h2>Tren GMV {B[0].f === B[0].t ? "harian" : "bulanan"}</h2>
+      <LineChart title="Tren GMV" labels={B.map((b) => b.l)} cur={vals} prev={prevVals} />
+      <div className="chart-legend"><span><i />Periode ini</span>{prevVals && <span><i className="prev" />Periode pembanding ({R.sub.replace(/^vs /, "")})</span>}</div></div>
+    {per.length > 1 && <div className="grid2c">
+      <div className="card"><h2>Porsi GMV per toko</h2><Share items={per.map((r) => ({ l: `${r.s.brand} · ${r.s.platform}`, v: r.g }))} /></div>
+      <div className="card"><h2>Porsi per platform</h2>{(() => { const P = ["Shopee", "TikTok"].map((pf) => ({ l: pf, v: per.filter((r) => r.s.platform === pf).reduce((a, r) => a + r.g, 0) })).filter((x) => x.v > 0); const t = P.reduce((a, x) => a + x.v, 0) || 1;
+        return <><div className="pfsplit">{P.map((x) => <i key={x.l} style={{ width: `${(x.v / t) * 100}%`, background: x.l === "Shopee" ? "var(--accent)" : "var(--aqua)" }} />)}</div>
+          <Share items={P.map((x) => ({ l: x.l, v: x.v }))} /></>; })()}</div>
+    </div>}
     <div className="card"><h2>Per toko</h2><div className="tbl"><table><thead><tr><th>Toko</th><th className="n">GMV</th><th className="n">Pesanan</th><th className="n">Δ</th><th>Status</th></tr></thead>
       <tbody>{per.map((r) => <tr key={r.s.id}><td>{r.s.brand} · {r.s.platform}</td><td className="n">{fmt(r.g)}</td><td className="n">{r.o.toLocaleString("id")}</td><td className={"n " + (r.ch >= 0 ? "up" : "dn")}>{r.ch >= 0 ? "+" : ""}{r.ch.toFixed(1)}%</td><td>{r.ch < -25 ? <span className="pill bad">Turun tajam</span> : r.ch < -5 ? <span className="pill warn">Turun</span> : <span className="pill good">Stabil/naik</span>}</td></tr>)}</tbody></table></div></div>
   </>);
@@ -152,6 +162,9 @@ function IklanTab({ R, stores, ads, sales, target }: { R: Range; stores: Store[]
       ana={[t ? (roas < t - 2 ? `ROAS keseluruhan ${(t - roas).toFixed(1)} poin di bawah target.` : "ROAS keseluruhan dalam toleransi target.") : "Target ROAS klien belum diatur.", ...below.slice(0, 4).map((c) => `${c.c}: ROAS ${c.r.toFixed(1)}, menyerap ${fmt(c.s)}.`)]}
       next={[...below.slice(0, 3).map((c) => `${c.c}: turunkan target ROAS bertahap atau pangkas budget; evaluasi setelah 3 hari.`), ...(ok.length ? [`Naikkan budget kampanye yang tercapai sekitar 20–50% kalau stabil 3 hari.`] : []), "Pastikan produk tidak dobel di iklan otomatis dan iklan produk."]} />
     <div className="kpis"><Kpi l="Biaya iklan" v={fmt(S)} /><Kpi l="GMV dari iklan" v={fmt(G)} /><Kpi l="ROAS" v={roas.toFixed(1)} sub={t ? `target ${t}` : undefined} />{om > 0 && <Kpi l="Biaya iklan / omzet" v={(S / om * 100).toFixed(1) + "%"} />}</div>
+    <div className="card"><h2>ROAS per kampanye <span className="muted small">(10 biaya terbesar{t ? `, target ${t}` : ""})</span></h2>
+      <Share items={camps.slice(0, 10).map((c) => ({ l: c.c, v: c.r, note: `ROAS ${c.r.toFixed(1)} · biaya ${fmt(c.s)}` }))} />
+      {t > 0 && <p className="muted small">Batang lebih panjang = ROAS lebih tinggi. Kampanye di bawah target {t} ditandai di tabel.</p>}</div>
     <div className="card"><h2>Kampanye</h2><div className="tbl"><table><thead><tr><th>Kampanye</th><th className="n">Biaya</th><th className="n">GMV</th><th className="n">Pesanan</th><th className="n">ROAS</th><th>Status</th></tr></thead>
       <tbody>{camps.slice(0, 200).map((c) => <tr key={c.c}><td className="wrapcell">{c.c}</td><td className="n">{fmt(c.s)}</td><td className="n">{fmt(c.g)}</td><td className="n">{c.o || "–"}</td><td className="n">{c.r.toFixed(1)}</td><td>{!t ? "–" : c.r >= t - 2 ? <span className="pill good">Tercapai</span> : c.r >= t - 5 ? <span className="pill warn">Di bawah</span> : <span className="pill bad">Jauh di bawah</span>}</td></tr>)}</tbody></table></div></div>
   </>);
@@ -189,7 +202,7 @@ function LiveTab({ R, live, brand, plat }: { R: Range; live: Live[]; brand?: str
       <div />{SLOTS.map((s) => <div key={s[2]} className="hmh"><b>{s[2]}</b><span>{s[3]}</span></div>)}
       {hs.slice(0, 10).map((h, i) => [<div key={h.k} className="hmn">{h.k}</div>, ...cells[i].map((c, j) => c.g === null ? <div key={j} className="hmc none">Tidak live</div> : <div key={j} className={"hmc l" + Math.min(4, Math.floor((c.g / mx) * 5))}><b>{fk(c.g)}</b><span>Rp{fk(c.v.g)} · {jm(c.v.j)}</span></div>)])}
     </div></div><p className="muted small">Angka besar = GMV per jam. Baris kecil = total GMV · durasi. Dikelompokkan menurut jam mulai live.</p></div>
-    <div className="card"><h2>GMV live per {B[0].f === B[0].t ? "hari" : "bulan"}</h2><Bars title="GMV live" labels={B.map((x) => x.l)} series={[ser("gmv_shopee"), ser("gmv_tiktok")]} colors={["var(--warn)", "var(--accent)"]} /><p className="muted small"><span style={{ color: "var(--warn)" }}>■</span> Shopee <span style={{ color: "var(--accent)" }}>■</span> TikTok</p></div>
+    <div className="card"><h2>GMV live per {B[0].f === B[0].t ? "hari" : "bulan"}</h2><Bars title="GMV live" labels={B.map((x) => x.l)} series={[ser("gmv_shopee"), ser("gmv_tiktok")]} colors={["var(--accent)", "var(--aqua)"]} /><p className="muted small"><span style={{ color: "var(--accent)" }}>■</span> Shopee <span style={{ color: "var(--aqua)" }}>■</span> TikTok</p></div>
   </>);
 }
 

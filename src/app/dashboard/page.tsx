@@ -1,4 +1,5 @@
-import DashboardView, { clientsFor } from "@/components/DashboardView";
+import DashboardView from "@/components/DashboardView";
+import { clientsFor } from "@/lib/data";
 import { requireUser, allowedClients } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
