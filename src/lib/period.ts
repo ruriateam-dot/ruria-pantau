@@ -23,7 +23,7 @@ export function resolvePeriod(key = "yday"): Range {
   m = key.match(/^year:(\d{4})$/);
   if (m) { const y = m[1]; let to = `${y}-12-31`; if (to > T) to = T; const py = String(+y - 1); return mk(`${y}-01-01`, to, `${py}-01-01`, py + to.slice(4), `Tahun ${y}`, "vs periode sama tahun lalu"); }
   m = key.match(/^custom:(\d{4}-\d{2}-\d{2})_(\d{4}-\d{2}-\d{2})$/);
-  if (m) { let [a, b] = [m[1], m[2]]; if (b < a) [a, b] = [b, a]; const n = dayDiff(a, b) + 1; return mk(a, b, addDays(a, -n), addDays(a, -1), `${tgl(a)} – ${tgl(b)} ${b.slice(0, 4)}`, `vs ${n} hari sebelumnya`); }
+  if (m) { let [a, b] = [m[1], m[2]]; if (b < a) [a, b] = [b, a]; const n = dayDiff(a, b) + 1; if (n === 1) return mk(a, b, addDays(a, -7), addDays(a, -7), `${tgl(a)} ${a.slice(0, 4)}`, "vs minggu lalu"); return mk(a, b, addDays(a, -n), addDays(a, -1), `${tgl(a)} – ${tgl(b)} ${b.slice(0, 4)}`, `vs ${n} hari sebelumnya`); }
   const y = addDays(T, -1);
   return { ...mk(y, y, addDays(y, -7), addDays(y, -7), `Kemarin, ${tgl(y)}`, "vs minggu lalu"), key: "yday" };
 }
