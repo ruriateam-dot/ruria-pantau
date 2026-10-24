@@ -1,31 +1,12 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({ request });
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => request.cookies.getAll(),
-        setAll: (list) => {
-          list.forEach(({ name, value }) => request.cookies.set(name, value));
-          response = NextResponse.next({ request });
-          list.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
-        },
-      },
-    }
-  );
-  const { data: { user } } = await supabase.auth.getUser();
+// Pemeriksaan ringan: cek ada cookie sesi. Validasi sebenarnya di server (getUser).
+export function middleware(request: NextRequest) {
+  const has = !!request.cookies.get("rp_sesi")?.value;
   const path = request.nextUrl.pathname;
-  if (!user && path.startsWith("/dashboard")) {
-    return NextResponse.redirect(new URL("/login", request.url));
-  }
-  if (user && (path === "/login" || path === "/")) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
-  }
-  return response;
+  if (!has && path.startsWith("/dashboard")) return NextResponse.redirect(new URL("/login", request.url));
+  if (has && path === "/") return NextResponse.redirect(new URL("/dashboard", request.url));
+  return NextResponse.next();
 }
 
-export const config = { matcher: ["/", "/login", "/dashboard/:path*"] };
+export const config = { matcher: ["/", "/dashboard/:path*"] };

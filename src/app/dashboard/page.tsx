@@ -1,12 +1,13 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { requireUser, allowedClients } from "@/lib/auth";
+import { q } from "@/lib/db";
 import { logout } from "../login/actions";
 import Filters from "@/components/Filters";
 import { Tabs, LoadingBar } from "@/components/Nav";
 import AutoImport from "@/components/AutoImport";
 import ProdukTable, { type PRow } from "@/components/ProdukTable";
 import { Kpi, Insight, Bars } from "@/components/ui";
-import { loadClient, freshness, type Sale, type Ad, type Live, type Store } from "@/lib/data";
+import { loadClient, freshness, produkSku, type Sale, type Ad, type Live, type Store } from "@/lib/data";
 import { resolvePeriod, buckets, fmt, pct, jm, tgl, addDays, dayDiff, todayWIB, type Range } from "@/lib/period";
 
 type SP = Promise<Record<string, string | undefined>>;
@@ -14,11 +15,10 @@ const TABS: [string, string][] = [["sum", "Semua Klien"], ["toko", "Analisa Toko
 
 export default async function Dashboard({ searchParams }: { searchParams: SP }) {
   const sp = await searchParams;
-  const sb = await createClient();
-  const { data: { user } } = await sb.auth.getUser();
-  const { data: profile } = await sb.from("profiles").select("nama, peran").eq("id", user!.id).single();
-  const { data: clientsRaw } = await sb.from("clients").select("id, nama, modul, target_roas").order("nama");
-  const clients = clientsRaw ?? [];
+  const profile = await requireUser();
+  const ok = await allowedClients(profile);
+  const clients = ok.length ? (await q<{ id: string; nama: string; modul: string; target_roas: number | null }>("select id, nama, modul, target_roas from clients where id in (?) order by nama", [ok]))
+    .map((x) => ({ ...x, modul: x.modul.split(",") })) : [];
   const isAdmin = profile?.peran === "admin";
   const c = clients.find((x) => x.id === sp.c) ?? clients[0];
   let tab = sp.m ?? "toko";
@@ -37,8 +37,9 @@ export default async function Dashboard({ searchParams }: { searchParams: SP }) 
     if (tab === "sum") body = await SumTab(R, clients);
     else if (tab === "toko") {
       const ts = st.filter((s) => s.platform !== "CPAS");
-      const { data: prod, error: prodErr } = await sb.rpc("produk_sku", { p_stores: ts.map((s) => s.id), p_from: R.from, p_to: R.to, p_pf: R.pf, p_pt: R.pt });
-      body = <><TokoTab R={R} stores={ts} sales={D.sales} /><ProdukSection R={R} rows={(prod ?? []) as Prod[]} stores={ts} err={prodErr?.message} /></>;
+      let prod: Prod[] = [], prodErr: string | undefined;
+      try { prod = await produkSku(ts.map((s) => s.id), R.from, R.to, R.pf, R.pt); } catch (e) { prodErr = (e as Error).message; }
+      body = <><TokoTab R={R} stores={ts} sales={D.sales} /><ProdukSection R={R} rows={prod} stores={ts} err={prodErr} /></>;
     }
     else if (tab === "iklan") body = <IklanTab R={R} stores={st} ads={D.ads} sales={D.sales} target={c.target_roas} />;
     else if (tab === "live") body = <LiveTab R={R} live={D.live} brand={sp.b} plat={sp.p} />;
@@ -50,7 +51,7 @@ export default async function Dashboard({ searchParams }: { searchParams: SP }) 
       <header className="dh">
         <div className="wrap top">
           <b>Ruria Pantau</b>
-          {isAdmin && <Link href="/dashboard/impor" className="hlink">Impor data</Link>}
+          {isAdmin && <><Link href="/dashboard/impor" className="hlink">Impor data</Link><Link href="/dashboard/tim" className="hlink">Kelola tim</Link></>}
           <span className="muted">{profile?.nama} · {profile?.peran}</span>
           <form action={logout}><button type="submit" className="ghost">Keluar</button></form>
         </div>
@@ -64,7 +65,7 @@ export default async function Dashboard({ searchParams }: { searchParams: SP }) 
 
 /* ---------------- Semua klien ---------------- */
 async function SumTab(R: Range, clients: { id: string; nama: string; modul: string[] }[]) {
-  const F = await freshness();
+  const F = await freshness(clients.map((c) => c.id));
   const yday = addDays(todayWIB(), -1);
   const badge = (d: string | null | undefined) => { if (!d) return <span className="pill mute">Belum ada data</span>; const lag = dayDiff(d, yday); return lag <= 0 ? <span className="pill good">Aman</span> : lag <= 3 ? <span className="pill warn">Kurang {lag} hari</span> : <span className="pill bad">Tertinggal {lag} hari</span>; };
   const cell = (on: boolean, d: string | null | undefined) => on ? <><td>{d ? `${tgl(d)} ${d.slice(0, 4)}` : "–"}</td><td>{badge(d)}</td></> : <><td>–</td><td><span className="pill mute">Tidak dipantau</span></td></>;
@@ -182,7 +183,7 @@ function LiveTab({ R, live, brand, plat }: { R: Range; live: Live[]; brand?: str
 /* ---------------- Analisa produk ---------------- */
 type Prod = { grup: string; nama: string; kode: string[] | null; gmv: number; qty: number; pesanan: number; gmv_prev: number; qty_prev: number; toko: string[] | null; varian: PRow["varian"] };
 function ProdukSection({ R, rows, stores, err }: { R: Range; rows: Prod[]; stores: Store[]; err?: string }) {
-  if (err) return <div className="card"><h2>Analisa produk</h2><p className="err">Data produk gagal dimuat: {err.includes("produk_sku") ? "fungsi analisa SKU belum dipasang. Jalankan file 0005_sku.sql di SQL Editor Supabase." : err}</p></div>;
+  if (err) return <div className="card"><h2>Analisa produk</h2><p className="err">Data produk gagal dimuat: {err}</p></div>;
   if (!rows.length) return (
     <div className="card"><h2>Analisa produk</h2><p className="muted">Belum ada data penjualan per produk untuk pilihan ini. Data produk berasal dari ekspor pesanan (Shopee &quot;Pesanan Saya → Ekspor&quot;, TikTok &quot;Pesanan → Ekspor&quot;).</p></div>);
   const tokoName: Record<string, string> = Object.fromEntries(stores.map((s) => [s.id, `${s.brand} ${s.platform === "TikTok" ? "TT" : s.platform === "Shopee" ? "SP" : s.platform}`]));

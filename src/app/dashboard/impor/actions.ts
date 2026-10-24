@@ -1,5 +1,6 @@
 "use server";
-import { createClient } from "@/lib/supabase/server";
+import { exec, q } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth";
 import seed from "@/data/seed.json";
 import seedProduk from "@/data/seed_produk.json";
 
@@ -16,84 +17,65 @@ const S = seed as unknown as Seed;
 const DATA_VERSION = "2026-10-24e";
 const chunk = <T,>(a: T[], n: number) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
 
+const NO = "Hanya admin yang bisa mengimpor data. Muat ulang halaman lalu login lagi.";
+async function bulk(sql: string, rows: unknown[][], upd = "") {
+  for (const c of chunk(rows, 1000)) await exec(sql + " values ?" + upd, [c]);
+}
+
 export async function importSeed(): Promise<string> {
-  const sb = await createClient();
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user) return "Sesi login habis. Muat ulang halaman lalu login lagi.";
-  const { data: me } = await sb.from("profiles").select("peran").eq("id", user.id).single();
-  if (me?.peran !== "admin") return "Hanya admin yang bisa mengimpor data.";
-
-  const fail = (step: string, msg: string) => `Gagal di tahap ${step}: ${msg}`;
-
-  let r = S.clients?.length ? await sb.from("clients").upsert(S.clients) : { error: null };
-  if (r.error) return fail("klien", r.error.message);
-  r = await sb.from("stores").upsert(S.stores);
-  if (r.error) return fail("toko", r.error.message);
-
-  for (const part of chunk(S.sales, 1000)) {
-    r = await sb.from("daily_sales").upsert(part.map(([store_id, tanggal, gmv, pesanan, pengunjung, sumber]) =>
-      ({ store_id, tanggal, gmv, pesanan, pengunjung, sumber, diupload_oleh: user.id })));
-    if (r.error) return fail("penjualan", r.error.message);
+  const u = await requireAdmin();
+  if (!u) return NO;
+  let step = "klien";
+  try {
+    if (S.clients?.length) await bulk("insert into clients (id, nama, modul, target_roas)", S.clients.map((c) => [c.id, c.nama, c.modul.join(","), c.target_roas]), " on duplicate key update nama = values(nama), modul = values(modul)");
+    step = "toko";
+    await bulk("insert into stores (id, client_id, brand, platform)", S.stores.map((s) => [s.id, s.client_id, s.brand, s.platform]), " on duplicate key update client_id = values(client_id), brand = values(brand), platform = values(platform)");
+    step = "penjualan";
+    await bulk("insert into daily_sales (store_id, tanggal, gmv, pesanan, pengunjung, sumber, diupload_oleh)", S.sales.map((r) => [...r, u.id]),
+      " on duplicate key update gmv = values(gmv), pesanan = values(pesanan), pengunjung = values(pengunjung), sumber = values(sumber)");
+    step = "iklan";
+    const adStores = [...new Set(S.ads.map((a) => a[0]))];
+    if (adStores.length) await exec("delete from ads where store_id in (?)", [adStores]);
+    await bulk("insert into ads (store_id, dari, sampai, kampanye, biaya, gmv, pesanan, diupload_oleh)", S.ads.map((r) => [...r, u.id]));
+    step = "livestream";
+    const liveClients = [...new Set(S.live.map((l) => l[0]))];
+    if (liveClients.length) await exec("delete from live_sessions where client_id in (?)", [liveClients]);
+    await bulk("insert into live_sessions (client_id, brand, tanggal, jam_mulai, durasi_jam, gmv_shopee, gmv_tiktok, host, penonton, diupload_oleh)", S.live.map((r) => [...r, u.id]));
+  } catch (e) {
+    return `Gagal di tahap ${step}: ${(e as Error).message}`;
   }
-
-  const adStores = [...new Set(S.ads.map((a) => a[0]))];
-  r = await sb.from("ads").delete().in("store_id", adStores);
-  if (r.error) return fail("hapus iklan lama", r.error.message);
-  for (const part of chunk(S.ads, 1000)) {
-    r = await sb.from("ads").insert(part.map(([store_id, dari, sampai, kampanye, biaya, gmv, pesanan]) =>
-      ({ store_id, dari, sampai, kampanye, biaya, gmv, pesanan, diupload_oleh: user.id })));
-    if (r.error) return fail("iklan", r.error.message);
-  }
-
-  const liveClients = [...new Set(S.live.map((l) => l[0]))];
-  r = await sb.from("live_sessions").delete().in("client_id", liveClients);
-  if (r.error) return fail("hapus live lama", r.error.message);
-  for (const part of chunk(S.live, 1000)) {
-    r = await sb.from("live_sessions").insert(part.map(([client_id, brand, tanggal, jam_mulai, durasi_jam, gmv_shopee, gmv_tiktok, host, penonton]) =>
-      ({ client_id, brand, tanggal, jam_mulai, durasi_jam, gmv_shopee, gmv_tiktok, host, penonton, diupload_oleh: user.id })));
-    if (r.error) return fail("livestream", r.error.message);
-  }
-
-  await sb.from("uploads").insert(liveClients.concat(["cahaya", "pmg", "jf", "ot"]).filter((v, i, a) => a.indexOf(v) === i)
-    .map((c) => ({ client_id: c, jenis: "arsip-2026", nama_file: "data awal dari dashboard artifact", oleh: user.id })));
-
   return `Selesai: ${S.stores.length} toko, ${S.sales.length.toLocaleString("id")} baris penjualan harian, ${S.ads.length.toLocaleString("id")} baris iklan, ${S.live.length.toLocaleString("id")} sesi live.`;
 }
 
-const PART = 4000;
-async function adminUser() {
-  const sb = await createClient();
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user) return { sb, user: null, err: "Sesi login habis. Muat ulang halaman lalu login lagi." };
-  const { data: me } = await sb.from("profiles").select("peran").eq("id", user.id).single();
-  if (me?.peran !== "admin") return { sb, user: null, err: "Hanya admin yang bisa mengimpor data." };
-  return { sb, user, err: "" };
-}
+const PART = 5000;
+type PS = { produk: string[]; rows: [string, string, number, string, number, number, number, string, string][] };
 
-/* Impor produk bertahap: satu panggilan = satu bagian, supaya tidak kena batas waktu */
+/* Impor produk bertahap: satu panggilan = satu bagian */
 export async function importProdukPart(part: number): Promise<{ ok: boolean; msg: string; parts: number }> {
-  const P = seedProduk as unknown as { produk: string[]; rows: [string, string, number, string, number, number, number, string, string][] };
+  const P = seedProduk as unknown as PS;
   const parts = Math.ceil(P.rows.length / PART);
-  const { sb, user, err } = await adminUser();
-  if (!user) return { ok: false, msg: err, parts };
-  for (const c of chunk(P.rows.slice(part * PART, (part + 1) * PART), 2000)) {
-    const r = await sb.from("product_sales").upsert(c.map(([store_id, tanggal, pi, varian, qty, gmv, pesanan, sku, grup]) =>
-      ({ store_id, tanggal, produk: P.produk[pi], varian, qty, gmv, pesanan, sku: sku ?? "", grup: grup || null, diupload_oleh: user.id })));
-    if (r.error) return { ok: false, parts, msg: r.error.message.includes("does not exist") ? "Tabel produk belum siap. Jalankan file 0003_produk.sql dan 0005_sku.sql di SQL Editor Supabase dulu." : `Gagal di bagian ${part + 1}: ${r.error.message}` };
+  const u = await requireAdmin();
+  if (!u) return { ok: false, msg: NO, parts };
+  try {
+    await bulk("insert into product_sales (store_id, tanggal, produk, varian, qty, gmv, pesanan, sku, grup, diupload_oleh)",
+      P.rows.slice(part * PART, (part + 1) * PART).map(([s, t, pi, v, qt, g, o, sku, grup]) => [s, t, P.produk[pi], v ?? "", qt, g, o, sku ?? "", grup || null, u.id]),
+      " on duplicate key update qty = values(qty), gmv = values(gmv), pesanan = values(pesanan), sku = values(sku), grup = values(grup)");
+  } catch (e) {
+    return { ok: false, parts, msg: `Gagal di bagian ${part + 1}: ${(e as Error).message}` };
   }
-  return { ok: true, parts, msg: part + 1 >= parts ? `Selesai: ${P.rows.length.toLocaleString("id")} baris produk (${P.produk.length} produk; CV Cahaya, Just Fluff, PMG, PT Prima Kreasi Panel).` : "" };
+  return { ok: true, parts, msg: part + 1 >= parts ? `Selesai: ${P.rows.length.toLocaleString("id")} baris produk (${P.produk.length} produk).` : "" };
 }
 
 /* Pembaruan otomatis per versi data */
 export async function autoStatus(): Promise<{ need: boolean; parts: number }> {
-  const P = seedProduk as unknown as { rows: unknown[] };
-  const { sb, user } = await adminUser();
-  if (!user) return { need: false, parts: 0 };
-  const { data: done } = await sb.from("uploads").select("id").eq("jenis", "data-otomatis:" + DATA_VERSION).limit(1);
-  return { need: !done?.length, parts: Math.ceil(P.rows.length / PART) };
+  const P = seedProduk as unknown as PS;
+  const u = await requireAdmin();
+  if (!u) return { need: false, parts: 0 };
+  const done = await q("select id from uploads where jenis = ? limit 1", ["data-otomatis:" + DATA_VERSION]);
+  return { need: !done.length, parts: Math.ceil(P.rows.length / PART) };
 }
 export async function autoMark(): Promise<void> {
-  const { sb, user } = await adminUser();
-  if (!user) return;
-  await sb.from("uploads").insert({ client_id: "cahaya", jenis: "data-otomatis:" + DATA_VERSION, nama_file: "pembaruan data dari Claude", oleh: user.id });
+  const u = await requireAdmin();
+  if (!u) return;
+  await exec("insert into uploads (client_id, jenis, nama_file, oleh) values (null, ?, 'pembaruan data dari Claude', ?)", ["data-otomatis:" + DATA_VERSION, u.id]);
 }

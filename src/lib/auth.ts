@@ -1,0 +1,57 @@
+import "server-only";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { randomBytes } from "crypto";
+import bcrypt from "bcryptjs";
+import { q, exec } from "./db";
+
+export const COOKIE = "rp_sesi";
+export type User = { id: number; email: string; nama: string; peran: "admin" | "anggota" };
+
+export async function getUser(): Promise<User | null> {
+  const t = (await cookies()).get(COOKIE)?.value;
+  if (!t || !/^[a-f0-9]{64}$/.test(t)) return null;
+  const r = await q<User>("select u.id, u.email, u.nama, u.peran from sessions s join users u on u.id = s.user_id where s.token = ? and s.kadaluarsa > now()", [t]);
+  return r[0] ?? null;
+}
+
+export async function requireUser() {
+  const u = await getUser();
+  if (!u) redirect("/login");
+  return u;
+}
+
+export async function requireAdmin() {
+  const u = await getUser();
+  return u?.peran === "admin" ? u : null;
+}
+
+export async function startSession(userId: number) {
+  const token = randomBytes(32).toString("hex");
+  await exec("insert into sessions (token, user_id, kadaluarsa) values (?, ?, now() + interval 30 day)", [token, userId]);
+  await exec("delete from sessions where kadaluarsa < now()");
+  (await cookies()).set(COOKIE, token, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
+}
+
+export async function endSession() {
+  const c = await cookies();
+  const t = c.get(COOKIE)?.value;
+  if (t) await exec("delete from sessions where token = ?", [t]);
+  c.delete(COOKIE);
+}
+
+export const hash = (pw: string) => bcrypt.hash(pw, 12);
+export const verify = (pw: string, h: string) => bcrypt.compare(pw, h);
+
+export async function hasUsers() {
+  const r = await q<{ n: number }>("select count(*) n from users");
+  return r[0].n > 0;
+}
+
+/* Klien yang boleh dilihat akun ini (admin: semua) */
+export async function allowedClients(u: User): Promise<string[]> {
+  const r = u.peran === "admin"
+    ? await q<{ id: string }>("select id from clients")
+    : await q<{ id: string }>("select client_id id from client_members where user_id = ?", [u.id]);
+  return r.map((x) => x.id);
+}

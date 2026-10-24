@@ -89,3 +89,20 @@ body.is-loading .dv{opacity:.5;pointer-events:none;transition:opacity .15s}
 .chev{color:var(--accent);display:inline-block;width:12px}
 .vrow>td{background:var(--bg);padding:10px 12px 14px 28px}
 .vtab th,.vtab td{font-size:13px;padding:5px 8px}
+
+/* Kelola tim */
+.tim h1 { margin: 18px 0 12px; }
+.tim .card { margin-bottom: 14px; }
+.tim .form label, .tim .urow label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.tim input, .tim select { padding: 8px 10px; border: 1px solid var(--line, #ddd); border-radius: 8px; font: inherit; background: var(--bg, #fff); color: inherit; }
+.tim .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 10px 0; }
+.tim .chk { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 6px 0 10px; }
+.tim .chk label { flex-direction: row !important; align-items: center; gap: 6px; }
+.tim button { padding: 8px 14px; border-radius: 8px; cursor: pointer; }
+.tim button.danger { color: #b42318; }
+.tim .urow summary { cursor: pointer; display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+.tim .urow form { margin-top: 12px; }
+.tim .urow form.inline { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tim .badge { font-size: 12px; padding: 1px 8px; border-radius: 99px; background: var(--soft, #eef); }
+.tim .ok { color: #067647; }
+.small { font-size: 12px; }
