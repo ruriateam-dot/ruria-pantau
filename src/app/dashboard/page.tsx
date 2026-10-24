@@ -51,7 +51,7 @@ export default async function Dashboard({ searchParams }: { searchParams: SP }) 
       <header className="dh">
         <div className="wrap top">
           <b>Ruria Pantau</b>
-          {isAdmin && <><Link href="/dashboard/impor" className="hlink">Impor data</Link><Link href="/dashboard/tim" className="hlink">Kelola tim</Link></>}
+          <Link href="/dashboard/upload" className="hlink">Upload data</Link>{isAdmin ? <Link href="/dashboard/tim" className="hlink">Kelola tim</Link> : <Link href="/dashboard/tim" className="hlink">Akun saya</Link>}
           <span className="muted">{profile?.nama} · {profile?.peran}</span>
           <form action={logout}><button type="submit" className="ghost">Keluar</button></form>
         </div>

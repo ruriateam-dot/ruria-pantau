@@ -106,3 +106,11 @@ body.is-loading .dv{opacity:.5;pointer-events:none;transition:opacity .15s}
 .tim .badge { font-size: 12px; padding: 1px 8px; border-radius: 99px; background: var(--soft, #eef); }
 .tim .ok { color: #067647; }
 .small { font-size: 12px; }
+.upl .drop { display: block; border: 2px dashed var(--line, #ccc); border-radius: 12px; padding: 22px; text-align: center; cursor: pointer; margin: 6px 0 12px; }
+.upl .drop input { display: block; margin: 0 auto 8px; }
+.ulist { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 8px; }
+.ulist li { border: 1px solid var(--line, #ddd); border-radius: 10px; padding: 10px 12px; font-size: 13px; display: grid; gap: 4px; }
+.ulist li.ok { border-color: #12b76a; } .ulist li.err { border-color: #f04438; }
+.tim .tw { overflow-x: auto; max-width: 100%; }
+.tim td { white-space: normal; vertical-align: top; }
+.tim .card { min-width: 0; overflow: hidden; }

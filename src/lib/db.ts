@@ -27,6 +27,14 @@ async function ready() {
     g._ready = (async () => {
       const stmts = SCHEMA.split(/;\s*\n/).map((s) => s.replace(/^\s*--.*$/gm, "").trim()).filter(Boolean);
       for (const s of stmts) await pool().query(s);
+      // Perubahan kolom (aman untuk MySQL dan MariaDB)
+      const cols = async (t: string) => ((await pool().query("select column_name c from information_schema.columns where table_schema = database() and table_name = ?", [t]))[0] as { c: string }[]).map((x) => x.c.toLowerCase());
+      if (!(await cols("stores")).includes("akun")) {
+        await pool().query("alter table stores add column akun varchar(120) null");
+        // Akun Shopee yang sudah diketahui dari file arsip
+        for (const [id, akun] of [["cahaya-cabydut-shopee", "cabydutkids"], ["cahaya-qaira-shopee", "qairaofficial"], ["cahaya-pepisun-shopee", "pepisun"], ["cahaya-pepico-shopee", "pepico.id"]])
+          await pool().query("update stores set akun = ? where id = ? and akun is null", [akun, id]);
+      }
     })().catch((e) => { g._ready = undefined; throw e; });
   }
   return g._ready;
