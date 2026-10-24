@@ -51,7 +51,10 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
       body = has ? <Affiliate key={c.id} client={c.id} user={"u" + profile!.id} />
         : <div className="card"><h2>Affiliate · {c.nama}</h2><p className="muted">Ruang kerja affiliate untuk klien ini belum disiapkan. Kirim ke Claude ekspor data affiliate (TikTok: Affiliate → Kreator / Performa; Shopee: Affiliate Marketing Solution → Laporan kreator) untuk periode yang ingin dipantau, nanti disiapkan seperti ruang kerja Just Fluff.</p></div>;
     }
-    else if (tab === "live") body = <LiveTab R={R} live={D.live} brand={sp.b} plat={sp.p} />;
+    else if (tab === "live") {
+      const jad = await q<Jd>("select date_format(l.tanggal, '%Y-%m-%d') tanggal, l.mulai, l.selesai, h.nama host from live_schedule l join hosts h on h.id = l.host_id where l.client_id = ? and l.tanggal between ? and ?", [c.id, R.from, R.to]);
+      body = <LiveTab R={R} live={D.live} brand={sp.b} plat={sp.p} jadwal={jad} />;
+    }
   }
 
   const tabName = TABS.find(([k]) => k === tab)?.[1] ?? tab;
@@ -178,7 +181,33 @@ function IklanTab({ R, stores, ads, sales, target }: { R: Range; stores: Store[]
 
 /* ---------------- Livestream ---------------- */
 const SLOTS: [number, number, string, string][] = [[0, 6, "00–06", "Dini hari"], [6, 12, "06–12", "Pagi"], [12, 18, "12–18", "Siang–sore"], [18, 24.5, "18–24", "Malam"]];
-function LiveTab({ R, live, brand, plat }: { R: Range; live: Live[]; brand?: string; plat?: string }) {
+type Jd = { tanggal: string; mulai: string; selesai: string; host: string };
+const hh = (t: string) => +t.slice(0, 2) + +t.slice(3) / 60;
+/* Jadwal vs realisasi: jam terjadwal vs jam live, dan jadwal yang tidak ada sesi live-nya */
+function JadwalVsLive({ jadwal, live }: { jadwal: Jd[]; live: Live[] }) {
+  if (!jadwal.length) return <p className="note">Belum ada jadwal host untuk periode ini. Atur di menu <a href="/dashboard/jadwal">Jadwal live</a> untuk membandingkan jadwal dengan realisasi.</p>;
+  const k = (x: string | null) => (x ?? "").trim().toLowerCase();
+  const M = new Map<string, { nama: string; j: number; n: number; miss: number; r: number }>();
+  const used = new Set<Live>();
+  for (const s of jadwal) {
+    const a = hh(s.mulai); let b = hh(s.selesai); if (b <= a) b += 24;
+    const x = M.get(k(s.host)) ?? { nama: s.host, j: 0, n: 0, miss: 0, r: 0 }; x.j += b - a; x.n++;
+    // Sesi live host yang sama, mulai antara 1 jam sebelum jadwal sampai jadwal selesai
+    const hit = live.filter((l) => !used.has(l) && k(l.host) === k(s.host) && ((l.tanggal === s.tanggal && l.jam_mulai >= a - 1 && l.jam_mulai < b) || (b > 24 && l.tanggal === addDays(s.tanggal, 1) && l.jam_mulai < b - 24)));
+    if (!hit.length) x.miss++;
+    hit.forEach((l) => { used.add(l); x.r += l.durasi_jam; });
+    M.set(k(s.host), x);
+  }
+  const rows = [...M.values()].sort((a, b) => b.j - a.j);
+  const tanpa = live.filter((l) => !used.has(l));
+  return <div className="card"><h2>Jadwal vs realisasi</h2><div className="tbl"><table><thead><tr><th>Host</th><th className="n">Jadwal</th><th className="n">Jam terjadwal</th><th className="n">Jam live sesuai jadwal</th><th className="n">Realisasi</th><th className="n">Jadwal tanpa live</th></tr></thead>
+    <tbody>{rows.map((x) => { const p = x.j ? (x.r / x.j) * 100 : 0; return <tr key={x.nama}><td>{x.nama}</td><td className="n">{x.n}</td><td className="n">{jm(x.j)}</td><td className="n">{jm(x.r)}</td>
+      <td className="n"><span className={"pill " + (p >= 90 ? "good" : p >= 70 ? "warn" : "bad")}>{p.toFixed(0)}%</span></td><td className={"n" + (x.miss ? " dn" : "")}>{x.miss || "–"}</td></tr>; })}</tbody></table></div>
+    <p className="muted small">Jam live dihitung dari sesi di laporan live dengan nama host yang sama, yang mulai paling cepat 1 jam sebelum jadwal sampai jadwal selesai.
+      {tanpa.length ? ` Ada ${tanpa.length} sesi live (${jm(tanpa.reduce((a, l) => a + l.durasi_jam, 0))}) di luar jadwal: ${[...new Set(tanpa.map((l) => l.host || "tanpa nama"))].join(", ")}.` : ""}</p></div>;
+}
+
+function LiveTab({ R, live, brand, plat, jadwal }: { R: Range; live: Live[]; brand?: string; plat?: string; jadwal: Jd[] }) {
   const gf = (x: Live) => plat === "Shopee" ? x.gmv_shopee : plat === "TikTok" ? x.gmv_tiktok : x.gmv_shopee + x.gmv_tiktok;
   const L = live.filter((x) => !brand || x.brand === brand);
   const agg = (xs: Live[]) => { const a = { g: 0, j: 0, n: 0, z: 0, gs: 0, gt: 0 }; xs.forEach((x) => { const g = gf(x); a.g += g; a.gs += x.gmv_shopee; a.gt += x.gmv_tiktok; a.j += x.durasi_jam; a.n++; if (g === 0 && x.durasi_jam >= 1) a.z++; }); return a; };
@@ -202,6 +231,7 @@ function LiveTab({ R, live, brand, plat }: { R: Range; live: Live[]; brand?: str
       ana={[...(best && worst && best !== worst ? [`Slot ${SLOTS[best.i][2]} paling produktif (${fmt(best.g)}/jam), slot ${SLOTS[worst.i][2]} paling lemah (${fmt(worst.g)}/jam).`] : []), ...(effi.length > 1 ? [`GMV/jam tertinggi: ${effi[0].k} (${fmt(effi[0].s.g / effi[0].s.j)}); terendah: ${effi[effi.length - 1].k}.`] : []), ...(zr > 15 ? [`${zr.toFixed(0)}% sesi ≥1 jam berakhir Rp0.`] : [])]}
       next={[...(best && worst && best !== worst ? [`Geser jam dari slot ${SLOTS[worst.i][2]} ke ${SLOTS[best.i][2]}, atau coba promo khusus di slot ${SLOTS[worst.i][2]}.`] : []), ...(effi.length > 1 ? [`Tempatkan ${effi[0].k} di slot terbaik; dampingi ${effi[effi.length - 1].k} dengan review rekaman dan skrip penawaran.`] : []), "Cek sesi Rp0: produk yang dipajang, voucher live, dan jam tayang."]} />
     <div className="kpis"><Kpi l="GMV live" v={fmt(a.g)} d={pct(a.g, b.g)} sub={R.sub} /><Kpi l="Durasi live" v={jm(a.j)} d={pct(a.j, b.j)} sub={`${a.n} sesi`} /><Kpi l="GMV per jam" v={fmt(gj)} d={pct(gj, gjp)} sub={R.sub} /><Kpi l="Sesi tanpa penjualan" v={zr.toFixed(0) + "%"} sub="sesi ≥1 jam" /></div>
+    <JadwalVsLive jadwal={jadwal} live={cur} />
     <h2>Ringkasan per host</h2>
     <div className="hcs">{hs.slice(0, 8).map((h) => <div className="hc" key={h.k}><h3>{h.k}</h3><div className="hl">GMV</div><div className="hv">{fmt(h.s.g)}</div><div className="hl">Durasi</div><div className="hv">{jm(h.s.j)}</div><div className="hl">GMV/jam</div><div className="hv">{fmt(h.s.g / h.s.j)}</div><div className="hb">{h === hs[0] ? "GMV terbesar" : h.k === effi[0]?.k ? "Paling efisien" : ""}</div></div>)}</div>
     <div className="card"><h2>GMV/jam per sesi</h2><div className="tbl"><div className="hm">
