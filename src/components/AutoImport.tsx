@@ -1,8 +1,19 @@
 "use client";
 import { useEffect, useState } from "react";
-import { autoStatus, autoMark, importSeed, importProdukPart } from "@/app/dashboard/impor/actions";
+import { autoStatus, autoMark, importSeed, importProdukPart, importAff } from "@/app/dashboard/impor/actions";
 
-export async function runImport(onStep: (msg: string) => void): Promise<{ ok: boolean; msg: string }> {
+export async function runImport(onStep: (msg: string) => void, what = { seed: true, aff: true }): Promise<{ ok: boolean; msg: string }> {
+  if (what.seed) { const r = await runSeed(onStep); if (!r.ok) return r; await autoMark("seed"); }
+  if (what.aff) {
+    onStep("Memasukkan data affiliate…");
+    const f = await importAff();
+    if (f !== "Selesai") return { ok: false, msg: f };
+    await autoMark("aff");
+  }
+  return { ok: true, msg: "Data terbaru sudah masuk. Muat ulang halaman untuk melihatnya." };
+}
+
+async function runSeed(onStep: (msg: string) => void): Promise<{ ok: boolean; msg: string }> {
   onStep("Memasukkan data toko, iklan, dan live…");
   const a = await importSeed();
   if (!a.startsWith("Selesai")) return { ok: false, msg: a };
@@ -13,7 +24,7 @@ export async function runImport(onStep: (msg: string) => void): Promise<{ ok: bo
     parts = r.parts;
     if (!r.ok) return { ok: false, msg: r.msg };
   }
-  return { ok: true, msg: "Data terbaru sudah masuk. Muat ulang halaman untuk melihatnya." };
+  return { ok: true, msg: "" };
 }
 
 export default function AutoImport() {
@@ -23,10 +34,9 @@ export default function AutoImport() {
     (async () => {
       try {
         const s = await autoStatus();
-        if (!s.need || !alive) return;
+        if ((!s.seed && !s.aff) || !alive) return;
         setState({ status: "run", msg: "Memeriksa data terbaru…" });
-        const r = await runImport((m) => alive && setState({ status: "run", msg: m }));
-        if (r.ok) await autoMark();
+        const r = await runImport((m) => alive && setState({ status: "run", msg: m }), s);
         if (alive) setState({ status: r.ok ? "ok" : "err", msg: r.msg });
       } catch {
         if (alive) setState({ status: "err", msg: "Pembaruan data otomatis terputus. Muat ulang halaman untuk melanjutkan." });

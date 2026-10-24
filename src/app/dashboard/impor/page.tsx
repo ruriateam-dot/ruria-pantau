@@ -9,7 +9,6 @@ export default function ImporPage() {
   const start = async () => {
     try {
       const r = await runImport((m) => setState({ status: "run", msg: m }));
-      if (r.ok) await autoMark();
       setState({ status: r.ok ? "ok" : "err", msg: r.ok ? "Selesai. Semua data arsip sudah masuk." : r.msg });
     } catch { setState({ status: "err", msg: "Koneksi terputus. Klik Impor lagi; data yang sudah masuk tidak akan dobel." }); }
   };

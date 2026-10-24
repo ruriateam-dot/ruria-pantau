@@ -3,6 +3,10 @@ import { exec, q } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import seed from "@/data/seed.json";
 import seedProduk from "@/data/seed_produk.json";
+import affJf from "@/data/aff/aff-jf.json";
+import affEf from "@/data/aff/efektivitas.json";
+import affHasil from "@/data/aff/sampel_hasil.json";
+import affSampel from "@/data/aff/sampel_mei_okt.json";
 
 type Seed = {
   clients?: { id: string; nama: string; modul: string[]; target_roas: number | null }[];
@@ -15,6 +19,8 @@ const S = seed as unknown as Seed;
 
 // Naikkan angka ini setiap kali file di src/data diperbarui
 const DATA_VERSION = "2026-10-24e";
+// Versi terpisah per jenis data, supaya pembaruan satu bagian tidak menimpa data upload tim
+const AFF_VERSION = "aff-2026-10-25a";
 const chunk = <T,>(a: T[], n: number) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
 
 const NO = "Hanya admin yang bisa mengimpor data. Muat ulang halaman lalu login lagi.";
@@ -67,15 +73,25 @@ export async function importProdukPart(part: number): Promise<{ ok: boolean; msg
 }
 
 /* Pembaruan otomatis per versi data */
-export async function autoStatus(): Promise<{ need: boolean; parts: number }> {
-  const P = seedProduk as unknown as PS;
+export async function autoStatus(): Promise<{ seed: boolean; aff: boolean }> {
   const u = await requireAdmin();
-  if (!u) return { need: false, parts: 0 };
-  const done = await q("select id from uploads where jenis = ? limit 1", ["data-otomatis:" + DATA_VERSION]);
-  return { need: !done.length, parts: Math.ceil(P.rows.length / PART) };
+  if (!u) return { seed: false, aff: false };
+  const done = (await q<{ jenis: string }>("select distinct jenis from uploads where jenis in (?)", [["data-otomatis:" + DATA_VERSION, "data-otomatis:" + AFF_VERSION]])).map((x) => x.jenis);
+  return { seed: !done.includes("data-otomatis:" + DATA_VERSION), aff: !done.includes("data-otomatis:" + AFF_VERSION) };
 }
-export async function autoMark(): Promise<void> {
+export async function autoMark(which: "seed" | "aff"): Promise<void> {
   const u = await requireAdmin();
   if (!u) return;
-  await exec("insert into uploads (client_id, jenis, nama_file, oleh) values (null, ?, 'pembaruan data dari Claude', ?)", ["data-otomatis:" + DATA_VERSION, u.id]);
+  await exec("insert into uploads (client_id, jenis, nama_file, oleh) values (null, ?, 'pembaruan data dari Claude', ?)", ["data-otomatis:" + (which === "seed" ? DATA_VERSION : AFF_VERSION), u.id]);
+}
+
+/* Data ruang kerja affiliate (saat ini Just Fluff) */
+export async function importAff(): Promise<string> {
+  const u = await requireAdmin();
+  if (!u) return NO;
+  try {
+    for (const [nama, isi] of [["aff-jf.json", affJf], ["efektivitas.json", affEf], ["sampel_hasil.json", affHasil], ["sampel_mei_okt.json", affSampel]] as [string, unknown][])
+      await exec("insert into aff_files (client_id, nama, isi) values ('jf', ?, ?) on duplicate key update isi = values(isi)", [nama, JSON.stringify(isi)]);
+  } catch (e) { return "Gagal di tahap affiliate: " + (e as Error).message; }
+  return "Selesai";
 }
