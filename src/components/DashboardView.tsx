@@ -48,7 +48,7 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
     else if (tab === "iklan") body = <IklanTab R={R} stores={st} ads={D.ads} sales={D.sales} target={c.target_roas} />;
     else if (tab === "affiliate") {
       const has = (await q<{ n: number }>("select count(*) n from aff_files where client_id = ?", [c.id]))[0].n > 0;
-      body = has ? <Affiliate key={c.id} client={c.id} user={"u" + profile!.id} />
+      body = has ? <Affiliate key={c.id} client={c.id} nama={c.nama} user={"u" + profile!.id} />
         : <div className="card"><h2>Affiliate · {c.nama}</h2><p className="muted">Ruang kerja affiliate untuk klien ini belum disiapkan. Kirim ke Claude ekspor data affiliate (TikTok: Affiliate → Kreator / Performa; Shopee: Affiliate Marketing Solution → Laporan kreator) untuk periode yang ingin dipantau, nanti disiapkan seperti ruang kerja Just Fluff.</p></div>;
     }
     else if (tab === "live") {

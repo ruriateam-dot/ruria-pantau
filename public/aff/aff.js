@@ -501,7 +501,7 @@ function detailHtml(r){
       ${r.k==='tt' ? `<div><span>Video / LIVE</span><b>${nf.format(r.vid)} / ${nf.format(r.live)}</b></div><div><span>Porsi order gagal</span><b>${pct(r.gagal)}</b></div>`
                    : `<div><span>Channel utama</span><b>${esc(r.ch||'–')}</b></div><div><span>Pembeli baru</span><b>${nf.format(r.pb)}</b></div><div><span>Porsi batal</span><b>${pct(r.batal)}</b></div>`}
       ${(() => { const st = sampStat(r), roi = sampRoi(st); return `<div><span>Sampel diterima</span><b>${st.n ? st.n + '×' + (st.last ? ' · terakhir ' + esc(fdate(st.last)) : '') : 'Belum pernah'}</b></div>
-      <div><span>Efektivitas sampel</span><b>${!st.n ? '–' : !st.has ? 'belum ada data penjualan' : `${roi.toLocaleString('id-ID',{maximumFractionDigits:1})}× biaya`}</b></div>
+      <div><span>Efektivitas sampel</span><b>${!st.n ? '–' : !st.has ? 'belum ada data penjualan' : roi == null ? 'biaya sampel Rp0' : `${roi.toLocaleString('id-ID',{maximumFractionDigits:1})}× biaya`}</b></div>
       ${st.has ? `<div><span>GMV sejak sampel pertama</span><b>${st.gmv ? rp(st.gmv) : 'Rp0'}</b></div>` : ''}
       ${st.has ? `<div><span>Order sejak sampel pertama</span><b>${nf.format(st.ord)}</b></div><div><span>Total biaya semua sampel</span><b>${rp(st.biaya)}</b></div><div><span>GMV sebelum sampel pertama</span><b>${st.bef ? rp(st.bef) : 'Rp0'}</b></div>` : ''}
       ${st.n ? `<div><span>Boleh dapat sampel lagi?</span><b>${st.blk ? '<span class="chip s-bad">Tidak, diblokir</span>' : sampOk(st) ? '<span class="chip s-ok">Ya, (GMV sebelum + sesudah) &gt;10× biaya</span>' : '<span class="chip s-warn">Belum, perlu &gt;10× biaya</span>'}</b></div>` : ''}`; })()}
@@ -633,7 +633,7 @@ const hasilCell = r => { const st = sampStat(r); if (!st.n) return '<span class=
   if (!st.has) return '<span class="muted">belum ada data penjualan</span><br><small class="muted">sampel baru dari form</small>';
   const roi = sampRoi(st);
   const tot = st.gmv + st.bef;
-  return `<span class="${roi > ROI_MIN ? 'kt' : (tot ? '' : 'late')}"><b>${roi.toLocaleString('id-ID',{maximumFractionDigits:1})}×</b> · ${tot ? rpShort(tot) : 'Rp0'}</span><br><small class="muted">sebelum ${rpShort(st.bef) === '–' ? 'Rp0' : rpShort(st.bef)} · sesudah ${rpShort(st.gmv) === '–' ? 'Rp0' : rpShort(st.gmv)} · biaya ${rpShort(st.biaya)}</small>`; };
+  return `<span class="${roi > ROI_MIN ? 'kt' : (tot ? '' : 'late')}"><b>${roi == null ? 'biaya Rp0' : roi.toLocaleString('id-ID',{maximumFractionDigits:1}) + '×'}</b> · ${tot ? rpShort(tot) : 'Rp0'}</span><br><small class="muted">sebelum ${rpShort(st.bef) === '–' ? 'Rp0' : rpShort(st.bef)} · sesudah ${rpShort(st.gmv) === '–' ? 'Rp0' : rpShort(st.gmv)} · biaya ${rpShort(st.biaya)}</small>`; };
 
 /* ---------- log aktivitas ---------- */
 const LOGTYPE = {kontak:'Kontak', followup:'Follow-up', status:'Status kreator', sampel:'Input sampel', sampel_hapus:'Hapus sampel', posting:'Status posting', blokir:'Blokir sampel'};
@@ -718,7 +718,7 @@ function renderLog(){
     <h2>Log aktivitas harian</h2>
     <div class="team"><span class="flabel">Petugas</span>${TEAM.map(n => `<span class="chip s-act">${esc(n)}<button data-rm="${esc(n)}" aria-label="Hapus ${esc(n)} dari daftar petugas" title="Hapus">×</button></span>`).join('')}
       <input type="text" id="team-new" placeholder="Nama petugas baru" style="max-width:12rem" aria-label="Nama petugas baru"><button class="btn sm" id="team-add">Tambah petugas</button></div>
-    <p class="note">Karena tim memakai satu akun Claude yang sama, nama petugas dipilih per perangkat dan per hari: setiap hari, sebelum bekerja, pilih nama di kotak <b>Petugas</b> di kanan atas. Pilihan berlaku sampai akhir hari di perangkat itu saja, lalu kosong lagi besok. Petugas yang dihapus dari daftar tetap terlihat di log lamanya.</p>
+    <p class="note">Nama petugas dipilih per perangkat dan per hari: setiap hari, sebelum bekerja, pilih nama di kotak <b>Petugas</b> di kanan atas. Pilihan berlaku sampai akhir hari di perangkat itu saja, lalu kosong lagi besok. Petugas yang dihapus dari daftar tetap terlihat di log lamanya.</p>
     <p class="note">Mencatat otomatis siapa melakukan apa: mengisi atau mengubah kontak, mengubah status atau respon follow-up, input sampel, mengubah status posting, menghapus sampel, dan membuka blokir. Aktivitas sebelum fitur ini dipasang (23 Okt 2026 malam) tidak tercatat.</p>
     <div class="filters">
       <span class="flabel">Periode</span>
@@ -1573,7 +1573,7 @@ const syncDot = document.getElementById('syncdot'), syncTxt = document.getElemen
     if (!statCache) buildStat();
     const o = statCache.get(pl + '|' + String(u).trim().replace(/^@+/, '').toLowerCase());
     const h = HASIL && HASIL.d[(pl === 'Shopee' ? 'S' : 'T') + '|' + String(u).trim().replace(/^@+/, '').toLowerCase()];
-    const hl = (D.HAL.m[pl === 'Shopee' ? 'S' : 'T'] || {})[String(u).trim().replace(/^@+/, '')];
+    const hl = ((D.HAL && D.HAL.m[pl === 'Shopee' ? 'S' : 'T']) || {})[String(u).trim().replace(/^@+/, '')];
     return { hal: hl || '', n: (o ? o.ids.size : 0) + (hl ? 1 : 0), last: o ? o.last : (hl ? '2026-09-15' : ''), has: !!h, gmv: h ? h[0] : 0, ord: h ? h[1] : 0, bef: h ? h[2] : 0, biaya: (h ? h[3] : 0) + (o && o.webBiaya || 0), blk: isBlocked(pl, u) };
   };
   const kickLists = () => { statCache = null; try { if (typeof S !== 'undefined' && (S.tab === 'tiktok' || S.tab === 'shopee' || S.tab === 'db') && typeof rerenderSoon === 'function') rerenderSoon(); } catch (e) {} };

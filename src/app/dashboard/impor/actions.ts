@@ -7,6 +7,11 @@ import affJf from "@/data/aff/aff-jf.json";
 import affEf from "@/data/aff/efektivitas.json";
 import affHasil from "@/data/aff/sampel_hasil.json";
 import affSampel from "@/data/aff/sampel_mei_okt.json";
+import otJf from "@/data/aff/ot/aff-jf.json";
+import otEf from "@/data/aff/ot/efektivitas.json";
+import otHasil from "@/data/aff/ot/sampel_hasil.json";
+import otSampel from "@/data/aff/ot/sampel_mei_okt.json";
+import otBrand from "@/data/aff/ot/brand.json";
 
 type Seed = {
   clients?: { id: string; nama: string; modul: string[]; target_roas: number | null }[];
@@ -20,7 +25,7 @@ const S = seed as unknown as Seed;
 // Naikkan angka ini setiap kali file di src/data diperbarui
 const DATA_VERSION = "2026-10-24e";
 // Versi terpisah per jenis data, supaya pembaruan satu bagian tidak menimpa data upload tim
-const AFF_VERSION = "aff-2026-10-25a";
+const AFF_VERSION = "aff-2026-10-25c";
 const chunk = <T,>(a: T[], n: number) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
 
 const NO = "Hanya admin yang bisa mengimpor data. Muat ulang halaman lalu login lagi.";
@@ -90,8 +95,11 @@ export async function importAff(): Promise<string> {
   const u = await requireAdmin();
   if (!u) return NO;
   try {
-    for (const [nama, isi] of [["aff-jf.json", affJf], ["efektivitas.json", affEf], ["sampel_hasil.json", affHasil], ["sampel_mei_okt.json", affSampel]] as [string, unknown][])
-      await exec("insert into aff_files (client_id, nama, isi) values ('jf', ?, ?) on duplicate key update isi = values(isi)", [nama, JSON.stringify(isi)]);
+    const F: [string, string, unknown][] = [
+      ["jf", "aff-jf.json", affJf], ["jf", "efektivitas.json", affEf], ["jf", "sampel_hasil.json", affHasil], ["jf", "sampel_mei_okt.json", affSampel],
+      ["ot", "aff-jf.json", otJf], ["ot", "efektivitas.json", otEf], ["ot", "sampel_hasil.json", otHasil], ["ot", "sampel_mei_okt.json", otSampel], ["ot", "brand.json", otBrand]];
+    for (const [c, nama, isi] of F)
+      await exec("insert into aff_files (client_id, nama, isi) values (?, ?, ?) on duplicate key update isi = values(isi)", [c, nama, JSON.stringify(isi)]);
   } catch (e) { return "Gagal di tahap affiliate: " + (e as Error).message; }
   return "Selesai";
 }
