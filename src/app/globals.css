@@ -208,3 +208,17 @@ a{color:var(--accent-ink)}
 .insc.nx{background:color-mix(in srgb,var(--accent) 12%,var(--panel))}
 .cm{grid-template-columns:1.4fr 1fr .8fr}
 .cm b{white-space:nowrap}
+.fbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.xbar{display:flex;gap:6px;flex-wrap:wrap}
+.xbar button{padding:7px 12px;font-size:13px}
+.ptitle{display:none}
+@media print{
+  :root{--bg:#fff!important;--panel:#fff!important;--fg:#111!important;--muted:#555!important;--line:#ddd!important;color-scheme:light}
+  .side,.mbar,.filters,.xbar button,.tabs,.loadpill,.topbar,.autoimp,.scrim,button,.ctitle{display:none!important}
+  .app{display:block}.dh{position:static;border:0}
+  .ptitle{display:block!important;font-size:16px;margin:0 0 8px}
+  .card,.kpi,.ins,.ccard{break-inside:avoid;box-shadow:none}
+  .tbl{overflow:visible}
+  body{font-size:12px}
+  details.ins>summary{list-style:none}
+}

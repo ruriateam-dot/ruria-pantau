@@ -2,6 +2,7 @@
 import { redirect } from "next/navigation";
 import { q, exec } from "@/lib/db";
 import { hash, startSession } from "@/lib/auth";
+import { logAct } from "@/lib/log";
 
 export async function setPassword(_p: string | null, f: FormData): Promise<string | null> {
   const token = String(f.get("token") || ""), pw = String(f.get("password") || ""), pw2 = String(f.get("password2") || "");
@@ -13,5 +14,7 @@ export async function setPassword(_p: string | null, f: FormData): Promise<strin
   await exec("delete from password_tokens where user_id = ?", [r[0].user_id]);
   await exec("delete from sessions where user_id = ?", [r[0].user_id]);
   await startSession(r[0].user_id);
+  const u = (await q<{ id: number; nama: string; peran: string }>("select id, nama, peran from users where id = ?", [r[0].user_id]))[0];
+  await logAct(u, "atur password", null, "lewat link email");
   redirect("/dashboard");
 }

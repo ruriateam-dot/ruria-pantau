@@ -25,6 +25,6 @@ export default async function LoginPage() {
     const set = ["DB_HOST", "DB_NAME", "DB_USER", "DB_PASSWORD"].filter((k) => !process.env[k]);
     err = "Database belum tersambung: " + (set.length ? `variabel ${set.join(", ")} belum terbaca. Simpan di Variabel environment lalu terapkan ulang.` : why[x.code ?? ""] ?? `${x.code ?? ""} ${x.message ?? ""}`.trim());
   }
-  if (err) return <main className="auth"><div className="auth-card"><h1>Ruria Pantau</h1><p className="err">{err}</p></div></main>;
+  if (err) return <main className="auth"><div className="auth-card"><h1>Ruria Report</h1><p className="err">{err}</p></div></main>;
   return <LoginForm setup={setup} />;
 }

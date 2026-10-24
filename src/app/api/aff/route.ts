@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { randomBytes } from "crypto";
 import { getUser, allowedClients } from "@/lib/auth";
 import { q, exec } from "@/lib/db";
+import { logAct } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
 const bad = (m: string, s = 400) => NextResponse.json({ error: m }, { status: s });
@@ -39,6 +40,9 @@ export async function POST(req: NextRequest) {
   const g = await guard(b.c ?? null); if (g.err) return g.err;
   if (!okPath(b.coll)) return bad("Koleksi tidak valid");
   const body = JSON.stringify(b.data ?? {});
+  const d = b.data as Record<string, unknown> | undefined;
+  const ringkas = d ? Object.entries(d).filter(([, v]) => ["string", "number", "boolean"].includes(typeof v)).slice(0, 6).map(([k, v]) => `${k}=${String(v).slice(0, 40)}`).join(", ") : "";
+  if (!/^jf_log/.test(b.coll ?? "")) await logAct(g.u!, "affiliate " + (b.op ?? ""), b.c ?? null, `${b.coll}${b.id ? "/" + b.id : ""}${ringkas ? " · " + ringkas : ""}`);
   if (body.length > 200_000) return bad("Data terlalu besar");
   if (b.op === "add") {
     const id = randomBytes(10).toString("hex");

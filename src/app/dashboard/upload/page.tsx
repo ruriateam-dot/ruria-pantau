@@ -1,4 +1,5 @@
 import AppShell from "@/components/AppShell";
+import { logAct } from "@/lib/log";
 import { requireUser, allowedClients } from "@/lib/auth";
 import { q } from "@/lib/db";
 import Uploader from "./Uploader";
@@ -21,6 +22,7 @@ export default async function UploadPage() {
   const clients = ok.length ? await q<{ id: string; nama: string }>("select id, nama from clients where id in (?) order by nama", [ok]) : [];
   const stores = ok.length ? await q<{ id: string; client_id: string; brand: string; platform: string }>("select id, client_id, brand, platform from stores where client_id in (?) and platform <> 'CPAS' order by brand, platform", [ok]) : [];
   const recent = await recentUploads();
+  await logAct(u, "lihat", null, "Upload data");
   return <AppShell user={u}>
     <header className="dh"><div className="wrap top ctitle"><h1>Upload data</h1></div></header>
     <main className="wrap dv tim">

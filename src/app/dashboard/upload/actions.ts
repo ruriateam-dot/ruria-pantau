@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { q, exec } from "@/lib/db";
 import { requireUser, allowedClients } from "@/lib/auth";
 import type { Parsed } from "@/lib/parse";
+import { logAct } from "@/lib/log";
 
 type Res = { ok: boolean; msg: string };
 const chunk = <T,>(a: T[], n: number) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
@@ -20,6 +21,8 @@ async function access(clientId: string, storeId?: string) {
 }
 
 async function log(clientId: string, jenis: string, file: string, dari: string, sampai: string, baris: number, uid: number) {
+  const u = (await q<{ id: number; nama: string; peran: string }>("select id, nama, peran from users where id = ?", [uid]))[0] ?? null;
+  await logAct(u, "upload", clientId, `${jenis} · ${file} · ${dari} s/d ${sampai}${baris ? ` · ${baris} baris` : ""}`);
   await exec("insert into uploads (client_id, jenis, nama_file, dari, sampai, baris, oleh) values (?, ?, ?, ?, ?, ?, ?)", [clientId, jenis, file.slice(0, 255), dari, sampai, baris, uid]);
 }
 const span = (ds: string[]) => { const s = [...ds].sort(); return [s[0], s[s.length - 1]]; };

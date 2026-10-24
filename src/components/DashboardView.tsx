@@ -5,6 +5,8 @@ import { Tabs, LoadingBar } from "@/components/Nav";
 import AutoImport from "@/components/AutoImport";
 import Affiliate from "@/components/Affiliate";
 import AppShell from "@/components/AppShell";
+import ExportBar from "@/components/ExportBar";
+import { logAct } from "@/lib/log";
 import ProdukTable, { type PRow } from "@/components/ProdukTable";
 import { Kpi, Insight, Bars, LineChart, Share } from "@/components/ui";
 import { clientsFor, loadClient, freshness, produkSku, type Sale, type Ad, type Live, type Store } from "@/lib/data";
@@ -13,15 +15,15 @@ import { resolvePeriod, buckets, fmt, pct, jm, tgl, addDays, dayDiff, todayWIB, 
 type SPv = Record<string, string | undefined>;
 type Cl = { id: string; nama: string; modul: string[]; target_roas: number | null };
 
-const TABS: [string, string][] = [["sum", "Semua Klien"], ["toko", "Analisa Toko"], ["iklan", "Analisa Iklan"], ["live", "Livestream"], ["affiliate", "Affiliate"]];
+const TABS: [string, string][] = [["sum", "Dashboard"], ["toko", "Analisa Toko"], ["iklan", "Analisa Iklan"], ["live", "Livestream"], ["affiliate", "Affiliate"]];
 
 /* Dipakai oleh /dashboard (login) dan /lihat/[token] (klien tanpa login, hanya lihat) */
-export default async function DashboardView({ sp, profile, clients: all, base, share }: { sp: SPv; profile: User | null; clients: Cl[]; base: string; share?: boolean }) {
+export default async function DashboardView({ sp, profile, clients: all, base, share, shareLabel, token }: { sp: SPv; profile: User | null; clients: Cl[]; base: string; share?: boolean; shareLabel?: string; token?: string }) {
   // Tampilan klien tanpa login: tanpa tab Semua Klien & Affiliate
   const clients = share ? all.map((x) => ({ ...x, modul: x.modul.filter((m) => m !== "affiliate") })) : all;
   const isAdmin = isStaff(profile);
   const c = clients.find((x) => x.id === sp.c) ?? clients[0];
-  let tab = sp.m ?? "toko";
+  let tab = sp.m ?? (sp.c || share ? "toko" : "sum");
   if (share && tab === "sum") tab = "toko";
   if (c && tab !== "sum" && !c.modul.includes(tab)) tab = c.modul[0];
   const R = resolvePeriod(sp.per);
@@ -51,20 +53,23 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
     else if (tab === "live") body = <LiveTab R={R} live={D.live} brand={sp.b} plat={sp.p} />;
   }
 
-  const tabs = <Tabs active={tab} items={TABS.filter(([k]) => (k === "sum" && !share) || c?.modul.includes(k)).map(([k, l]) => ({ k, l, href: base + qs({ m: k }) }))} />;
+  const tabName = TABS.find(([k]) => k === tab)?.[1] ?? tab;
+  await logAct(profile, "lihat", tab === "sum" ? null : c?.id ?? null, `${tabName} · ${R.label}${sp.b ? ` · ${sp.b}` : ""}${sp.p ? ` · ${sp.p}` : ""}`, share ? `Link klien${shareLabel ? ` (${shareLabel})` : ""}` : undefined);
+  const title = `${tab === "sum" ? "Dashboard semua klien" : c?.nama ?? ""} · ${tabName} · ${R.label}`;
+  const tabs = <Tabs active={tab} items={TABS.filter(([k]) => k !== "sum" && c?.modul.includes(k)).map(([k, l]) => ({ k, l, href: base + qs({ m: k }) }))} />;
   const head = (
     <header className="dh">
       <div className="wrap top ctitle">
-        {share ? <><span className="logo" aria-hidden="true">R</span><b>Ruria Pantau</b><span className="muted">{c?.nama} · tampilan klien, hanya lihat</span></>
-          : <h1>{tab === "sum" ? "Semua klien" : c?.nama}</h1>}
+        {share ? <><span className="logo" aria-hidden="true">R</span><b>Ruria Report</b><span className="muted">{c?.nama} · tampilan klien, hanya lihat</span></>
+          : <h1>{tab === "sum" ? "Dashboard" : c?.nama}</h1>}
       </div>
-      <div className="wrap"><Filters base={base} clients={share ? [] : clients} hideClient brands={tab === "sum" ? [] : brands} platforms={tab === "sum" ? [] : platforms} label={R.label} /></div>
-      {tabs}
+      <div className="wrap fbar"><Filters base={base} clients={share ? [] : clients} hideClient brands={tab === "sum" ? [] : brands} platforms={tab === "sum" ? [] : platforms} label={R.label} />{tab !== "affiliate" && <ExportBar title={title} client={tab === "sum" ? null : c?.id ?? null} token={token} />}</div>
+      {tab !== "sum" && tabs}
     </header>
   );
   const main = <main className="wrap dv">{isAdmin && <AutoImport />}{body}</main>;
   if (share || !profile) return <><LoadingBar />{head}{main}</>;
-  return <AppShell user={profile} active={tab === "sum" ? undefined : c?.id} keep={{ m: sp.m, per: sp.per }}>{head}{main}</AppShell>;
+  return <AppShell user={profile} active={tab === "sum" ? undefined : c?.id} keep={{ m: tab, per: sp.per }}>{head}{main}</AppShell>;
 }
 
 /* ---------------- Semua klien ---------------- */

@@ -28,11 +28,11 @@ export async function sendInvite(to: string, nama: string, link: string, oleh: s
   if (!mailReady()) return "variabel " + ["SMTP_HOST", "SMTP_USER", "SMTP_PASSWORD"].filter((k) => !process.env[k]).join(", ") + " belum terbaca oleh aplikasi (cek Variabel environment lalu terapkan ulang)";
   const port = Number(process.env.SMTP_PORT || 465);
   const tr = nodemailer.createTransport({ host: process.env.SMTP_HOST, port, secure: port === 465, auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD } });
-  const judul = baru ? "Undangan ke Ruria Pantau" : "Atur ulang password Ruria Pantau";
-  const isi = baru ? `${oleh} membuatkan akun Ruria Pantau untuk Anda.` : `${oleh} meminta Anda mengatur ulang password Ruria Pantau.`;
+  const judul = baru ? "Undangan ke Ruria Report" : "Atur ulang password Ruria Report";
+  const isi = baru ? `${oleh} membuatkan akun Ruria Report untuk Anda.` : `${oleh} meminta Anda mengatur ulang password Ruria Report.`;
   try {
     await tr.sendMail({
-      from: `"Ruria Pantau" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`, to, subject: judul,
+      from: `"Ruria Report" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`, to, subject: judul,
       text: `Halo ${nama},\n\n${isi}\n\nBuat password Anda lewat link ini (berlaku 3 hari, sekali pakai):\n${link}\n\nSetelah itu, masuk dengan email ${to}.\n\nAbaikan email ini jika Anda tidak merasa membutuhkannya.\n\nRuria`,
       html: `<div style="font-family:system-ui,sans-serif;max-width:520px;line-height:1.5;color:#1c2420">
         <h2 style="margin:0 0 12px">${judul}</h2><p>Halo ${esc(nama)},</p><p>${esc(isi)}</p>

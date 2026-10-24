@@ -5,7 +5,7 @@ import { setPassword } from "./actions";
 export default function Form({ token, nama, email }: { token: string; nama: string; email: string }) {
   const [err, action, pending] = useActionState(setPassword, null);
   return <form action={action} className="auth-card">
-    <h1>Ruria Pantau</h1>
+    <h1>Ruria Report</h1>
     <p className="muted">Halo {nama}, buat password untuk akun <b>{email}</b>.</p>
     <input type="hidden" name="token" value={token} />
     <input type="email" name="username" value={email} autoComplete="username" readOnly hidden />

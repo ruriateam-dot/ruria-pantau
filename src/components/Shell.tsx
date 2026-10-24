@@ -5,7 +5,7 @@ import { useNav } from "./Nav";
 import { logout } from "@/app/login/actions";
 
 type Item = { id: string; nama: string; href: string };
-type Props = { user: { nama: string; peran: string }; staff: boolean; clients: Item[]; active?: string; children: React.ReactNode };
+type Props = { user: { nama: string; peran: string }; staff: boolean; clients: Item[]; active?: string; dashHref: string; children: React.ReactNode };
 
 function Theme() {
   const [t, setT] = useState("auto");
@@ -21,7 +21,7 @@ function Theme() {
   </div>;
 }
 
-export default function Shell({ user, staff, clients, active, children }: Props) {
+export default function Shell({ user, staff, clients, active, dashHref, children }: Props) {
   const [open, setOpen] = useState(false);
   const path = usePathname();
   const { go } = useNav();
@@ -32,7 +32,10 @@ export default function Shell({ user, staff, clients, active, children }: Props)
   const cur = clients.find((c) => c.id === active);
   return <div className="app">
     <aside className={"side" + (open ? " open" : "")} aria-label="Navigasi">
-      <div className="sbrand"><span className="logo" aria-hidden="true">R</span><b>Ruria<small>Pantau</small></b></div>
+      <div className="sbrand"><span className="logo" aria-hidden="true">R</span><b>Ruria<small>Report</small></b></div>
+      <nav className="sgroup">
+        {link(dashHref, "Dashboard", path === "/dashboard" && !active)}
+      </nav>
       <nav className="sgroup">
         <div className="sh">Klien</div>
         {clients.length ? clients.map((c) => link(c.href, c.nama, path === "/dashboard" && c.id === active, c.id)) : <p className="muted small">Belum ada klien.</p>}
@@ -41,6 +44,7 @@ export default function Shell({ user, staff, clients, active, children }: Props)
         <div className="sh">Menu</div>
         {link("/dashboard/upload", "Upload data", path === "/dashboard/upload")}
         {link("/dashboard/tim", staff ? "Kelola tim" : "Akun saya", path === "/dashboard/tim")}
+        {staff && link("/dashboard/log", "Log aktivitas", path === "/dashboard/log")}
       </nav>
       <div className="sfoot">
         <Theme />
@@ -52,7 +56,7 @@ export default function Shell({ user, staff, clients, active, children }: Props)
     <div className="main">
       <div className="mbar">
         <button type="button" className="ghost" aria-label="Buka menu" aria-expanded={open} onClick={() => setOpen(true)}>☰</button>
-        <b>Ruria Pantau</b>{cur && <span className="muted small">{cur.nama}</span>}
+        <b>Ruria Report</b>{cur && <span className="muted small">{cur.nama}</span>}
       </div>
       {children}
     </div>

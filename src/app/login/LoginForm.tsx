@@ -7,8 +7,8 @@ export default function LoginForm({ setup }: { setup: boolean }) {
   return (
     <main className="auth">
       <form action={action} className="auth-card">
-        <h1>Ruria Pantau</h1>
-        <p className="muted">{setup ? "Buat akun admin pertama. Halaman ini hanya muncul sekali." : "Masuk dengan akun Ruria Pantau."}</p>
+        <h1>Ruria Report</h1>
+        <p className="muted">{setup ? "Buat akun admin pertama. Halaman ini hanya muncul sekali." : "Masuk dengan akun Ruria Report."}</p>
         {setup && <label>Nama<input name="nama" required autoComplete="name" /></label>}
         <label>Email<input name="email" type="email" autoComplete="email" required /></label>
         <label>Password<input name="password" type="password" autoComplete={setup ? "new-password" : "current-password"} minLength={setup ? 10 : undefined} required /></label>

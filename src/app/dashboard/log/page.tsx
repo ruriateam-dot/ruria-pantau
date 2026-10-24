@@ -1,0 +1,41 @@
+import { redirect } from "next/navigation";
+import AppShell from "@/components/AppShell";
+import { requireUser, isStaff, PERAN_LABEL } from "@/lib/auth";
+import { q } from "@/lib/db";
+
+export const dynamic = "force-dynamic";
+
+/* Log aktivitas semua peran. Hanya superadmin & admin yang bisa membuka. */
+export default async function LogPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  const me = await requireUser();
+  if (!isStaff(me)) redirect("/dashboard");
+  const sp = await searchParams;
+  const where: string[] = [], args: unknown[] = [];
+  if (sp.u) { if (sp.u === "tamu") where.push("l.user_id is null"); else { where.push("l.user_id = ?"); args.push(Number(sp.u)); } }
+  if (sp.c) { where.push("l.client_id = ?"); args.push(sp.c); }
+  if (sp.a) { where.push("l.aksi = ?"); args.push(sp.a); }
+  if (sp.d && /^\d{4}-\d{2}-\d{2}$/.test(sp.d)) { where.push("date(l.waktu) = ?"); args.push(sp.d); }
+  const rows = await q<{ waktu: string; nama: string; peran: string; aksi: string; klien: string | null; detail: string; ip: string | null }>(
+    `select l.waktu, l.nama, l.peran, l.aksi, c.nama klien, l.detail, l.ip from activity_log l left join clients c on c.id = l.client_id
+     ${where.length ? "where " + where.join(" and ") : ""} order by l.id desc limit 500`, args);
+  const users = await q<{ id: number; nama: string }>("select id, nama from users order by nama");
+  const clients = await q<{ id: string; nama: string }>("select id, nama from clients order by nama");
+  const aksi = (await q<{ aksi: string }>("select distinct aksi from activity_log order by aksi")).map((x) => x.aksi);
+  return <AppShell user={me}>
+    <header className="dh"><div className="wrap top ctitle"><h1>Log aktivitas</h1><span className="muted small">Semua peran tercatat · hanya terlihat oleh superadmin & admin</span></div></header>
+    <main className="wrap dv tim">
+      <form className="card filters" method="get">
+        <select name="u" defaultValue={sp.u ?? ""}><option value="">Semua orang</option>{users.map((u) => <option key={u.id} value={u.id}>{u.nama}</option>)}<option value="tamu">Link klien / tamu</option></select>
+        <select name="c" defaultValue={sp.c ?? ""}><option value="">Semua klien</option>{clients.map((c) => <option key={c.id} value={c.id}>{c.nama}</option>)}</select>
+        <select name="a" defaultValue={sp.a ?? ""}><option value="">Semua aktivitas</option>{aksi.map((a) => <option key={a}>{a}</option>)}</select>
+        <input type="date" name="d" defaultValue={sp.d ?? ""} style={{ width: "auto" }} />
+        <button>Terapkan</button>
+      </form>
+      <div className="card"><div className="tbl"><table><thead><tr><th>Waktu</th><th>Siapa</th><th>Aktivitas</th><th>Klien</th><th>Detail</th><th>IP</th></tr></thead>
+        <tbody>{rows.map((r, i) => <tr key={i}><td>{String(r.waktu).slice(0, 19)}</td><td>{r.nama} <span className="muted small">{PERAN_LABEL[r.peran] ?? r.peran}</span></td><td>{r.aksi}</td><td>{r.klien ?? "–"}</td><td className="wrapcell">{r.detail}</td><td className="muted small">{r.ip ?? ""}</td></tr>)}</tbody></table></div>
+        {!rows.length && <p className="muted">Belum ada aktivitas untuk filter ini.</p>}
+        <p className="muted small">Menampilkan 500 aktivitas terbaru.</p>
+      </div>
+    </main>
+  </AppShell>;
+}
