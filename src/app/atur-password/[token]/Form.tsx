@@ -1,11 +1,12 @@
 "use client";
+import { RuriaWord } from "@/components/Logo";
 import { useActionState } from "react";
 import { setPassword } from "./actions";
 
 export default function Form({ token, nama, email }: { token: string; nama: string; email: string }) {
   const [err, action, pending] = useActionState(setPassword, null);
   return <form action={action} className="auth-card">
-    <h1>Ruria Report</h1>
+    <h1 className="authlogo"><RuriaWord height={30} /><span>Report</span></h1>
     <p className="muted">Halo {nama}, buat password untuk akun <b>{email}</b>.</p>
     <input type="hidden" name="token" value={token} />
     <input type="email" name="username" value={email} autoComplete="username" readOnly hidden />

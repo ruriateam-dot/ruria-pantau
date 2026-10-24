@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useNav } from "./Nav";
 import { logout } from "@/app/login/actions";
+import { RuriaWord, RuriaMark } from "./Logo";
 
 type Item = { id: string; nama: string; href: string };
 type Props = { user: { nama: string; peran: string }; staff: boolean; clients: Item[]; active?: string; dashHref: string; children: React.ReactNode };
@@ -32,7 +33,7 @@ export default function Shell({ user, staff, clients, active, dashHref, children
   const cur = clients.find((c) => c.id === active);
   return <div className="app">
     <aside className={"side" + (open ? " open" : "")} aria-label="Navigasi">
-      <div className="sbrand"><span className="logo" aria-hidden="true">R</span><b>Ruria<small>Report</small></b></div>
+      <div className="sbrand"><RuriaWord height={24} title="Ruria" /><small>Report</small></div>
       <nav className="sgroup">
         {link(dashHref, "Dashboard", path === "/dashboard" && !active)}
       </nav>
@@ -56,7 +57,7 @@ export default function Shell({ user, staff, clients, active, dashHref, children
     <div className="main">
       <div className="mbar">
         <button type="button" className="ghost" aria-label="Buka menu" aria-expanded={open} onClick={() => setOpen(true)}>☰</button>
-        <b>Ruria Report</b>{cur && <span className="muted small">{cur.nama}</span>}
+        <RuriaMark size={22} /><b>Ruria Report</b>{cur && <span className="muted small">{cur.nama}</span>}
       </div>
       {children}
     </div>

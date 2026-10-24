@@ -1,4 +1,5 @@
 "use client";
+import { RuriaWord } from "@/components/Logo";
 import { useActionState } from "react";
 import { login, setupAdmin } from "./actions";
 
@@ -7,7 +8,7 @@ export default function LoginForm({ setup }: { setup: boolean }) {
   return (
     <main className="auth">
       <form action={action} className="auth-card">
-        <h1>Ruria Report</h1>
+        <h1 className="authlogo"><RuriaWord height={30} /><span>Report</span></h1>
         <p className="muted">{setup ? "Buat akun admin pertama. Halaman ini hanya muncul sekali." : "Masuk dengan akun Ruria Report."}</p>
         {setup && <label>Nama<input name="nama" required autoComplete="name" /></label>}
         <label>Email<input name="email" type="email" autoComplete="email" required /></label>

@@ -6,6 +6,7 @@ import AutoImport from "@/components/AutoImport";
 import Affiliate from "@/components/Affiliate";
 import AppShell from "@/components/AppShell";
 import ExportBar from "@/components/ExportBar";
+import { RuriaWord } from "@/components/Logo";
 import { logAct } from "@/lib/log";
 import ProdukTable, { type PRow } from "@/components/ProdukTable";
 import { Kpi, Insight, Bars, LineChart, Share } from "@/components/ui";
@@ -60,7 +61,7 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
   const head = (
     <header className="dh">
       <div className="wrap top ctitle">
-        {share ? <><span className="logo" aria-hidden="true">R</span><b>Ruria Report</b><span className="muted">{c?.nama} · tampilan klien, hanya lihat</span></>
+        {share ? <><span className="brandc"><RuriaWord height={20} /></span><b>Report</b><span className="muted">{c?.nama} · tampilan klien, hanya lihat</span></>
           : <h1>{tab === "sum" ? "Dashboard" : c?.nama}</h1>}
       </div>
       <div className="wrap fbar"><Filters base={base} clients={share ? [] : clients} hideClient brands={tab === "sum" ? [] : brands} platforms={tab === "sum" ? [] : platforms} label={R.label} />{tab !== "affiliate" && <ExportBar title={title} client={tab === "sum" ? null : c?.id ?? null} token={token} />}</div>

@@ -222,3 +222,10 @@ a{color:var(--accent-ink)}
   body{font-size:12px}
   details.ins>summary{list-style:none}
 }
+/* Logo */
+.sbrand{display:flex;align-items:flex-end;gap:8px;color:var(--accent);padding:4px 10px}
+.sbrand small{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:700;padding-bottom:2px}
+.mbar .rmark{color:var(--accent);flex:none}
+.brandc{color:var(--accent);display:inline-flex}
+.authlogo{display:flex;align-items:flex-end;gap:10px;color:var(--accent)}
+.authlogo span{font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:700;padding-bottom:3px}
