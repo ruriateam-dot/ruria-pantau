@@ -32,8 +32,8 @@ export async function addUser(_p: string | null, f: FormData): Promise<string | 
   if (peran === "klien") await exec("insert into client_members (client_id, user_id) values ?", [klien.map((c) => [c, r.insertId])]);
   const link = await passwordLink(r.insertId);
   const sent = await sendInvite(email, nama, link, me.nama, true);
-  return done(sent ? `Akun ${nama} dibuat. Undangan sudah dikirim ke ${email}.`
-    : `Akun ${nama} dibuat. Email belum bisa dikirim otomatis, jadi kirim link ini ke orangnya (berlaku 3 hari, sekali pakai): ${link}`);
+  return done(!sent ? `Akun ${nama} dibuat. Undangan sudah dikirim ke ${email}.`
+    : `Akun ${nama} dibuat. Email belum terkirim karena ${sent}. Sementara, kirim link ini ke orangnya (berlaku 3 hari, sekali pakai): ${link}`);
 }
 
 export async function setAccess(_p: string | null, f: FormData): Promise<string | null> {
@@ -69,7 +69,7 @@ export async function sendLink(_p: string | null, f: FormData): Promise<string |
   const u = (await q<{ email: string; nama: string }>("select email, nama from users where id = ?", [id]))[0];
   const link = await passwordLink(id);
   const sent = await sendInvite(u.email, u.nama, link, me.nama, false);
-  return done(sent ? `Link atur password dikirim ke ${u.email}.` : `Email belum bisa dikirim otomatis. Kirim link ini ke ${u.nama} (berlaku 3 hari, sekali pakai): ${link}`);
+  return done(!sent ? `Link atur password dikirim ke ${u.email}.` : `Email belum terkirim karena ${sent}. Sementara, kirim link ini ke ${u.nama} (berlaku 3 hari, sekali pakai): ${link}`);
 }
 
 export async function removeUser(_p: string | null, f: FormData): Promise<string | null> {

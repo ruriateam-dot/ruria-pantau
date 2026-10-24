@@ -23,8 +23,9 @@ export async function passwordLink(userId: number) {
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
 
-export async function sendInvite(to: string, nama: string, link: string, oleh: string, baru: boolean): Promise<boolean> {
-  if (!mailReady()) return false;
+/* Hasil: "" jika terkirim, atau alasan gagal (tanpa membocorkan password) */
+export async function sendInvite(to: string, nama: string, link: string, oleh: string, baru: boolean): Promise<string> {
+  if (!mailReady()) return "variabel " + ["SMTP_HOST", "SMTP_USER", "SMTP_PASSWORD"].filter((k) => !process.env[k]).join(", ") + " belum terbaca oleh aplikasi (cek Variabel environment lalu terapkan ulang)";
   const port = Number(process.env.SMTP_PORT || 465);
   const tr = nodemailer.createTransport({ host: process.env.SMTP_HOST, port, secure: port === 465, auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD } });
   const judul = baru ? "Undangan ke Ruria Pantau" : "Atur ulang password Ruria Pantau";
@@ -38,9 +39,12 @@ export async function sendInvite(to: string, nama: string, link: string, oleh: s
         <p><a href="${link}" style="display:inline-block;background:#0f7a5c;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600">Buat password</a></p>
         <p style="font-size:13px;color:#66706a">Link berlaku 3 hari dan hanya bisa dipakai sekali. Setelah itu, masuk dengan email <b>${esc(to)}</b>.<br>Abaikan email ini jika Anda tidak merasa membutuhkannya.</p></div>`,
     });
-    return true;
+    return "";
   } catch (e) {
-    console.error("Email gagal", (e as Error).message);
-    return false;
+    const x = e as { code?: string; responseCode?: number; message?: string };
+    console.error("Email gagal", x.code, x.message);
+    if (x.code === "EAUTH" || x.responseCode === 535) return "login ke server email ditolak: cek SMTP_USER (alamat email lengkap) dan SMTP_PASSWORD (password kotak email itu)";
+    if (x.code === "ECONNECTION" || x.code === "ETIMEDOUT" || x.code === "ESOCKET" || x.code === "EDNS") return "tidak bisa menyambung ke server email: cek SMTP_HOST (smtp.hostinger.com) dan SMTP_PORT (465)";
+    return `server email menolak (${x.code ?? ""} ${(x.message ?? "").slice(0, 120)})`;
   }
 }
