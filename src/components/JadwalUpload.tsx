@@ -9,7 +9,7 @@ export function jadwalHariIni(now = new Date()) {
   const t = new Date(now.getTime() + 7 * 36e5); // WIB
   const d = t.getUTCDate(), kmrn = add(t, -1), bl = B[(t.getUTCMonth() + 11) % 12];
   const L: { j: string; isi: string[] }[] = [
-    { j: `Harian · data ${tg(kmrn)}`, isi: ["Shopee: Statistik Toko, Performa Produk, Data Keseluruhan Iklan", "TikTok: Analitik toko, Analitik produk, Iklan GMV Max", `Live Shopee & TikTok: 7 hari terakhir (${tg(add(t, -7))}–${tg(kmrn)})`, "Affiliate OT: input sampel yang dikirim (tab Affiliate → Input Sampel)"] },
+    { j: `Harian · data ${tg(kmrn)}`, isi: ["Shopee: Statistik Toko, Performa Produk, Data Keseluruhan Iklan", "TikTok: Analitik toko, Analitik produk, Iklan GMV Max", `Live Shopee & TikTok: 7 hari terakhir (${tg(add(t, -7))}–${tg(kmrn)})`, "Affiliate OT: input sampel yang dikirim (tab Affiliate → Input Sampel)", "Jadwal host live OT, VOIE, Dren: update di menu Jadwal"] },
   ];
   if (JADWAL_PESANAN.includes(d)) {
     const i = JADWAL_PESANAN.indexOf(d), dari = d === 1 ? null : new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), JADWAL_PESANAN[i - 1]));
