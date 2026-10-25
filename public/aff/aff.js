@@ -10,11 +10,11 @@ const PAGE = 50;
 /* ---------- rows ---------- */
 const TT = D.tt.map(r => {
   const g = r.slice(2,2+NT); return {k:'tt', key:r[0], u:r[0], tipe:D.tip[r[1]], g, okt:g[NT-1], tot:g.reduce((a,b)=>a+b,0), bln:g.filter(v=>v>0).length,
-    vid:r[8+oT], live:r[9+oT], gagal:r[10+oT], samp:r[11+oT], cat:r[12+oT], pr:r[13+oT], aksi:D.aks[r[14+oT]], gk:r[15+oT]||0, gb:r[16+oT]||0, gx:r[17+oT]||0, gest:r[18+oT]?1:0};
+    vid:r[8+oT], live:r[9+oT], gagal:r[10+oT], samp:r[11+oT], cat:r[12+oT], pr:r[13+oT], aksi:D.aks[r[14+oT]], gk:r[15+oT]||0, gb:r[16+oT]||0, gx:r[17+oT]||0, gest:r[18+oT]?1:0, tp:r[19+oT]};
 });
 const SH = D.sh.map(r => {
   const g = r.slice(4,4+NS); return {k:'sh', key:r[0], u:r[0], nama:r[1], tipe:D.tip[r[2]], ch:r[3], g, okt:g[NS-1], tot:g.reduce((a,b)=>a+b,0), bln:g.filter(v=>v>0).length,
-    pb:r[10+oS], batal:r[11+oS], samp:r[12+oS], cat:r[13+oS], pr:r[14+oS], aksi:D.aks[r[15+oS]], gk:r[16+oS]||0, gb:r[17+oS]||0, gx:r[18+oS]||0, gest:r[19+oS]?1:0};
+    pb:r[10+oS], batal:r[11+oS], samp:r[12+oS], cat:r[13+oS], pr:r[14+oS], aksi:D.aks[r[15+oS]], gk:r[16+oS]||0, gb:r[17+oS]||0, gx:r[18+oS]||0, gest:r[19+oS]?1:0, tp:r[20+oS]};
 });
 const MEM = {}; D.C.forEach(c => (MEM[c[0]] ||= []).push({u:c[1], nama:c[2], om:c[3], ok:c[4], all:c[5]}));
 const AGA = D.A.map(r => ({k:'ag', key:'A '+r[0], grp:'A', nama:r[0], om:r[1], ok:r[2], batal:r[3], top:r[4], pr:r[6], aksi:r[7], mem:MEM[r[0]]||[]}));
@@ -47,6 +47,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const fdate = iso => { if (!iso) return ''; const d = new Date(iso+'T00:00:00'); return isNaN(d) ? iso : d.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'}); };
 const isoToday = () => { const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
 const prioChip = p => `<span class="chip p${p}" title="${esc(PRIO[p])}">P${p}</span>`;
+const tipeR = r => tipeChip(r.tipe) + (r.tp ? ` <small class="muted">${r.tp}%</small>` : '');
 const tipeChip = t => t === 'Agency/Platform' ? `<span class="chip ag">Agency/Platform</span>` : `<span class="muted">${esc(t)}</span>`;
 const statClass = s => ({'Sudah dihubungi':'s-act','Setuju':'s-ok','Produk dikirim':'s-ok','Sudah posting':'s-ok','Menolak':'s-bad','Tidak respon':'s-warn','Tidak perlu dihubungi (P4–P5)':'s-skip'}[s] || '');
 const statChip = s => `<span class="chip ${statClass(s)}">${esc(s)}</span>`;
@@ -116,7 +117,7 @@ function renderSummary(){
   const cTT = contacted(need(TT)), cSH = contacted(need(SH)), cAG = contacted(need([...AGA,...AGB]));
   const pTT = countBy(TT, r=>r.pr), pSH = countBy(SH, r=>r.pr);
   const tTT = countBy(TT, r=>r.tipe), tSH = countBy(SH, r=>r.tipe);
-  const tipeArti = {'Kreator konten':'Kreator individu yang jualan lewat video/LIVE','Agency/Platform':'Kumpulan banyak kreator (mis. YouTube Shopping, Involve Asia). Tidak bisa dirinci per kreator','Jaringan/website':'Shopee: jualan lewat link website/aplikasi luar','Product card / iklan':'TikTok: jualan dari kartu produk tanpa konten','Belum diketahui':'Shopee: affiliate baru, channel belum tercatat','Akun internal':'Akun JustFluff sendiri'};
+  const tipeArti = D.tipArti || {'Kreator konten':'Kreator individu yang jualan lewat video/LIVE','Agency/Platform':'Kumpulan banyak kreator (mis. YouTube Shopping, Involve Asia). Tidak bisa dirinci per kreator','Jaringan/website':'Shopee: jualan lewat link website/aplikasi luar','Product card / iklan':'TikTok: jualan dari kartu produk tanpa konten','Belum diketahui':'Shopee: affiliate baru, channel belum tercatat','Akun internal':'Akun JustFluff sendiri'};
   const mt = (blk) => `<div class="tscroll"><table class="mini"><thead><tr><th>Metrik</th>${blk.cols.map(c=>`<th class="num">${esc(c)}</th>`).join('')}<th class="num">Total</th></tr></thead><tbody>${
     blk.rows.map(([n,v,t]) => `<tr><td>${esc(n)}</td>${v.map(x=>`<td class="num">${x===null?'–':(t==='rp'?rpShort(x):nf.format(x))}</td>`).join('')}<td class="num"><b>${t==='nt'?'–':(t==='rp'?rpShort(v.reduce((a,b)=>a+b,0)):nf.format(v.reduce((a,b)=>a+b,0)))}</b></td></tr>`).join('')}</tbody></table></div>`;
   const K = (window.__sampelKpi && window.__sampelKpi()) || {};
@@ -280,7 +281,7 @@ function renderList(which){
     <tbody>${slice.length ? slice.map((r,i) => `<tr class="click" tabindex="0" data-i="${f.page*PAGE+i}">
       <td>${prioChip(r.pr)}</td>
       <td class="u">${esc(r.u)}${!isTT && r.nama && r.nama !== r.u ? `<small>${esc(r.nama)}</small>` : ''}${fuOf(r)?.kontak ? `<small class="kt">☎ ${esc(fuOf(r).kontak)}</small>`:''}</td>
-      <td class="t">${tipeChip(r.tipe)}</td>
+      <td class="t">${tipeR(r)}</td>
       <td class="num">${rpShort(r.okt)}</td><td class="num">${rpShort(r.tot)}</td><td class="num">${r.bln}/${r.g.length}</td><td class="num">${sampCell(r)}</td><td class="num">${hasilCell(r)}</td>
       <td class="aksi">${esc(r.aksi)}</td>
       <td>${statChip(dispStatus(r))}</td>
@@ -417,7 +418,7 @@ function renderDb(){
     <tbody>${slice.length ? slice.map((r,i) => `<tr class="click" tabindex="0" data-i="${f.page*PAGE+i}">
       <td>${prioChip(r.pr)}</td><td>${plChip(r.k==='tt'?'TikTok':'Shopee')}</td>
       <td class="u">${esc(r.u)}${liveChip(r)}${andalan(r) ? ' <span class="chip p1" title="Kreator andalan: jualan ≥5 dari 6 bulan, GMV bersih ≥Rp3 jt, masih jualan Okt. Pertahankan dengan komisi khusus/prioritas produk baru">Andalan</span>' : ''}${halOf(r) ? ` <span class="chip" title="Peserta acara Haluan ClickConnect Semarang (${esc(halOf(r))}), dapat 1 sampel">Haluan</span>` : ''}${r.k==='sh' && r.nama && r.nama !== r.u ? `<small>${esc(r.nama)}</small>` : ''}${fuOf(r)?.kontak ? `<br>${kontakHtml(fuOf(r).kontak, r)}`:''}</td>
-      <td class="t">${tipeChip(r.tipe)}</td>
+      <td class="t">${tipeR(r)}</td>
       <td class="num">${rpShort(r.okt)}</td><td class="num">${rpShort(r.gk)}${est(r)}</td><td class="num"><b>${rpShort(r.gb)}</b>${est(r)}</td>
       <td class="num">${rpShort(r.gx)}${est(r)}${r.gk && r.gx ? `<br><small class="${r.gx/r.gk>=.4?'late':'muted'}">${pct(r.gx/r.gk)}</small>` : ''}</td>
       <td class="num">${r.bln}/${r.g.length}</td><td class="num">${sampCell(r)}</td><td class="num">${hasilCell(r)}</td>
@@ -494,7 +495,7 @@ function detailHtml(r){
     const months = r.k === 'tt' ? TT_M : SH_M, mx = Math.max(1, ...r.g);
     return `<div class="kv">
       <div><span>Prioritas</span><b>${prioChip(r.pr)}</b></div>
-      <div><span>Tipe</span><b>${tipeChip(r.tipe)}</b></div>
+      <div><span>Sumber penjualan terbesar</span><b>${tipeR(r)}</b></div>
       <div><span>GMV kotor Mei–Okt${r.gest ? '*' : ''}</span><b>${rp(r.gk)}</b></div>
       <div><span>GMV bersih${r.gest ? '*' : ''}</span><b>${rp(r.gb)}</b></div>
       <div><span>GMV batal/retur${r.gest ? '*' : ''}</span><b>${rp(r.gx)}${r.gk ? ' (' + pct(r.gx / r.gk) + ')' : ''}</b></div>
@@ -887,7 +888,7 @@ if (!WATPL[WA_SEL]) WA_SEL = '';
 const waText = (r, tp, extra) => { const t = WATPL[tp ?? WA_SEL]; if (!t || !t[1] || !r) return ''; const nama = (r.k === 'sh' && r.nama ? r.nama : r.u) || ''; const msg = t[1].replace('{nama}', nama).replace('{pic}', (typeof PIC !== 'undefined' && PIC) || 'tim affiliate').replace('{produk}', (extra && extra.produk) || 'JustFluff'); return '?text=' + encodeURIComponent(msg); };
 (() => { const sel = document.getElementById('watpl'); if (!sel) return; Object.entries(WATPL).forEach(([k, v]) => sel.append(new Option(v[0], k))); sel.value = WA_SEL; sel.onchange = () => { WA_SEL = sel.value; try { localStorage.setItem('jf-watpl', WA_SEL); } catch(e) {} rerenderSoon(); }; })();
 /* ---------- kreator andalan ---------- */
-const andalan = r => r.k !== 'ag' && r.tipe === 'Kreator konten' && r.bln >= 5 && r.gb >= 3e6 && r.okt > 0 && r.pr <= 3;
+const andalan = r => r.k !== 'ag' && (D.tipArti ? true : r.tipe === 'Kreator konten') && r.bln >= 5 && r.gb >= 3e6 && r.okt > 0 && r.pr <= 3;
 /* ---------- kerja hari ini ---------- */
 function tagihRows(){
   const now = wibDay(), lo = addDays(now, -45), hi = addDays(now, -14);
