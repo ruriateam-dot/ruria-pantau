@@ -4,6 +4,11 @@ import { todayWIB, addDays, tgl } from "@/lib/period";
 /* Checklist upload: data apa yang sudah masuk per toko untuk 7 hari terakhir (sampai kemarin) */
 export default async function Checklist({ clientIds }: { clientIds: string[] }) {
   if (!clientIds.length) return null;
+  try { return await inner(clientIds); }
+  catch (e) { const x = e as { code?: string; message?: string }; console.error("Checklist error", e); return <div className="card"><h2>Checklist upload</h2><p className="err">Gagal dimuat: {[x.code, x.message].filter(Boolean).join(": ")}</p></div>; }
+}
+
+async function inner(clientIds: string[]) {
   const y = addDays(todayWIB(), -1), d0 = addDays(y, -6);
   const days = Array.from({ length: 7 }, (_, i) => addDays(d0, i));
   const cl = await q<{ id: string; nama: string; modul: string }>("select id, nama, modul from clients where id in (?) order by nama", [clientIds]);

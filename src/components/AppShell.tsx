@@ -5,7 +5,8 @@ import { allowedClients, isStaff, PERAN_LABEL, type User } from "@/lib/auth";
 
 /* Kerangka halaman untuk pengguna yang login: menu samping + konten */
 export default async function AppShell({ user, active, keep = {}, children }: { user: User; active?: string; keep?: Record<string, string | undefined>; children: React.ReactNode }) {
-  const clients = await clientsFor(await allowedClients(user));
+  let clients: Awaited<ReturnType<typeof clientsFor>> = [];
+  try { clients = await clientsFor(await allowedClients(user)); } catch (e) { console.error("AppShell error", e); }
   const href = (c: string) => { const q = new URLSearchParams(); if (keep.m && keep.m !== "sum") q.set("m", keep.m); if (keep.per) q.set("per", keep.per); q.set("c", c); return "/dashboard?" + q.toString(); };
   const dashHref = "/dashboard?m=sum" + (keep.per ? "&per=" + encodeURIComponent(keep.per) : "");
   return <>
