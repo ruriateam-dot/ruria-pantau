@@ -236,6 +236,8 @@ function IklanTab({ R, stores, ads, sales }: { R: Range; stores: Store[]; ads: A
 /* ---------------- Livestream ---------------- */
 const SLOTS: [number, number, string, string][] = [[0, 6, "00–06", "Dini hari"], [6, 12, "06–12", "Pagi"], [12, 18, "12–18", "Siang–sore"], [18, 24.5, "18–24", "Malam"]];
 type Jd = { tanggal: string; mulai: string; selesai: string; host: string };
+const HARI = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
+const dow = (d: string) => (new Date(d + "T00:00:00Z").getUTCDay() + 6) % 7; // 0 = Senin
 const hh = (t: string) => +t.slice(0, 2) + +t.slice(3) / 60;
 /* Jadwal vs realisasi: jam terjadwal vs jam live, dan jadwal yang tidak ada sesi live-nya */
 function JadwalVsLive({ jadwal, live }: { jadwal: Jd[]; live: Live[] }) {
@@ -253,12 +255,13 @@ function JadwalVsLive({ jadwal, live }: { jadwal: Jd[]; live: Live[] }) {
     M.set(k(s.host), x);
   }
   const rows = [...M.values()].sort((a, b) => b.j - a.j);
-  const tanpa = live.filter((l) => !used.has(l));
+  const tglJadwal = new Set(jadwal.map((j) => j.tanggal));
+  const tanpa = live.filter((l) => !used.has(l) && tglJadwal.has(l.tanggal));
   return <div className="card"><h2>Jadwal vs realisasi</h2><div className="tbl"><table><thead><tr><th>Host</th><th className="n">Jadwal</th><th className="n">Jam terjadwal</th><th className="n">Jam live sesuai jadwal</th><th className="n">Realisasi</th><th className="n">Jadwal tanpa live</th></tr></thead>
     <tbody>{rows.map((x) => { const p = x.j ? (x.r / x.j) * 100 : 0; return <tr key={x.nama}><td>{x.nama}</td><td className="n">{x.n}</td><td className="n">{jm(x.j)}</td><td className="n">{jm(x.r)}</td>
       <td className="n"><span className={"pill " + (p >= 90 ? "good" : p >= 70 ? "warn" : "bad")}>{p.toFixed(0)}%</span></td><td className={"n" + (x.miss ? " dn" : "")}>{x.miss || "–"}</td></tr>; })}</tbody></table></div>
     <p className="muted small">Jam live dihitung dari sesi di laporan live dengan nama host yang sama, yang mulai paling cepat 1 jam sebelum jadwal sampai jadwal selesai.
-      {tanpa.length ? ` Ada ${tanpa.length} sesi live (${jm(tanpa.reduce((a, l) => a + l.durasi_jam, 0))}) di luar jadwal: ${[...new Set(tanpa.map((l) => l.host || "tanpa nama"))].join(", ")}.` : ""}</p></div>;
+      {` Dibandingkan hanya pada ${tglJadwal.size} tanggal yang sudah punya jadwal.`}{tanpa.length ? ` Di tanggal itu ada ${tanpa.length} sesi live (${jm(tanpa.reduce((a, l) => a + l.durasi_jam, 0))}) yang tidak sesuai jadwal: ${[...new Set(tanpa.map((l) => l.host || "tanpa nama"))].join(", ")}.` : ""}</p></div>;
 }
 
 function LiveTab({ R, live, brand, plat, jadwal }: { R: Range; live: Live[]; brand?: string; plat?: string; jadwal: Jd[] }) {
@@ -279,6 +282,10 @@ function LiveTab({ R, live, brand, plat, jadwal }: { R: Range; live: Live[]; bra
   const ser = (k: "gmv_shopee" | "gmv_tiktok") => B.map((bk) => L.filter((x) => x.tanggal >= bk.f && x.tanggal <= bk.t).reduce((s, x) => s + (plat && (k === "gmv_shopee" ? plat !== "Shopee" : plat !== "TikTok") ? 0 : x[k]), 0));
   const fk = (n: number) => (n >= 1e6 ? (n / 1e6).toFixed(1).replace(".", ",") + " jt" : Math.round(n / 1e3) + " rb");
   const best = sr[0], worst = sr[sr.length - 1];
+  // Minggu (Senin–Minggu) dalam periode, untuk tren GMV/jam per host
+  const WK: { f: string; t: string }[] = []; { let f = R.from; while (f <= R.to) { const d = dow(f), t0 = addDays(f, 6 - d); WK.push({ f, t: t0 < R.to ? t0 : R.to }); f = addDays(t0, 1); } }
+  const mxD = Math.max(1, ...HARI.flatMap((_, d) => SLOTS.map((__, i) => { const v = slot(cur.filter((x) => dow(x.tanggal) === d), i); return v.j >= 0.5 ? v.g / v.j : 0; })));
+  const weak = cur.filter((x) => x.durasi_jam >= 1).sort((a, b) => gf(a) / a.durasi_jam - gf(b) / b.durasi_jam).slice(0, 10);
   return (<>
     <p className="note">Periode: {R.label}. Durasi dihitung sekali per sesi walau live di Shopee dan TikTok bersamaan.</p>
     <Insight src="Data asli" sum={[`GMV live ${fmt(a.g)} dari ${a.n} sesi (${jm(a.j)})${R.key === "all" ? "" : `, ${pct(a.g, b.g) >= 0 ? "naik" : "turun"} ${Math.abs(pct(a.g, b.g)).toFixed(1)}% ${R.sub}`}.`, `Rata-rata ${fmt(gj)} per jam.`, `Shopee ${fmt(a.gs)} · TikTok ${fmt(a.gt)}.`]}
@@ -286,12 +293,26 @@ function LiveTab({ R, live, brand, plat, jadwal }: { R: Range; live: Live[]; bra
       next={[...(best && worst && best !== worst ? [`Geser jam dari slot ${SLOTS[worst.i][2]} ke ${SLOTS[best.i][2]}, atau coba promo khusus di slot ${SLOTS[worst.i][2]}.`] : []), ...(effi.length > 1 ? [`Tempatkan ${effi[0].k} di slot terbaik; dampingi ${effi[effi.length - 1].k} dengan review rekaman dan skrip penawaran.`] : []), "Cek sesi Rp0: produk yang dipajang, voucher live, dan jam tayang."]} />
     <div className="kpis"><Kpi l="GMV live" v={fmt(a.g)} d={R.key === "all" ? undefined : pct(a.g, b.g)} sub={R.sub} /><Kpi l="Durasi live" v={jm(a.j)} d={R.key === "all" ? undefined : pct(a.j, b.j)} sub={`${a.n} sesi`} /><Kpi l="GMV per jam" v={fmt(gj)} d={R.key === "all" ? undefined : pct(gj, gjp)} sub={R.sub} /><Kpi l="Sesi tanpa penjualan" v={zr.toFixed(0) + "%"} sub="sesi ≥1 jam" /></div>
     <JadwalVsLive jadwal={jadwal} live={cur} />
-    <h2>Ringkasan per host</h2>
-    <div className="hcs">{hs.slice(0, 8).map((h) => <div className="hc" key={h.k}><h3>{h.k}</h3><div className="hl">GMV</div><div className="hv">{fmt(h.s.g)}</div><div className="hl">Durasi</div><div className="hv">{jm(h.s.j)}</div><div className="hl">GMV/jam</div><div className="hv">{fmt(h.s.g / h.s.j)}</div><div className="hb">{h === hs[0] ? "GMV terbesar" : h.k === effi[0]?.k ? "Paling efisien" : ""}</div></div>)}</div>
-    <div className="card"><h2>GMV/jam per sesi</h2><div className="tbl"><div className="hm">
+    <div className="card"><h2>Per host</h2><div className="tbl"><table><thead><tr><th>Host</th><th className="n">GMV</th><th className="n">Shopee</th><th className="n">TikTok</th><th className="n">Durasi</th><th className="n">Sesi</th><th className="n">GMV/jam</th><th className="n">Δ GMV/jam</th><th className="n">Sesi Rp0</th><th>Slot terbaik</th><th>Tren GMV/jam</th></tr></thead>
+      <tbody>{hs.map((h) => { const p = agg(prev.filter((x) => (x.host || "Tanpa nama") === h.k)), gjH = h.s.g / h.s.j, gjPrev = p.j ? p.g / p.j : 0, d = gjPrev && R.key !== "all" ? pct(gjH, gjPrev) : NaN;
+        const bs = SLOTS.map((_, i) => { const v = slot(h.v, i); return { i, g: v.j >= 1 ? v.g / v.j : -1 }; }).sort((x, y) => y.g - x.g)[0];
+        const tw = WK.map((w) => { const v = agg(h.v.filter((x) => x.tanggal >= w.f && x.tanggal <= w.t)); return v.j ? v.g / v.j : 0; });
+        return <tr key={h.k}><td><b>{h.k}</b>{h === hs[0] ? <div className="muted small">GMV terbesar</div> : h.k === effi[0]?.k ? <div className="muted small">Paling efisien</div> : null}</td><td className="n">{fmt(h.s.g)}</td><td className="n">{fmt(h.s.gs)}</td><td className="n">{fmt(h.s.gt)}</td><td className="n">{jm(h.s.j)}</td><td className="n">{h.s.n}</td><td className="n"><b>{fmt(gjH)}</b></td>
+          <td className={"n " + (!isFinite(d) ? "" : d >= 0 ? "up" : "dn")}>{isFinite(d) ? `${d >= 0 ? "+" : ""}${d.toFixed(0)}%` : "–"}</td><td className="n">{h.s.n ? ((h.s.z / h.s.n) * 100).toFixed(0) + "%" : "–"}</td><td className="small">{bs && bs.g > 0 ? `${SLOTS[bs.i][2]} (${fmt(bs.g)}/jam)` : "–"}</td><td>{WK.length > 1 ? <Spark v={tw} /> : "–"}</td></tr>; })}</tbody></table></div>
+      {WK.length > 1 && <p className="muted small">Tren = GMV per jam per minggu ({WK.length} minggu). Δ dibanding {R.sub.replace(/^vs /, "")}.</p>}</div>
+    <div className="card"><h2>GMV/jam per host & slot</h2><div className="tbl"><div className="hm">
       <div />{SLOTS.map((s) => <div key={s[2]} className="hmh"><b>{s[2]}</b><span>{s[3]}</span></div>)}
       {hs.slice(0, 10).map((h, i) => [<div key={h.k} className="hmn">{h.k}</div>, ...cells[i].map((c, j) => c.g === null ? <div key={j} className="hmc none">Tidak live</div> : <div key={j} className={"hmc l" + Math.min(4, Math.floor((c.g / mx) * 5))}><b>{fk(c.g)}</b><span>Rp{fk(c.v.g)} · {jm(c.v.j)}</span></div>)])}
     </div></div><p className="muted small">Angka besar = GMV per jam. Baris kecil = total GMV · durasi. Dikelompokkan menurut jam mulai live.</p></div>
+    <div className="card"><h2>GMV/jam per hari & slot</h2><div className="tbl"><div className="hm">
+      <div />{SLOTS.map((s) => <div key={s[2]} className="hmh"><b>{s[2]}</b><span>{s[3]}</span></div>)}
+      {HARI.map((nm, d) => [<div key={nm} className="hmn">{nm}</div>, ...SLOTS.map((_, i) => { const v = slot(cur.filter((x) => dow(x.tanggal) === d), i); const g = v.j >= 0.5 ? v.g / v.j : null;
+        return g === null ? <div key={i} className="hmc none">Tidak live</div> : <div key={i} className={"hmc l" + Math.min(4, Math.floor((g / mxD) * 5))}><b>{fk(g)}</b><span>Rp{fk(v.g)} · {jm(v.j)}</span></div>; })])}
+    </div></div><p className="muted small">Untuk menyusun jadwal: kotak paling gelap = kombinasi hari & jam dengan GMV per jam tertinggi.</p></div>
+    {weak.length > 0 && <div className="card"><h2>10 sesi terlemah</h2><div className="tbl"><table><thead><tr><th>Tanggal</th><th>Jam</th><th>Host</th><th className="n">Durasi</th><th className="n">GMV</th><th className="n">GMV/jam</th><th className="n">vs rata-rata host</th></tr></thead>
+      <tbody>{weak.map((x, i) => { const hh2 = hs.find((h) => h.k === (x.host || "Tanpa nama")), avg = hh2 ? hh2.s.g / hh2.s.j : 0, g = gf(x) / x.durasi_jam;
+        return <tr key={i}><td>{HARI[dow(x.tanggal)]}, {tgl(x.tanggal)}</td><td>{String(Math.floor(x.jam_mulai)).padStart(2, "0")}:{String(Math.round((x.jam_mulai % 1) * 60)).padStart(2, "0")}</td><td>{x.host || "–"}</td><td className="n">{jm(x.durasi_jam)}</td><td className="n">{fmt(gf(x))}</td><td className="n">{fmt(g)}</td><td className="n dn">{avg ? `${pct(g, avg).toFixed(0)}%` : "–"}</td></tr>; })}</tbody></table></div>
+      <p className="muted small">Sesi ≥1 jam dengan GMV per jam terendah. Cek rekaman: produk yang dipajang, voucher live, dan alur penawaran.</p></div>}
     <div className="card"><h2>GMV live per {B[0].f === B[0].t ? "hari" : "bulan"}</h2><Bars title="GMV live" labels={B.map((x) => x.l)} series={[ser("gmv_shopee"), ser("gmv_tiktok")]} colors={["var(--accent)", "var(--aqua)"]} /><p className="muted small"><span style={{ color: "var(--accent)" }}>■</span> Shopee <span style={{ color: "var(--aqua)" }}>■</span> TikTok</p></div>
   </>);
 }
