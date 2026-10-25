@@ -25,7 +25,7 @@ const S = seed as unknown as Seed;
 // Naikkan angka ini setiap kali file di src/data diperbarui
 const DATA_VERSION = "2026-10-24e";
 // Versi terpisah per jenis data, supaya pembaruan satu bagian tidak menimpa data upload tim
-const AFF_VERSION = "aff-2026-10-25j";
+const AFF_VERSION = "aff-2026-10-25k";
 const chunk = <T,>(a: T[], n: number) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
 
 const NO = "Hanya admin yang bisa mengimpor data. Muat ulang halaman lalu login lagi.";

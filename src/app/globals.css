@@ -272,3 +272,7 @@ button.danger{color:var(--bad)}
 .kform.inline input{width:auto;min-width:140px;flex:1}
 .kcard summary{cursor:pointer}
 .kcard h3{margin:14px 0 4px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+/* Ruang kerja affiliate: tabel lebar digeser di dalam kotaknya, bukan seluruh halaman */
+.main{min-width:0;overflow-x:clip}
+#aff-root{max-width:100%;min-width:0}
+#aff-root main{overflow-x:auto}
