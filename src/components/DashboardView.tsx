@@ -6,7 +6,6 @@ import AutoImport from "@/components/AutoImport";
 import Affiliate from "@/components/Affiliate";
 import AppShell from "@/components/AppShell";
 import ExportBar from "@/components/ExportBar";
-import Checklist from "@/components/Checklist";
 import { RuriaWord } from "@/components/Logo";
 import { logAct } from "@/lib/log";
 import ProdukTable, { type PRow } from "@/components/ProdukTable";
@@ -103,7 +102,6 @@ async function SumTab(R: Range, clients: { id: string; nama: string; modul: stri
         <div className="cm"><div><span>GMV</span><b>{fmt(r.n)}</b></div><div><span>Perubahan</span><b className={v >= 0 ? "up" : "dn"}>{isFinite(v) ? `${v >= 0 ? "+" : ""}${v.toFixed(1)}%` : "–"}</b></div><div><span>ROAS iklan</span><b>{r.roas != null ? r.roas.toFixed(1) : "–"}</b></div></div>
         <div className="muted small">{r.ord.toLocaleString("id")} pesanan · data terakhir {f?.penjualan ? `${tgl(f.penjualan)} ${f.penjualan.slice(0, 4)}` : "–"}</div>
       </a>; })}</div>
-    <Checklist clientIds={clients.map((c) => c.id)} />
     <div className="card"><h2>Status data terakhir</h2><p className="muted small">Aman kalau data sudah masuk sampai kemarin ({tgl(yday)} {yday.slice(0, 4)}).</p>
       <div className="tbl"><table><thead><tr><th>Klien</th><th>Penjualan</th><th></th><th>Iklan</th><th></th><th>Livestream</th><th></th></tr></thead>
         <tbody>{clients.map((c) => { const f = F.find((x) => x.client_id === c.id); return <tr key={c.id}><td>{c.nama}</td>{cell(c.modul.includes("toko"), f?.penjualan)}{cell(c.modul.includes("iklan"), f?.iklan)}{cell(c.modul.includes("live"), f?.live)}</tr>; })}</tbody></table></div></div>
