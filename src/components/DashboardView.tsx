@@ -9,6 +9,7 @@ import ExportBar from "@/components/ExportBar";
 import { RuriaWord } from "@/components/Logo";
 import { logAct } from "@/lib/log";
 import ProdukTable, { type PRow } from "@/components/ProdukTable";
+import IklanTable, { type CRow } from "@/components/IklanTable";
 import { shortName } from "@/lib/nama";
 import { Kpi, Insight, Bars, LineChart, Share, Spark } from "@/components/ui";
 import { clientsFor, loadClient, freshness, produkSku, storeLast, type Sale, type Ad, type Live, type Store } from "@/lib/data";
@@ -51,7 +52,7 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
       const PS = prodStats(prod, ts);
       body = <><TokoTab R={R} stores={ts} sales={D.sales} last={SL} prod={PS} /><ProdukSection R={R} ps={PS} err={prodErr} /></>;
     }
-    else if (tab === "iklan") body = <IklanTab R={R} stores={st} ads={D.ads} sales={D.sales} target={c.target_roas} />;
+    else if (tab === "iklan") body = <IklanTab R={R} stores={st} ads={D.ads} sales={D.sales} />;
     else if (tab === "affiliate") {
       const has = (await q<{ n: number }>("select count(*) n from aff_files where client_id = ?", [c.id]))[0].n > 0;
       body = has ? <Affiliate key={c.id} client={c.id} nama={c.nama} user={"u" + profile!.id} />
@@ -172,28 +173,63 @@ function TokoTab({ R, stores, sales, last, prod }: { R: Range; stores: Store[]; 
 }
 
 /* ---------------- Iklan ---------------- */
-function IklanTab({ R, stores, ads, sales, target }: { R: Range; stores: Store[]; ads: Ad[]; sales: Sale[]; target: number | null }) {
-  const ids = new Set(stores.map((s) => s.id)); const name = (id: string) => { const s = stores.find((x) => x.id === id)!; return `${s.brand} · ${s.platform}`; };
-  const A = ads.filter((a) => ids.has(a.store_id) && a.dari <= R.to && a.sampai >= R.from);
-  if (!A.length) return <p className="note">Belum ada data iklan untuk {R.label.toLowerCase()} pada pilihan ini. Data iklan bulanan hanya muncul kalau periodenya mencakup bulan itu.</p>;
-  const C: Record<string, { c: string; s: number; g: number; o: number }> = {};
-  A.forEach((a) => { const k = name(a.store_id) + " · " + a.kampanye; const x = (C[k] ??= { c: k, s: 0, g: 0, o: 0 }); x.s += a.biaya; x.g += a.gmv; x.o += a.pesanan; });
-  const camps = Object.values(C).sort((a, b) => b.s - a.s).map((c) => ({ ...c, r: c.s ? c.g / c.s : 0 }));
-  const S = camps.reduce((a, c) => a + c.s, 0), G = camps.reduce((a, c) => a + c.g, 0), roas = S ? G / S : 0;
+const tipeIklan = (k: string, pf: string) => /gmv max/i.test(k) ? "GMV Max" : /otomatis/i.test(k) ? "Iklan Otomatis" : /total bulan/i.test(k) ? "Total iklan (bulanan)" : /^iklan toko|toko$/i.test(k) ? "Iklan Toko" : pf === "TikTok" ? "Iklan TikTok" : "Iklan Produk";
+/* Bagian biaya/GMV sebuah baris iklan yang jatuh di rentang [a,b] (laporan bulanan dibagi rata per hari) */
+const porsi = (x: Ad, a: string, b: string) => { const f = x.dari > a ? x.dari : a, t = x.sampai < b ? x.sampai : b; if (f > t) return 0; return (dayDiff(f, t) + 1) / (dayDiff(x.dari, x.sampai) + 1); };
+function IklanTab({ R, stores, ads, sales }: { R: Range; stores: Store[]; ads: Ad[]; sales: Sale[] }) {
+  const ids = new Set(stores.map((s) => s.id)); const SM = new Map(stores.map((s) => [s.id, s]));
+  const nameS = (id: string) => { const s = SM.get(id)!; return `${s.brand} · ${s.platform}`; };
+  const all = ads.filter((a) => ids.has(a.store_id));
+  const A = all.filter((a) => porsi(a, R.from, R.to) > 0), PA = all.filter((a) => porsi(a, R.pf, R.pt) > 0);
+  if (!A.length) return <p className="note">Belum ada data iklan untuk {R.label.toLowerCase()} pada pilihan ini.</p>;
+  type Ag = { s: number; g: number; o: number };
+  const camp = (xs: Ad[], a: string, b: string) => { const C = new Map<string, Ag & { id: string; k: string }>(); xs.forEach((x) => { const w = porsi(x, a, b), key = x.store_id + "\u0001" + x.kampanye; const c = C.get(key) ?? { id: x.store_id, k: x.kampanye, s: 0, g: 0, o: 0 }; c.s += x.biaya * w; c.g += x.gmv * w; c.o += x.pesanan * w; C.set(key, c); }); return C; };
+  const C = camp(A, R.from, R.to), CP = camp(PA, R.pf, R.pt);
+  const S = [...C.values()].reduce((a, c) => a + c.s, 0), G = [...C.values()].reduce((a, c) => a + c.g, 0), roas = S ? G / S : 0;
+  const Sp = [...CP.values()].reduce((a, c) => a + c.s, 0), Gp = [...CP.values()].reduce((a, c) => a + c.g, 0), roasP = Sp ? Gp / Sp : 0;
   const om = sales.filter((s) => ids.has(s.store_id) && s.tanggal >= R.from && s.tanggal <= R.to).reduce((a, s) => a + s.gmv, 0);
-  const t = target ?? 0, below = t ? camps.filter((c) => c.r < t - 2) : [], ok = t ? camps.filter((c) => c.r >= t - 2) : [];
-  const per = [...new Set(A.map((a) => `${tgl(a.dari)}–${tgl(a.sampai)}`))];
+  const omP = sales.filter((s) => ids.has(s.store_id) && s.tanggal >= R.pf && s.tanggal <= R.pt).reduce((a, s) => a + s.gmv, 0);
+  const cmp = R.key !== "all" && Sp > 0;
+  // Status tanpa target: dibandingkan dengan ROAS rata-rata periode ini
+  const sorted = [...C.values()].map((c) => c.s).sort((a, b) => a - b), med = sorted[Math.floor(sorted.length / 2)] ?? 0;
+  const rows: CRow[] = [...C.entries()].map(([key, c]) => { const r = c.s ? c.g / c.s : 0, p = CP.get(key), rp = p && p.s ? p.g / p.s : null, s0 = SM.get(c.id)!;
+    const st = c.s >= 100_000 && c.o < 0.5 ? "nol" : c.s >= S * 0.03 && r < roas * 0.6 ? "boros" : r >= roas * 1.3 && c.s <= Math.max(med, S * 0.03) && c.o >= 1 ? "scale" : "normal";
+    return { k: key, toko: nameS(c.id), platform: s0.platform, tipe: tipeIklan(c.k, s0.platform), nama: c.k, s: c.s, g: c.g, o: Math.round(c.o), r, dr: rp == null || !cmp ? null : r - rp, st }; }).sort((a, b) => b.s - a.s);
+  const boros = rows.filter((r) => r.st === "boros"), scale = rows.filter((r) => r.st === "scale").sort((a, b) => b.r - a.r), nol = rows.filter((r) => r.st === "nol");
+  // Tren
+  const B = buckets(R.from, R.to);
+  const tr = B.map((k) => A.reduce((a, x) => { const w = porsi(x, k.f, k.t); a.s += x.biaya * w; a.g += x.gmv * w; return a; }, { s: 0, g: 0 }));
+  const monthly = A.some((x) => dayDiff(x.dari, x.sampai) > 6) && B[0].f === B[0].t;
+  // Per toko
+  const per = stores.map((st) => { const cs = rows.filter((r) => r.k.startsWith(st.id + "\u0001")), ps = [...CP.entries()].filter(([k]) => k.startsWith(st.id + "\u0001")).map(([, v]) => v);
+    const s = cs.reduce((a, r) => a + r.s, 0), g = cs.reduce((a, r) => a + r.g, 0), o = cs.reduce((a, r) => a + r.o, 0), sp = ps.reduce((a, r) => a + r.s, 0), gp = ps.reduce((a, r) => a + r.g, 0);
+    const oms = sales.filter((x) => x.store_id === st.id && x.tanggal >= R.from && x.tanggal <= R.to).reduce((a, x) => a + x.gmv, 0);
+    return { st, s, g, o, r: s ? g / s : 0, rp: sp ? gp / sp : null, sp, bo: oms ? (s / oms) * 100 : null }; }).filter((x) => x.s > 0).sort((a, b) => b.s - a.s);
+  // Keterangan periode data
+  const harian = A.filter((x) => x.dari === x.sampai).length, bulanan = A.length - harian;
+  const ket = [harian ? `harian (${[...new Set(A.filter((x) => x.dari === x.sampai).map((x) => SM.get(x.store_id)!.platform))].join(", ")})` : "", bulanan ? `bulanan (${[...new Set(A.filter((x) => x.dari !== x.sampai).map((x) => SM.get(x.store_id)!.platform))].join(", ")}, dibagi rata per hari kalau periodenya tidak sebulan penuh)` : ""].filter(Boolean).join(" dan ");
+  const sumB = boros.reduce((a, r) => a + r.s, 0);
+  const L = (t: string, xs: CRow[], f: (r: CRow) => string, cls: string, hint: string) => <div className="act"><h3><span className={"pill " + cls}>{xs.length}</span> {t}</h3><p className="muted small" style={{ margin: "-4px 0 8px" }}>{hint}</p>{xs.length ? <ul>{xs.slice(0, 5).map((r) => <li key={r.k} title={r.nama}><b>{shortName(r.nama)}</b> <span className="muted small">{r.toko} · {f(r)}</span></li>)}{xs.length > 5 && <li className="muted small">+{xs.length - 5} lainnya (filter status di tabel)</li>}</ul> : <p className="muted small">Tidak ada.</p>}</div>;
   return (<>
-    <p className="note">Data iklan asli. Laporan bulanan dihitung utuh kalau bulannya masuk periode. Periode file: {per.length > 4 ? `${per[0]} … ${per[per.length - 1]}` : per.join(", ")}.</p>
-    <Insight src="Data asli" sum={[`Biaya iklan ${fmt(S)}${om ? ` (${(S / om * 100).toFixed(1)}% dari omzet toko)` : ""}.`, `ROAS ${roas.toFixed(1)}${t ? ` vs target ${t}; ${ok.length} dari ${camps.length} kampanye tercapai` : ""}.`]}
-      ana={[t ? (roas < t - 2 ? `ROAS keseluruhan ${(t - roas).toFixed(1)} poin di bawah target.` : "ROAS keseluruhan dalam toleransi target.") : "Target ROAS klien belum diatur.", ...below.slice(0, 4).map((c) => `${c.c}: ROAS ${c.r.toFixed(1)}, menyerap ${fmt(c.s)}.`)]}
-      next={[...below.slice(0, 3).map((c) => `${c.c}: turunkan target ROAS bertahap atau pangkas budget; evaluasi setelah 3 hari.`), ...(ok.length ? [`Naikkan budget kampanye yang tercapai sekitar 20–50% kalau stabil 3 hari.`] : []), "Pastikan produk tidak dobel di iklan otomatis dan iklan produk."]} />
-    <div className="kpis"><Kpi l="Biaya iklan" v={fmt(S)} /><Kpi l="GMV dari iklan" v={fmt(G)} /><Kpi l="ROAS" v={roas.toFixed(1)} sub={t ? `target ${t}` : undefined} />{om > 0 && <Kpi l="Biaya iklan / omzet" v={(S / om * 100).toFixed(1) + "%"} />}</div>
-    <div className="card"><h2>ROAS per kampanye <span className="muted small">(10 biaya terbesar{t ? `, target ${t}` : ""})</span></h2>
-      <Share items={camps.slice(0, 10).map((c) => ({ l: c.c, v: c.r, note: `ROAS ${c.r.toFixed(1)} · biaya ${fmt(c.s)}` }))} />
-      {t > 0 && <p className="muted small">Batang lebih panjang = ROAS lebih tinggi. Kampanye di bawah target {t} ditandai di tabel.</p>}</div>
-    <div className="card"><h2>Kampanye</h2><div className="tbl"><table><thead><tr><th>Kampanye</th><th className="n">Biaya</th><th className="n">GMV</th><th className="n">Pesanan</th><th className="n">ROAS</th><th>Status</th></tr></thead>
-      <tbody>{camps.slice(0, 200).map((c) => <tr key={c.c}><td className="wrapcell">{c.c}</td><td className="n">{fmt(c.s)}</td><td className="n">{fmt(c.g)}</td><td className="n">{c.o || "–"}</td><td className="n">{c.r.toFixed(1)}</td><td>{!t ? "–" : c.r >= t - 2 ? <span className="pill good">Tercapai</span> : c.r >= t - 5 ? <span className="pill warn">Di bawah</span> : <span className="pill bad">Jauh di bawah</span>}</td></tr>)}</tbody></table></div></div>
+    <p className="note">Data iklan: {ket}.</p>
+    <Insight src="Data asli" sum={[`Biaya iklan ${fmt(S)}${om ? ` (${(S / om * 100).toFixed(1)}% dari omzet toko)` : ""}, ROAS ${roas.toFixed(1)}${cmp ? ` (${roas >= roasP ? "naik" : "turun"} dari ${roasP.toFixed(1)} ${R.sub})` : ""}.`, ...(per.length > 1 ? [`Biaya terbesar: ${per[0].st.brand} · ${per[0].st.platform} (${fmt(per[0].s)}, ROAS ${per[0].r.toFixed(1)}).`] : [])]}
+      ana={[...(boros.length ? [`${boros.length} kampanye boros menyerap ${fmt(sumB)} (${(sumB / S * 100).toFixed(0)}% biaya) dengan ROAS di bawah ${(roas * 0.6).toFixed(1)}.`] : []), ...(nol.length ? [`${nol.length} kampanye keluar biaya tanpa pesanan (${fmt(nol.reduce((a, r) => a + r.s, 0))}).`] : []), ...(scale.length ? [`${scale.length} kampanye efisien (ROAS ≥ ${(roas * 1.3).toFixed(1)}) masih berbiaya kecil.`] : [])]}
+      next={[...(boros.length ? [`Pangkas atau turunkan bid ${boros.length} kampanye boros, hemat sampai ${fmt(sumB * 0.5)}.`] : []), ...(nol.length ? [`Matikan atau ganti produk di ${nol.length} kampanye tanpa penjualan.`] : []), ...(scale.length ? [`Naikkan budget ${Math.min(5, scale.length)} kampanye "bisa di-scale" 20–30%, evaluasi 3 hari.`] : [])]} />
+    <div className="kpis"><Kpi l="Biaya iklan" v={fmt(S)} d={cmp ? pct(S, Sp) : undefined} sub={R.sub} invert /><Kpi l="GMV atribusi iklan" v={fmt(G)} d={cmp ? pct(G, Gp) : undefined} sub={R.sub} /><Kpi l="ROAS" v={roas.toFixed(1)} d={cmp ? pct(roas, roasP) : undefined} sub={R.sub} />{om > 0 && <Kpi l="Biaya iklan / omzet" v={(S / om * 100).toFixed(1) + "%"} d={cmp && omP ? pct(S / om, Sp / omP) : undefined} sub={R.sub} invert />}</div>
+    {G > om && om > 0 && <p className="muted small" style={{ marginTop: -6 }}>GMV atribusi iklan bisa lebih besar dari omzet toko: platform menghitung pesanan dalam beberapa hari setelah klik (satu pesanan bisa tercatat di lebih dari satu kampanye) dan belum mengurangi pembatalan sebelum pesanan dikirim.</p>}
+    <div className="card"><h2>Tren biaya & GMV iklan</h2>
+      <Bars title="Biaya iklan" labels={B.map((b) => b.l)} series={[tr.map((x) => x.s)]} colors={["var(--aqua)"]} />
+      <LineChart title="GMV iklan" labels={B.map((b) => b.l)} cur={tr.map((x) => x.g)} />
+      <p className="muted small"><span style={{ color: "var(--aqua)" }}>■</span> Biaya iklan (atas) · <span style={{ color: "var(--accent)" }}>—</span> GMV atribusi iklan (bawah).{monthly ? " Laporan bulanan Shopee dibagi rata per hari, jadi garis hariannya perkiraan." : ""}</p></div>
+    {per.length > 0 && <div className="card"><h2>Per toko</h2><div className="tbl"><table><thead><tr><th>Toko</th><th className="n">Biaya</th><th className="n">GMV iklan</th><th className="n">Pesanan</th><th className="n">ROAS</th><th className="n">Δ ROAS</th><th className="n">Biaya / omzet</th></tr></thead>
+      <tbody>{per.map((x) => <tr key={x.st.id}><td>{x.st.brand} · {x.st.platform}</td><td className="n">{fmt(x.s)}</td><td className="n">{fmt(x.g)}</td><td className="n">{x.o.toLocaleString("id")}</td><td className="n">{x.r.toFixed(1)}</td>
+        <td className={"n " + (x.rp == null || !cmp ? "" : x.r >= x.rp ? "up" : "dn")}>{x.rp == null || !cmp ? "–" : `${x.r - x.rp >= 0 ? "+" : ""}${(x.r - x.rp).toFixed(1)}`}</td><td className="n">{x.bo != null ? x.bo.toFixed(1) + "%" : "–"}</td></tr>)}</tbody></table></div></div>}
+    {(boros.length + scale.length + nol.length) > 0 && <div className="card"><h2>Perlu tindakan</h2><div className="acts">
+      {L("Boros", boros, (r) => `${fmt(r.s)} · ROAS ${r.r.toFixed(1)}`, "bad", `Biaya ≥3% total, ROAS < ${(roas * 0.6).toFixed(1)}`)}
+      {L("Bisa di-scale", scale, (r) => `${fmt(r.s)} · ROAS ${r.r.toFixed(1)}`, "good", `ROAS ≥ ${(roas * 1.3).toFixed(1)}, biaya masih kecil`)}
+      {L("Tanpa penjualan", nol, (r) => `${fmt(r.s)} · 0 pesanan`, "bad", "Biaya ≥ Rp100 rb, 0 pesanan")}
+    </div><p className="muted small">Patokan memakai ROAS rata-rata periode ini ({roas.toFixed(1)}), sampai KPI tiap klien diisi.</p></div>}
+    <div className="card"><h2>Kampanye</h2><IklanTable rows={rows} /></div>
   </>);
 }
 
