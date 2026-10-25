@@ -31,11 +31,24 @@ export default async function LogPage({ searchParams }: { searchParams: Promise<
         <input type="date" name="d" defaultValue={sp.d ?? ""} style={{ width: "auto" }} />
         <button>Terapkan</button>
       </form>
-      <div className="card"><div className="tbl"><table><thead><tr><th>Waktu</th><th>Siapa</th><th>Aktivitas</th><th>Klien</th><th>Detail</th><th>IP</th></tr></thead>
-        <tbody>{rows.map((r, i) => <tr key={i}><td>{String(r.waktu).slice(0, 19)}</td><td>{r.nama} <span className="muted small">{PERAN_LABEL[r.peran] ?? r.peran}</span></td><td>{r.aksi}</td><td>{r.klien ?? "–"}</td><td className="wrapcell">{r.detail}</td><td className="muted small">{r.ip ?? ""}</td></tr>)}</tbody></table></div>
-        {!rows.length && <p className="muted">Belum ada aktivitas untuk filter ini.</p>}
-        <p className="muted small">Menampilkan 500 aktivitas terbaru.</p>
-      </div>
+      {(() => {
+        const ts = (w: unknown) => { const d = w instanceof Date ? w : new Date(String(w).replace(" ", "T")); return isNaN(+d) ? String(w).slice(0, 19) : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`; };
+        const HR = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"], BL = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+        const tglL = (t: string) => { const d = new Date(t + "T00:00:00"); return `${HR[d.getDay()]}, ${d.getDate()} ${BL[d.getMonth()]} ${d.getFullYear()}`; };
+        const D = new Map<string, Map<string, (typeof rows[number] & { t: string })[]>>();
+        for (const r of rows) { const t = ts(r.waktu), k = t.slice(0, 10), u = `${r.nama}|${r.peran}`; if (!D.has(k)) D.set(k, new Map()); const m = D.get(k)!; if (!m.has(u)) m.set(u, []); m.get(u)!.push({ ...r, t }); }
+        if (!rows.length) return <div className="card"><p className="muted">Belum ada aktivitas untuk filter ini.</p></div>;
+        return <>{[...D].map(([tgl, U]) => <section className="card" key={tgl}>
+          <h2>{tglL(tgl)} <span className="muted small">{[...U.values()].reduce((a, x) => a + x.length, 0)} aktivitas · {U.size} orang</span></h2>
+          {[...U].sort((a, b) => b[1].length - a[1].length).map(([u, L]) => { const [nama, peran] = u.split("|"); const cnt = new Map<string, number>(); L.forEach((x) => cnt.set(x.aksi, (cnt.get(x.aksi) ?? 0) + 1));
+            return <details key={u} className="logu">
+              <summary><b>{nama}</b> <span className="muted small">{PERAN_LABEL[peran] ?? peran}</span> · {L.length} aktivitas · <span className="small">{L[L.length - 1].t.slice(11, 16)}–{L[0].t.slice(11, 16)}</span>
+                <div className="muted small">{[...cnt].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, v]) => `${k} ${v}×`).join(" · ")}</div></summary>
+              <div className="tbl"><table><thead><tr><th>Jam</th><th>Aktivitas</th><th>Klien</th><th>Detail</th><th>IP</th></tr></thead>
+                <tbody>{L.map((r, i) => <tr key={i}><td>{r.t.slice(11, 19)}</td><td>{r.aksi}</td><td>{r.klien ?? "–"}</td><td className="wrapcell">{r.detail}</td><td className="muted small">{r.ip ?? ""}</td></tr>)}</tbody></table></div>
+            </details>; })}
+        </section>)}<p className="muted small">Menampilkan 500 aktivitas terbaru.</p></>;
+      })()}
     </main>
   </AppShell>;
 }

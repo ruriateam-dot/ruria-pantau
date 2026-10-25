@@ -315,3 +315,5 @@ button.danger{color:var(--bad)}
 .contrib>div{border:1px solid var(--line);border-radius:8px;padding:12px}.contrib>div.tot{background:color-mix(in srgb,var(--accent) 6%,var(--panel))}
 .contrib span{display:block;font-size:12px;color:var(--muted)}.contrib b{font-size:18px}
 .contrib small{display:block;margin-top:2px}
+
+.logu{border-top:1px solid var(--line);padding:8px 0}.logu>summary{cursor:pointer;list-style:none}.logu>summary::-webkit-details-marker{display:none}.logu>summary::before{content:"▸ ";color:var(--muted)}.logu[open]>summary::before{content:"▾ "}.logu .tbl{margin-top:8px}
