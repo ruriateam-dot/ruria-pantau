@@ -39,6 +39,8 @@ async function ready() {
         for (const [id, akun] of [["cahaya-cabydut-shopee", "cabydutkids"], ["cahaya-qaira-shopee", "qairaofficial"], ["cahaya-pepisun-shopee", "pepisun"], ["cahaya-pepico-shopee", "pepico.id"]])
           await pool().query("update stores set akun = ? where id = ? and akun is null", [akun, id]);
       }
+      // Saldo iklan per akun toko, diinput tim (riwayat disimpan)
+      await pool().query("create table if not exists ad_balance (id bigint auto_increment primary key, store_id varchar(80) not null, saldo decimal(16,2) not null, catatan varchar(200) null, oleh int null, nama varchar(160) null, waktu datetime not null, index (store_id, waktu))");
       // Nama klien = nama perusahaan (hanya mengganti nama bawaan lama, nama yang sudah diubah manual dibiarkan)
       for (const [id, lama, baru] of [["ot", "Organic Treasure", "PT Bara Infinity Group"], ["jf", "Just Fluff", "PT Justfluff Nusantara Indo"], ["voie", "VOIE", "PT Natural Sense Asia"],
         ["dren", "Dren", "CV Mitra Berkat Indokreasi"], ["pmg", "PMG", "Putera Mahkota Group"]])
