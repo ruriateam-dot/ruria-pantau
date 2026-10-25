@@ -12,6 +12,7 @@ import otEf from "@/data/aff/ot/efektivitas.json";
 import otHasil from "@/data/aff/ot/sampel_hasil.json";
 import otSampel from "@/data/aff/ot/sampel_mei_okt.json";
 import otBrand from "@/data/aff/ot/brand.json";
+import extra from "@/data/extra.json";
 
 type Seed = {
   clients?: { id: string; nama: string; modul: string[]; target_roas: number | null }[];
@@ -26,6 +27,7 @@ const S = seed as unknown as Seed;
 const DATA_VERSION = "2026-10-24e";
 // Versi terpisah per jenis data, supaya pembaruan satu bagian tidak menimpa data upload tim
 const AFF_VERSION = "aff-2026-10-26g";
+const EXTRA_VERSION = "extra-2026-10-26a";
 const chunk = <T,>(a: T[], n: number) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
 
 const NO = "Hanya admin yang bisa mengimpor data. Muat ulang halaman lalu login lagi.";
@@ -78,16 +80,31 @@ export async function importProdukPart(part: number): Promise<{ ok: boolean; msg
 }
 
 /* Pembaruan otomatis per versi data */
-export async function autoStatus(): Promise<{ seed: boolean; aff: boolean }> {
+export async function autoStatus(): Promise<{ seed: boolean; aff: boolean; extra: boolean }> {
   const u = await requireAdmin();
-  if (!u) return { seed: false, aff: false };
-  const done = (await q<{ jenis: string }>("select distinct jenis from uploads where jenis in (?)", [["data-otomatis:" + DATA_VERSION, "data-otomatis:" + AFF_VERSION]])).map((x) => x.jenis);
-  return { seed: !done.includes("data-otomatis:" + DATA_VERSION), aff: !done.includes("data-otomatis:" + AFF_VERSION) };
+  if (!u) return { seed: false, aff: false, extra: false };
+  const V = [DATA_VERSION, AFF_VERSION, EXTRA_VERSION].map((v) => "data-otomatis:" + v);
+  const done = (await q<{ jenis: string }>("select distinct jenis from uploads where jenis in (?)", [V])).map((x) => x.jenis);
+  return { seed: !done.includes(V[0]), aff: !done.includes(V[1]), extra: !done.includes(V[2]) };
 }
-export async function autoMark(which: "seed" | "aff"): Promise<void> {
+export async function autoMark(which: "seed" | "aff" | "extra"): Promise<void> {
   const u = await requireAdmin();
   if (!u) return;
-  await exec("insert into uploads (client_id, jenis, nama_file, oleh) values (null, ?, 'pembaruan data dari Claude', ?)", ["data-otomatis:" + (which === "seed" ? DATA_VERSION : AFF_VERSION), u.id]);
+  await exec("insert into uploads (client_id, jenis, nama_file, oleh) values (null, ?, 'pembaruan data dari Claude', ?)", ["data-otomatis:" + (which === "seed" ? DATA_VERSION : which === "aff" ? AFF_VERSION : EXTRA_VERSION), u.id]);
+}
+
+/* Metrik tambahan Seller Centre: statistik toko, performa produk, laporan iklan */
+type EX = { sp: [string, string, string, unknown][]; pm: [string, string, string, unknown][]; ad: [string, string, string, string, number | null, number | null, number | null][] };
+export async function importExtra(): Promise<string> {
+  const u = await requireAdmin();
+  if (!u) return NO;
+  const E = extra as unknown as EX;
+  try {
+    await bulk("insert into store_period (store_id, dari, sampai, data)", E.sp.map(([s, a, b, d]) => [s, a, b, JSON.stringify(d)]), " on duplicate key update data = values(data)");
+    for (const c of chunk(E.pm, 5)) await bulk("insert into product_period (store_id, dari, sampai, data)", c.map(([s, a, b, d]) => [s, a, b, JSON.stringify(d)]), " on duplicate key update data = values(data)");
+    await bulk("insert into ads_meta (store_id, dari, sampai, kampanye, dilihat, klik, keranjang)", E.ad.map((r) => [r[0], r[1], r[2], r[3].replace(/\s+/g, " ").trim().slice(0, 255), r[4], r[5], r[6]]), " on duplicate key update dilihat = values(dilihat), klik = values(klik), keranjang = values(keranjang)");
+  } catch (e) { return "Gagal di tahap metrik Seller Centre: " + (e as Error).message; }
+  return "Selesai";
 }
 
 /* Data ruang kerja affiliate (saat ini Just Fluff) */

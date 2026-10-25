@@ -1,14 +1,20 @@
 "use client";
 import { useEffect, useState } from "react";
-import { autoStatus, autoMark, importSeed, importProdukPart, importAff } from "@/app/dashboard/impor/actions";
+import { autoStatus, autoMark, importSeed, importProdukPart, importAff, importExtra } from "@/app/dashboard/impor/actions";
 
-export async function runImport(onStep: (msg: string) => void, what = { seed: true, aff: true }): Promise<{ ok: boolean; msg: string }> {
+export async function runImport(onStep: (msg: string) => void, what: { seed: boolean; aff: boolean; extra?: boolean } = { seed: true, aff: true, extra: true }): Promise<{ ok: boolean; msg: string }> {
   if (what.seed) { const r = await runSeed(onStep); if (!r.ok) return r; await autoMark("seed"); }
   if (what.aff) {
     onStep("Memasukkan data affiliate…");
     const f = await importAff();
     if (f !== "Selesai") return { ok: false, msg: f };
     await autoMark("aff");
+  }
+  if (what.extra) {
+    onStep("Memasukkan metrik Seller Centre…");
+    const f = await importExtra();
+    if (f !== "Selesai") return { ok: false, msg: f };
+    await autoMark("extra");
   }
   return { ok: true, msg: "Data terbaru sudah masuk. Muat ulang halaman untuk melihatnya." };
 }
@@ -34,7 +40,7 @@ export default function AutoImport() {
     (async () => {
       try {
         const s = await autoStatus();
-        if ((!s.seed && !s.aff) || !alive) return;
+        if ((!s.seed && !s.aff && !s.extra) || !alive) return;
         setState({ status: "run", msg: "Memeriksa data terbaru…" });
         const r = await runImport((m) => alive && setState({ status: "run", msg: m }), s);
         if (alive) setState({ status: r.ok ? "ok" : "err", msg: r.msg });

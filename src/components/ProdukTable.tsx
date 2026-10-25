@@ -3,7 +3,7 @@ import { Fragment, useMemo, useState } from "react";
 import { shortName } from "@/lib/nama";
 
 export type PRow = { grup: string; nama: string; kode: string[] | null; gmv: number; qty: number; ch: number; prev: number; share: number; cum: number; status: string; toko: string[]; tokoLabel: string;
-  varian: { sku: string; varian: string; toko: string; qty: number; gmv: number }[] | null };
+  varian: { sku: string; varian: string; toko: string; qty: number; gmv: number }[] | null; sc?: { dl: number; kl: number; kr: number; pg: number } | null };
 
 const fmt = (n: number) => n >= 1e9 ? `Rp${(n / 1e9).toFixed(2).replace(".", ",")} M` : n >= 1e6 ? `Rp${(n / 1e6).toFixed(1).replace(".", ",")} jt` : `Rp${Math.round(n / 1e3)} rb`;
 const PILL: Record<string, [string, string]> = { andalan: ["good", "Andalan"], naik: ["good", "Naik"], turun: ["warn", "Turun"], stop: ["bad", "Berhenti terjual"], baru: ["mute", "Baru terjual"], biasa: ["mute", "Stabil"] };
@@ -16,6 +16,7 @@ export default function ProdukTable({ rows, tokoName }: { rows: PRow[]; tokoName
   const tokoOpts = useMemo(() => [...new Set(rows.flatMap((r) => r.toko))], [rows]);
   const F = useMemo(() => { const c = cari.trim().toLowerCase();
     return rows.filter((r) => (!toko || r.toko.includes(toko)) && (!status || r.status === status) && (!c || r.nama.toLowerCase().includes(c) || r.grup.toLowerCase().includes(c) || (r.kode ?? []).some((k) => k.toLowerCase().includes(c)))); }, [rows, toko, status, cari]);
+  const hasSC = rows.some((r) => r.sc);
   const reset = (f: () => void) => { f(); setN(STEP); };
   return (<>
     <div className="pfil">
@@ -25,7 +26,7 @@ export default function ProdukTable({ rows, tokoName }: { rows: PRow[]; tokoName
       <span className="muted small">{F.length} SKU</span>
     </div>
     <div className="tbl"><table className="ptab">
-      <thead><tr><th>#</th><th>SKU induk</th><th>Produk</th><th className="n">GMV</th><th className="n">Qty</th><th className="n">Harga rata²</th><th className="n">Δ GMV</th><th className="n">Porsi</th><th className="n">Kumulatif</th><th>Status</th></tr></thead>
+      <thead><tr><th>#</th><th>SKU induk</th><th>Produk</th><th className="n">GMV</th><th className="n">Qty</th><th className="n">Harga rata²</th>{hasSC && <><th className="n" title="Shopee, laporan bulanan">Dilihat</th><th className="n">Diklik</th><th className="n">CTR</th><th className="n">Keranjang</th></>}<th className="n">Δ GMV</th><th className="n">Porsi</th><th className="n">Kumulatif</th><th>Status</th></tr></thead>
       <tbody>{F.slice(0, n).map((r) => {
         const isOpen = open.has(r.grup), code = r.kode?.[0] ?? (r.grup.startsWith("NAMA:") ? "–" : r.grup);
         return (
@@ -34,13 +35,13 @@ export default function ProdukTable({ rows, tokoName }: { rows: PRow[]; tokoName
               <td>{(() => { const k = rows.indexOf(r) + 1; return r.gmv > 0 ? <span className={"rk" + (k <= 3 ? " r" + k : "")}>{k}</span> : "–"; })()}</td>
               <td><span className="chev" aria-hidden="true">{isOpen ? "▾" : "▸"}</span> <b>{code}</b>{r.kode && r.kode.length > 1 && <div className="muted small">+{r.kode.length - 1} kode lain</div>}</td>
               <td className="wrapcell" title={r.nama}>{shortName(r.nama)}<div className="muted small">{r.tokoLabel}</div></td>
-              <td className="n">{fmt(r.gmv)}</td><td className="n">{r.qty.toLocaleString("id")}</td><td className="n">{r.qty ? fmt(r.gmv / r.qty) : "–"}</td>
+              <td className="n">{fmt(r.gmv)}</td><td className="n">{r.qty.toLocaleString("id")}</td><td className="n">{r.qty ? fmt(r.gmv / r.qty) : "–"}</td>{hasSC && <><td className="n">{r.sc ? Math.round(r.sc.dl).toLocaleString("id") : "–"}</td><td className="n">{r.sc ? Math.round(r.sc.kl).toLocaleString("id") : "–"}</td><td className="n">{r.sc && r.sc.dl ? ((r.sc.kl / r.sc.dl) * 100).toFixed(2) + "%" : "–"}</td><td className="n">{r.sc ? Math.round(r.sc.kr).toLocaleString("id") : "–"}</td></>}
               <td className={"n " + (r.ch >= 0 ? "up" : "dn")}>{r.prev ? `${r.ch >= 0 ? "+" : ""}${r.ch.toFixed(0)}%` : "–"}</td>
               <td className="n">{r.share.toFixed(1)}%</td><td className="n muted">{r.gmv ? r.cum.toFixed(0) + "%" : "–"}</td>
               <td><span className={"pill " + PILL[r.status][0]}>{PILL[r.status][1]}</span></td>
             </tr>
             {isOpen && (
-              <tr className="vrow"><td colSpan={10}>
+              <tr className="vrow"><td colSpan={hasSC ? 14 : 10}>
                 <p className="small" style={{ margin: "0 0 6px" }}>{r.nama}</p>
                 {r.varian?.length ? (
                   <table className="vtab"><thead><tr><th>SKU varian</th><th>Varian</th><th>Toko</th><th className="n">Qty</th><th className="n">GMV</th><th className="n">Porsi di SKU</th></tr></thead>

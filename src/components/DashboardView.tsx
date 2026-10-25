@@ -16,7 +16,7 @@ import ProdukDiag from "@/components/ProdukDiag";
 import SaldoIklan, { type SaldoRow } from "@/components/SaldoIklan";
 import { shortName } from "@/lib/nama";
 import { Kpi, Insight, Bars, LineChart, Share, Spark } from "@/components/ui";
-import { clientsFor, loadClient, freshness, produkSku, storeLast, type Sale, type Ad, type Live, type Store } from "@/lib/data";
+import { clientsFor, loadClient, freshness, produkSku, storeLast, storePeriods, adsMeta, type SP, type Sale, type Ad, type Live, type Store } from "@/lib/data";
 import { resolvePeriod, buckets, fmt, pct, jm, tgl, addDays, dayDiff, todayWIB, type Range } from "@/lib/period";
 
 type SPv = Record<string, string | undefined>;
@@ -53,8 +53,13 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
       let prod: Prod[] = [], prodErr: string | undefined;
       try { prod = await produkSku(ts.map((s) => s.id), R.from, R.to, R.pf, R.pt); } catch (e) { prodErr = (e as Error).message; }
       const SL = await storeLast(ts.map((s) => s.id));
-      const PS = prodStats(prod, ts);
-      body = <><TokoTab R={R} stores={ts} sales={D.sales} last={SL} prod={PS} live={D.live} ads={D.ads} plat={sp.p} /><ProdukSection R={R} ps={PS} err={prodErr} /></>;
+      const scN = await storePeriods(ts.map((s) => s.id), R.from, R.to), scP = R.key === "all" ? [] : await storePeriods(ts.map((s) => s.id), R.pf, R.pt);
+      const PP = await storePeriods(ts.map((s) => s.id), R.from, R.to, "product_period");
+      const PM = new Map<string, { dl: number; kl: number; kr: number; pg: number }>();
+      for (const x of PP) for (const r of x.d as unknown as [string, string, number, number, number | null, number | null, number | null, number | null, number | null][]) {
+        const k = String(r[1]).trim().toLowerCase(), m = PM.get(k) ?? { dl: 0, kl: 0, kr: 0, pg: 0 }; m.dl += (r[4] ?? 0) * x.w; m.kl += (r[5] ?? 0) * x.w; m.pg += (r[6] ?? 0) * x.w; m.kr += (r[7] ?? 0) * x.w; PM.set(k, m); }
+      const PS = prodStats(prod, ts, PM);
+      body = <><TokoTab R={R} stores={ts} sales={D.sales} last={SL} prod={PS} live={D.live} ads={D.ads} plat={sp.p} scN={scN} scP={scP} /><ProdukSection R={R} ps={PS} err={prodErr} /></>;
     }
     else if (tab === "iklan") {
       // Saldo iklan hanya untuk tim (tidak tampil di link klien)
@@ -65,7 +70,8 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
         const rowsS: SaldoRow[] = acc.map((s) => { const h = H.filter((x) => x.store_id === s.id); return { id: s.id, nama: `${s.brand} · ${s.platform}`, saldo: h[0] ? +h[0].saldo : null, waktu: h[0]?.w ?? null, oleh: h[0]?.nama ?? null, catatan: h[0]?.catatan ?? null, riwayat: h.slice(0, 15).map((x) => ({ saldo: +x.saldo, waktu: x.w, oleh: x.nama })) }; });
         saldo = <SaldoIklan rows={rowsS} canEdit={isAdmin} />;
       }
-      body = <>{saldo}<IklanTab R={R} stores={st} ads={D.ads} sales={D.sales} /></>;
+      const AM = await adsMeta(st.map((s) => s.id), R.pf < R.from ? R.pf : R.from, R.to);
+      body = <>{saldo}<IklanTab R={R} stores={st} ads={D.ads} sales={D.sales} meta={AM} /></>;
     }
     else if (tab === "affiliate") {
       const has = (await q<{ n: number }>("select count(*) n from aff_files where client_id = ?", [c.id]))[0].n > 0;
@@ -74,6 +80,7 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
     }
     else if (tab === "live") {
       const jad = await q<Jd>("select date_format(l.tanggal, '%Y-%m-%d') tanggal, l.mulai, l.selesai, h.nama host from live_schedule l join hosts h on h.id = l.host_id where l.client_id = ? and l.tanggal between ? and ?", [c.id, R.from, R.to]);
+      // Catatan: ekspor statistik toko Shopee hanya memuat 5 sesi live teratas per bulan, jadi tidak dipakai untuk total live
       body = <LiveTab R={R} live={D.live} brand={sp.b} plat={sp.p} jadwal={jad} />;
     }
   }
@@ -144,7 +151,7 @@ async function SumTab(R: Range, clients: { id: string; nama: string; modul: stri
 }
 
 /* ---------------- Toko ---------------- */
-function TokoTab({ R, stores, sales, last, prod, live, ads, plat }: { R: Range; stores: Store[]; sales: Sale[]; last: Record<string, string>; prod: PStats; live: Live[]; ads: Ad[]; plat?: string }) {
+function TokoTab({ R, stores, sales, last, prod, live, ads, plat, scN, scP }: { R: Range; stores: Store[]; sales: Sale[]; last: Record<string, string>; prod: PStats; live: Live[]; ads: Ad[]; plat?: string; scN: SP[]; scP: SP[] }) {
   if (!stores.length) return <p className="muted">Tidak ada toko untuk pilihan ini.</p>;
   // Toko yang datanya berhenti sebelum akhir periode (lebih dari 3 hari) tidak ikut dibandingkan
   const stale = (id: string) => !last[id] || dayDiff(last[id], R.to) > 3;
@@ -188,7 +195,43 @@ function TokoTab({ R, stores, sales, last, prod, live, ads, plat }: { R: Range; 
         { g: "Trafik", k: "vp", l: "Penjualan per pengunjung", f: "rp", v: n.vok && n.v ? n.g / n.v : NaN, d: cmp && nf.vok && nf.v && o.vok && o.v ? pct(nf.g / nf.v, o.g / o.v) : null, s: ser((x) => (x.v ? x.g / x.v : 0), B), ps: PBs && ser((x) => (x.v ? x.g / x.v : 0), PBs) },
       ];
       return <MetricBoard metrics={M} labels={B.map((b) => b.l)} sub={R.sub} init={["g", "o"]} />; })()}
-    {(() => { // Rincian kontribusi penjualan (ala Seller Centre)
+    {scN.length > 0 && (() => { // Metrik Seller Centre (ekspor statistik toko Shopee, bulanan)
+      const S2 = (L: SP[], k: string) => L.reduce((t, x) => t + (typeof x.d[k] === "number" ? (x.d[k] as number) * x.w : 0), 0);
+      const has = (L: SP[], k: string) => L.some((x) => typeof x.d[k] === "number");
+      const card = (l: string, v: number, p: number | null, f: (n: number) => string, inv = false, note?: string) => { const d = p && cmpSC ? ((v - p) / p) * 100 : null, good = d == null || (inv ? d <= 0 : d >= 0);
+        return <div className="mbc" key={l} style={{ cursor: "default" }}><span className="mbl">{l}</span><b>{f(v)}</b><span className={"mbd " + (d == null ? "muted" : good ? "up" : "dn")}>{d == null ? (note ?? "") : `${d >= 0 ? "▲" : "▼"} ${Math.abs(d).toFixed(1)}% ${R.sub}`}</span></div>; };
+      const cmpSC = scP.length > 0 && R.key !== "all";
+      const nn = (n: number) => Math.round(n).toLocaleString("id"), pc = (n: number) => n.toFixed(2).replace(".", ",") + "%";
+      const pen = S2(scN, "penjualan"), penP = S2(scP, "penjualan"), pes = S2(scN, "pesanan"), pesP = S2(scP, "pesanan");
+      const bo = S2(scN, "batal_o"), bg = S2(scN, "batal_g"), ro = S2(scN, "retur_o"), rg = S2(scN, "retur_g"), pb = S2(scN, "pembeli"), br = S2(scN, "baru"), lm = S2(scN, "lama"), kl = S2(scN, "diklik"), pt = S2(scN, "potensi");
+      const tokoSC = [...new Set(scN.map((x) => x.store_id))].map((id) => stores.find((s2) => s2.id === id)?.brand).filter(Boolean).join(", ");
+      const monthly = scN.some((x) => x.w < 0.999);
+      const kk = has(scN, "k_halaman");
+      const K = [["Halaman produk", "k_halaman"], ["Live penjual", "k_live"], ["Video penjual", "k_video"], ["Live & video affiliate", "k_aff"]] as const;
+      return <div className="card mb"><h2 style={{ marginTop: 14 }}>Detail Seller Centre <span className="muted small">Shopee · {tokoSC}</span></h2>
+        <h3 className="mbgh">Pesanan & pembatalan</h3><div className="mbg">
+          {card("Pesanan dibatalkan", bo, cmpSC ? S2(scP, "batal_o") : null, nn, true)}
+          {card("Penjualan dibatalkan", bg, cmpSC ? S2(scP, "batal_g") : null, fmt, true)}
+          {card("% pesanan dibatalkan", pes ? (bo / (pes + bo)) * 100 : 0, cmpSC && pesP ? (S2(scP, "batal_o") / (pesP + S2(scP, "batal_o"))) * 100 : null, pc, true)}
+          {card("Pesanan dikembalikan", ro, cmpSC ? S2(scP, "retur_o") : null, nn, true)}
+          {card("Penjualan dikembalikan", rg, cmpSC ? S2(scP, "retur_g") : null, fmt, true)}
+        </div>
+        <h3 className="mbgh">Pembeli & trafik</h3><div className="mbg">
+          {card("Pembeli", pb, cmpSC ? S2(scP, "pembeli") : null, nn)}
+          {card("Pembeli baru", br, cmpSC ? S2(scP, "baru") : null, nn)}
+          {card("Pembeli lama", lm, cmpSC ? S2(scP, "lama") : null, nn, false, pb ? `${((lm / pb) * 100).toFixed(1)}% dari pembeli` : undefined)}
+          {card("Potensi pembeli", pt, cmpSC ? S2(scP, "potensi") : null, nn)}
+          {card("Produk diklik", kl, cmpSC ? S2(scP, "diklik") : null, nn)}
+          {card("Penjualan (Seller Centre)", pen, cmpSC ? penP : null, fmt)}
+        </div>
+        {kk && <><h3 className="mbgh">Rincian kontribusi penjualan</h3><div className="contrib" style={{ marginTop: 8 }}>
+          <div className="tot"><span>Total penjualan (100%)</span><b>{fmt(pen)}</b></div>
+          {K.map(([l, k]) => { const v = S2(scN, k), vp = S2(scP, k); return <div key={k}><span>{l}</span><b>{fmt(v)}</b><small className="small muted">{pen ? ((v / pen) * 100).toFixed(0) : 0}% dari penjualan{cmpSC && vp ? <span className={v >= vp ? "up" : "dn"}> {v >= vp ? "▲" : "▼"} {Math.abs(pct(v, vp)).toFixed(1)}%</span> : null}</small></div>; })}
+          <div><span>Iklan Shopee (kontribusi)</span><b>{fmt(S2(scN, "k_iklan"))}</b><small className="small muted">{pen ? Math.min(100, (S2(scN, "k_iklan") / pen) * 100).toFixed(0) : 0}% dari penjualan</small></div>
+        </div></>}
+        <p className="muted small" style={{ marginBottom: 12 }}>Sumber: ekspor statistik toko Shopee (Data Bisnis), status pesanan dibuat. Laporannya bulanan{monthly ? ", jadi untuk periode yang tidak sebulan penuh angkanya dibagi rata per hari (perkiraan)" : ""}. Kontribusi iklan dihitung Shopee terpisah dan bisa tumpang tindih dengan sumber lain.</p>
+      </div>; })()}
+    {!scN.some((x) => typeof x.d.k_halaman === "number") && (() => { // Rincian kontribusi penjualan (perkiraan, kalau belum ada data Seller Centre)
       const brands = new Set(stores.map((x) => x.brand.toLowerCase()));
       const lv = live.filter((x) => x.tanggal >= R.from && x.tanggal <= R.to && (!x.brand || brands.has(x.brand.toLowerCase()))).reduce((t, x) => t + (plat === "TikTok" ? 0 : +x.gmv_shopee) + (plat === "Shopee" ? 0 : +x.gmv_tiktok), 0);
       const lvP = live.filter((x) => x.tanggal >= R.pf && x.tanggal <= R.pt && (!x.brand || brands.has(x.brand.toLowerCase()))).reduce((t, x) => t + (plat === "TikTok" ? 0 : +x.gmv_shopee) + (plat === "Shopee" ? 0 : +x.gmv_tiktok), 0);
@@ -221,14 +264,18 @@ function TokoTab({ R, stores, sales, last, prod, live, ads, plat }: { R: Range; 
 const tipeIklan = (k: string, pf: string) => /gmv max/i.test(k) ? "GMV Max" : /otomatis/i.test(k) ? "Iklan Otomatis" : /total bulan/i.test(k) ? "Total iklan (bulanan)" : /^iklan toko|toko$/i.test(k) ? "Iklan Toko" : pf === "TikTok" ? "Iklan TikTok" : "Iklan Produk";
 /* Bagian biaya/GMV sebuah baris iklan yang jatuh di rentang [a,b] (laporan bulanan dibagi rata per hari) */
 const porsi = (x: Ad, a: string, b: string) => { const f = x.dari > a ? x.dari : a, t = x.sampai < b ? x.sampai : b; if (f > t) return 0; return (dayDiff(f, t) + 1) / (dayDiff(x.dari, x.sampai) + 1); };
-function IklanTab({ R, stores, ads, sales }: { R: Range; stores: Store[]; ads: Ad[]; sales: Sale[] }) {
+type AMeta = { store_id: string; dari: string; sampai: string; kampanye: string; dilihat: number | null; klik: number | null; keranjang: number | null };
+function IklanTab({ R, stores, ads, sales, meta = [] }: { R: Range; stores: Store[]; ads: Ad[]; sales: Sale[]; meta?: AMeta[] }) {
+  const nk = (s2: string) => s2.replace(/\s+/g, " ").trim().slice(0, 255);
+  const MM = new Map(meta.map((m) => [m.store_id + "|" + m.dari + "|" + m.sampai + "|" + m.kampanye, m]));
   const ids = new Set(stores.map((s) => s.id)); const SM = new Map(stores.map((s) => [s.id, s]));
   const nameS = (id: string) => { const s = SM.get(id)!; return `${s.brand} · ${s.platform}`; };
   const all = ads.filter((a) => ids.has(a.store_id));
   const A = all.filter((a) => porsi(a, R.from, R.to) > 0), PA = all.filter((a) => porsi(a, R.pf, R.pt) > 0);
   if (!A.length) return <p className="note">Belum ada data iklan untuk {R.label.toLowerCase()} pada pilihan ini.</p>;
-  type Ag = { s: number; g: number; o: number };
-  const camp = (xs: Ad[], a: string, b: string) => { const C = new Map<string, Ag & { id: string; k: string }>(); xs.forEach((x) => { const w = porsi(x, a, b), key = x.store_id + "\u0001" + x.kampanye; const c = C.get(key) ?? { id: x.store_id, k: x.kampanye, s: 0, g: 0, o: 0 }; c.s += x.biaya * w; c.g += x.gmv * w; c.o += x.pesanan * w; C.set(key, c); }); return C; };
+  type Ag = { s: number; g: number; o: number; dl: number; kl: number; kr: number; mt: boolean };
+  const camp = (xs: Ad[], a: string, b: string) => { const C = new Map<string, Ag & { id: string; k: string }>(); xs.forEach((x) => { const w = porsi(x, a, b), key = x.store_id + "\u0001" + x.kampanye; const c = C.get(key) ?? { id: x.store_id, k: x.kampanye, s: 0, g: 0, o: 0, dl: 0, kl: 0, kr: 0, mt: false }; c.s += x.biaya * w; c.g += x.gmv * w; c.o += x.pesanan * w;
+    const m = MM.get(x.store_id + "|" + x.dari + "|" + x.sampai + "|" + nk(x.kampanye)); if (m) { c.mt = true; c.dl += (+(m.dilihat ?? 0)) * w; c.kl += (+(m.klik ?? 0)) * w; c.kr += (+(m.keranjang ?? 0)) * w; } C.set(key, c); }); return C; };
   const C = camp(A, R.from, R.to), CP = camp(PA, R.pf, R.pt);
   const S = [...C.values()].reduce((a, c) => a + c.s, 0), G = [...C.values()].reduce((a, c) => a + c.g, 0), roas = S ? G / S : 0;
   const Sp = [...CP.values()].reduce((a, c) => a + c.s, 0), Gp = [...CP.values()].reduce((a, c) => a + c.g, 0), roasP = Sp ? Gp / Sp : 0;
@@ -239,7 +286,7 @@ function IklanTab({ R, stores, ads, sales }: { R: Range; stores: Store[]; ads: A
   const sorted = [...C.values()].map((c) => c.s).sort((a, b) => a - b), med = sorted[Math.floor(sorted.length / 2)] ?? 0;
   const rows: CRow[] = [...C.entries()].map(([key, c]) => { const r = c.s ? c.g / c.s : 0, p = CP.get(key), rp = p && p.s ? p.g / p.s : null, s0 = SM.get(c.id)!;
     const st = c.s >= 100_000 && c.o < 0.5 ? "nol" : c.s >= S * 0.03 && r < roas * 0.6 ? "boros" : r >= roas * 1.3 && c.s <= Math.max(med, S * 0.03) && c.o >= 1 ? "scale" : "normal";
-    return { k: key, toko: nameS(c.id), platform: s0.platform, tipe: tipeIklan(c.k, s0.platform), nama: c.k, s: c.s, g: c.g, o: Math.round(c.o), r, dr: rp == null || !cmp ? null : r - rp, st }; }).sort((a, b) => b.s - a.s);
+    return { k: key, toko: nameS(c.id), platform: s0.platform, tipe: tipeIklan(c.k, s0.platform), nama: c.k, s: c.s, g: c.g, o: Math.round(c.o), r, dr: rp == null || !cmp ? null : r - rp, st, dl: c.mt ? c.dl : null, kl: c.mt ? c.kl : null }; }).sort((a, b) => b.s - a.s);
   const boros = rows.filter((r) => r.st === "boros"), scale = rows.filter((r) => r.st === "scale").sort((a, b) => b.r - a.r), nol = rows.filter((r) => r.st === "nol");
   // Tren
   const B = buckets(R.from, R.to);
@@ -270,6 +317,13 @@ function IklanTab({ R, stores, ads, sales }: { R: Range; stores: Store[]; ads: A
         { g: "Efisiensi", k: "r", l: "ROAS", f: "x", v: roas, p: cmp ? roasP : null, s: c.map((x) => (x.s ? x.g / x.s : 0)), ps: pv?.map((x) => (x.s ? x.g / x.s : 0)) },
         { g: "Biaya & hasil", k: "o", l: "Pesanan dari iklan", f: "n", v: Oo, p: cmp ? Op : null, s: c.map((x) => x.o), ps: pv?.map((x) => x.o) },
         { g: "Efisiensi", k: "cpa", l: "Biaya per pesanan", f: "rp", v: Oo ? S / Oo : NaN, p: cmp && Op ? Sp / Op : null, inv: true, s: c.map((x) => (x.o ? x.s / x.o : 0)), ps: pv?.map((x) => (x.o ? x.s / x.o : 0)) },
+        ...((() => { const cs = [...C.values()].filter((x) => x.mt), ps = [...CP.values()].filter((x) => x.mt); if (!cs.length) return [] as Metric[];
+          const dl = cs.reduce((t, x) => t + x.dl, 0), kl = cs.reduce((t, x) => t + x.kl, 0), kr = cs.reduce((t, x) => t + x.kr, 0), dlP = ps.reduce((t, x) => t + x.dl, 0), klP = ps.reduce((t, x) => t + x.kl, 0), krP = ps.reduce((t, x) => t + x.kr, 0);
+          const nt = "Shopee saja, laporan bulanan";
+          return [{ g: "Jangkauan (Shopee)", k: "dl", l: "Iklan dilihat", f: "n", v: dl, p: cmp && dlP ? dlP : null, s: c.map(() => NaN), note: nt },
+            { g: "Jangkauan (Shopee)", k: "kl", l: "Jumlah klik", f: "n", v: kl, p: cmp && klP ? klP : null, s: c.map(() => NaN), note: nt },
+            { g: "Jangkauan (Shopee)", k: "ctr", l: "Persentase klik", f: "pct", v: dl ? (kl / dl) * 100 : NaN, p: cmp && dlP ? (klP / dlP) * 100 : null, s: c.map(() => NaN), note: nt },
+            { g: "Jangkauan (Shopee)", k: "kr", l: "Tambah ke keranjang", f: "n", v: kr, p: cmp && krP ? krP : null, s: c.map(() => NaN), note: nt }] as Metric[]; })()),
         { g: "Efisiensi", k: "bo", l: "Biaya iklan / omzet", f: "pct", v: om ? (S / om) * 100 : NaN, p: cmp && omP ? (Sp / omP) * 100 : null, inv: true, s: c.map((x) => (x.om ? (x.s / x.om) * 100 : 0)), ps: pv?.map((x) => (x.om ? (x.s / x.om) * 100 : 0)) },
       ];
       return <MetricBoard metrics={M} labels={B0.map((b) => b.l)} sub={R.sub} init={["s", "r"]} />; })()}
@@ -392,14 +446,14 @@ function LiveTab({ R, live, brand, plat, jadwal }: { R: Range; live: Live[]; bra
 /* ---------------- Analisa produk ---------------- */
 type Prod = { grup: string; nama: string; kode: string[] | null; gmv: number; qty: number; pesanan: number; gmv_prev: number; qty_prev: number; toko: string[] | null; varian: PRow["varian"] };
 type PStats = { st: PRow[]; tokoName: Record<string, string>; sum: string[]; ana: string[]; next: string[]; stop: PRow[]; turun: PRow[]; baru: PRow[]; naik: PRow[] };
-function prodStats(rows: Prod[], stores: Store[]): PStats {
+function prodStats(rows: Prod[], stores: Store[], PM: Map<string, { dl: number; kl: number; kr: number; pg: number }> = new Map()): PStats {
   const tokoName: Record<string, string> = Object.fromEntries(stores.map((s) => [s.id, `${s.brand} ${s.platform === "TikTok" ? "TT" : s.platform === "Shopee" ? "SP" : s.platform}`]));
   const P = rows.map((r) => ({ ...r, gmv: +r.gmv, gmv_prev: +r.gmv_prev, qty: +r.qty, qty_prev: +r.qty_prev }));
   const tot = P.reduce((a, r) => a + r.gmv, 0) || 1;
   let cum = 0;
   const st: PRow[] = P.map((r) => { cum += r.gmv; const ch = pct(r.gmv, r.gmv_prev);
     const status = r.gmv === 0 && r.qty_prev >= 10 ? "stop" : r.gmv_prev === 0 && r.gmv > 0 ? "baru" : cum - r.gmv < tot * 0.8 && r.gmv > 0 ? "andalan" : ch <= -30 && r.gmv_prev > tot * 0.005 ? "turun" : ch >= 30 && r.gmv > tot * 0.005 ? "naik" : "biasa";
-    return { grup: r.grup, nama: r.nama ?? r.grup, kode: r.kode, gmv: r.gmv, qty: r.qty, ch, prev: r.gmv_prev, share: (r.gmv / tot) * 100, cum: (cum / tot) * 100, status, toko: r.toko ?? [], tokoLabel: (r.toko ?? []).map((t) => tokoName[t] ?? t).join(", "), varian: r.varian }; });
+    return { grup: r.grup, nama: r.nama ?? r.grup, kode: r.kode, gmv: r.gmv, qty: r.qty, ch, prev: r.gmv_prev, share: (r.gmv / tot) * 100, cum: (cum / tot) * 100, status, toko: r.toko ?? [], tokoLabel: (r.toko ?? []).map((t) => tokoName[t] ?? t).join(", "), varian: r.varian, sc: PM.get(String(r.nama ?? "").trim().toLowerCase()) ?? null }; });
   const nm = (r: PRow) => shortName(r.nama);
   const sold = st.filter((r) => r.gmv > 0), andalan = st.filter((r) => r.status === "andalan"), stop = st.filter((r) => r.status === "stop");
   const turun = st.filter((r) => r.prev > tot * 0.005 && r.ch <= -50 && r.gmv > 0).sort((a, b) => a.gmv - a.prev - (b.gmv - b.prev)), naik = st.filter((r) => r.status === "naik").sort((a, b) => b.gmv - b.prev - (a.gmv - a.prev)), baru = st.filter((r) => r.status === "baru");

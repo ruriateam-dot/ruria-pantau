@@ -108,3 +108,18 @@ export async function storeLast(storeIds: string[]): Promise<Record<string, stri
   const r = await q<{ store_id: string; d: string }>("select store_id, date_format(max(tanggal), '%Y-%m-%d') d from daily_sales where store_id in (?) group by store_id", [storeIds]);
   return Object.fromEntries(r.map((x) => [x.store_id, x.d]));
 }
+
+/* Metrik bulanan dari ekspor Seller Centre, ditimbang sesuai irisan hari dengan periode (laporan bulanan dibagi rata per hari) */
+export type SP = { store_id: string; dari: string; sampai: string; w: number; d: Record<string, unknown> };
+export async function storePeriods(storeIds: string[], from: string, to: string, table: "store_period" | "product_period" = "store_period"): Promise<SP[]> {
+  if (!storeIds.length) return [];
+  const r = await q<{ store_id: string; dari: string; sampai: string; data: string }>(
+    `select store_id, date_format(dari, '%Y-%m-%d') dari, date_format(sampai, '%Y-%m-%d') sampai, data from ${table} where store_id in (?) and dari <= ? and sampai >= ?`, [storeIds, to, from]);
+  const dd = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5) + 1;
+  return r.map((x) => { const f = x.dari > from ? x.dari : from, t = x.sampai < to ? x.sampai : to; return { store_id: x.store_id, dari: x.dari, sampai: x.sampai, w: dd(f, t) / dd(x.dari, x.sampai), d: JSON.parse(x.data) }; });
+}
+export async function adsMeta(storeIds: string[], from: string, to: string) {
+  if (!storeIds.length) return [];
+  return q<{ store_id: string; dari: string; sampai: string; kampanye: string; dilihat: number | null; klik: number | null; keranjang: number | null }>(
+    "select store_id, date_format(dari, '%Y-%m-%d') dari, date_format(sampai, '%Y-%m-%d') sampai, kampanye, dilihat, klik, keranjang from ads_meta where store_id in (?) and dari <= ? and sampai >= ?", [storeIds, to, from]);
+}

@@ -41,6 +41,10 @@ async function ready() {
       }
       // Saldo iklan per akun toko, diinput tim (riwayat disimpan)
       await pool().query("create table if not exists ad_balance (id bigint auto_increment primary key, store_id varchar(80) not null, saldo decimal(16,2) not null, catatan varchar(200) null, oleh int null, nama varchar(160) null, waktu datetime not null, index (store_id, waktu))");
+      // Metrik tambahan dari ekspor Seller Centre (statistik toko, performa produk, laporan iklan)
+      await pool().query("create table if not exists store_period (store_id varchar(80) not null, dari date not null, sampai date not null, data longtext not null, primary key (store_id, dari, sampai))");
+      await pool().query("create table if not exists product_period (store_id varchar(80) not null, dari date not null, sampai date not null, data longtext not null, primary key (store_id, dari, sampai))");
+      await pool().query("create table if not exists ads_meta (store_id varchar(80) not null, dari date not null, sampai date not null, kampanye varchar(255) not null, dilihat bigint null, klik bigint null, keranjang bigint null, primary key (store_id, dari, sampai, kampanye))");
       // Nama klien = nama perusahaan (hanya mengganti nama bawaan lama, nama yang sudah diubah manual dibiarkan)
       for (const [id, lama, baru] of [["ot", "Organic Treasure", "PT Bara Infinity Group"], ["jf", "Just Fluff", "PT Justfluff Nusantara Indo"], ["voie", "VOIE", "PT Natural Sense Asia"],
         ["dren", "Dren", "CV Mitra Berkat Indokreasi"], ["pmg", "PMG", "Putera Mahkota Group"]])

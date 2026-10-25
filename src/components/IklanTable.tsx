@@ -2,7 +2,7 @@
 import { useMemo, useState } from "react";
 import { shortName } from "@/lib/nama";
 
-export type CRow = { k: string; toko: string; platform: string; tipe: string; nama: string; s: number; g: number; o: number; r: number; dr: number | null; st: string };
+export type CRow = { k: string; toko: string; platform: string; tipe: string; nama: string; s: number; g: number; o: number; r: number; dr: number | null; st: string; dl?: number | null; kl?: number | null };
 const fmt = (n: number) => n >= 1e9 ? `Rp${(n / 1e9).toFixed(2).replace(".", ",")} M` : n >= 1e6 ? `Rp${(n / 1e6).toFixed(1).replace(".", ",")} jt` : `Rp${Math.round(n / 1e3)} rb`;
 export const ST: Record<string, [string, string]> = { boros: ["bad", "Boros"], scale: ["good", "Bisa di-scale"], nol: ["bad", "Tanpa penjualan"], normal: ["mute", "Normal"] };
 const STEP = 15;
@@ -20,8 +20,9 @@ export default function IklanTable({ rows }: { rows: CRow[] }) {
       <select value={toko} onChange={set(setToko)} className={toko ? "act" : ""} aria-label="Toko"><option value="">Semua toko</option>{opt("toko").map((x) => <option key={x}>{x}</option>)}</select>
       <span className="muted small">{F.length} kampanye</span>
     </div>
-    <div className="tbl"><table><thead><tr><th>Kampanye</th><th>Tipe</th><th className="n">Biaya</th><th className="n">GMV</th><th className="n">Pesanan</th><th className="n">CPA</th><th className="n">ROAS</th><th className="n">Δ ROAS</th><th>Diagnosis</th></tr></thead>
+    <div className="tbl"><table><thead><tr><th>Kampanye</th><th>Tipe</th><th className="n">Dilihat</th><th className="n">Klik</th><th className="n">CTR</th><th className="n">Biaya</th><th className="n">GMV</th><th className="n">Pesanan</th><th className="n">CPA</th><th className="n">ROAS</th><th className="n">Δ ROAS</th><th>Diagnosis</th></tr></thead>
       <tbody>{F.slice(0, n).map((c) => <tr key={c.k}><td className="wrapcell" title={c.nama}>{shortName(c.nama)}<div className="muted small">{c.toko}</div></td><td className="small">{c.tipe}</td>
+        <td className="n">{c.dl != null ? Math.round(c.dl).toLocaleString("id") : "–"}</td><td className="n">{c.kl != null ? Math.round(c.kl).toLocaleString("id") : "–"}</td><td className="n">{c.dl ? ((c.kl ?? 0) / c.dl * 100).toFixed(2) + "%" : "–"}</td>
         <td className="n">{fmt(c.s)}</td><td className="n">{fmt(c.g)}</td><td className="n">{c.o ? c.o.toLocaleString("id") : "–"}</td><td className="n">{c.o ? fmt(c.s / c.o) : "–"}</td><td className="n">{c.r.toFixed(1)}</td>
         <td className={"n " + (c.dr == null ? "" : c.dr >= 0 ? "up" : "dn")}>{c.dr == null ? "–" : `${c.dr >= 0 ? "+" : ""}${c.dr.toFixed(1)}`}</td>
         <td><span className={"pill " + ST[c.st][0]}>{ST[c.st][1]}</span></td></tr>)}</tbody></table></div>

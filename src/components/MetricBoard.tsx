@@ -16,7 +16,8 @@ const fmtV = (f: Metric["f"], n: number) => {
 export default function MetricBoard({ metrics, labels, sub, init }: { metrics: Metric[]; labels: string[]; sub: string; init?: string[] }) {
   const [sel, setSel] = useState<string[]>(init ?? metrics.slice(0, 2).map((m) => m.k));
   const [hov, setHov] = useState<number | null>(null);
-  const toggle = (k: string) => setSel((s) => s.includes(k) ? (s.length > 1 ? s.filter((x) => x !== k) : s) : [...s, k].slice(-4));
+  const ns = (k: string) => { const m = metrics.find((x) => x.k === k); return !m || m.s.every((v) => !isFinite(v)); };
+  const toggle = (k: string) => ns(k) ? undefined : setSel((s) => s.includes(k) ? (s.length > 1 ? s.filter((x) => x !== k) : s) : [...s, k].slice(-4));
   const on = sel.map((k) => metrics.find((m) => m.k === k)!).filter(Boolean);
   const W = 720, H = 230, L = 12, R = 12, T = 14, B = 26, n = labels.length;
   const x = (i: number) => L + (n <= 1 ? (W - L - R) / 2 : (i * (W - L - R)) / (n - 1));
