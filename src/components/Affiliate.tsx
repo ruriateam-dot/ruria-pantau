@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import markup from "@/data/aff/markup.json";
 
-type Brand = { nama: string; catatan?: string; ganti?: [string, string][] };
+type Brand = { nama: string; catatan?: string; ganti?: [string, string][]; hpp?: Record<string, number>; hpp_default?: number };
 type Win = { __affInit?: (c: string, u: string) => void; __affGen: number; AFF_SRC: (f: string) => string };
 const w = () => window as unknown as Win;
 
@@ -23,7 +23,9 @@ export default function Affiliate({ client, user, nama }: { client: string; user
       if (off) return;
       el.innerHTML = fix(markup as string);
       setNote(b.catatan ?? "");
-      const js = fix(await fetch("/aff/aff.js?v=5").then((r) => r.text()));
+      const ww = window as unknown as { AFF_HPP?: Record<string, number>; AFF_HPP_DEFAULT?: number };
+      ww.AFF_HPP = b.hpp ? Object.fromEntries(Object.entries(b.hpp).map(([k, v]) => [k.toUpperCase().trim(), v])) : undefined; ww.AFF_HPP_DEFAULT = b.hpp_default;
+      const js = fix(await fetch("/aff/aff.js?v=6").then((r) => r.text()));
       const u = URL.createObjectURL(new Blob([js], { type: "text/javascript" })); urls.push(u);
       if (!off) await add(u);
     })().catch(() => { el.insertAdjacentHTML("afterbegin", "<p>Ruang kerja affiliate gagal dimuat. Muat ulang halaman.</p>"); });

@@ -1217,6 +1217,7 @@ const syncDot = document.getElementById('syncdot'), syncTxt = document.getElemen
   };
   const HPP_UNIT = { 'Poppin Boozled': 46000, 'Poppin Gag': 30300, 'Minicube': 42000, 'Mallow Strips': 8100, 'Bites Ultimate': 20000, 'Sour Duck': 12000, 'Signature One Cube': 3800 };
   const hppOf = (produk, sku, pack) => {
+    if (window.AFF_HPP) { const v = window.AFF_HPP[String(produk || '').toUpperCase().trim()]; return (v != null ? v : (window.AFF_HPP_DEFAULT || 0)) * (pack || 1); }
     const s = String(sku || '').toUpperCase().replace(/\s+/g, '');
     pack = pack || 1;
     if (produk === 'Boozled + Alpha') return HPP_UNIT['Poppin Boozled'] + HPP_PACK['Mix Alpha'][1];
