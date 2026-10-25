@@ -39,6 +39,36 @@ export async function produkSku(storeIds: string[], from: string, to: string, pf
        sum(qty) qty, sum(gmv) gmv, sum(pesanan) pesanan
      from product_sales where store_id in (?) and tanggal between ? and ?
      group by g, produk, varian, sku, store_id, cur, prv`, [from, to, pf, pt, storeIds, lo, hi]);
+  // Kelompok SKU induk dihitung ulang dari kode SKU:
+  // - default: kode sebelum titik pertama (ZORA.BLUESTRIP.L → ZORA)
+  // - kalau satu kode depan dipakai untuk beberapa listing berbeda di toko yang sama (judul produk beda),
+  //   pisah per segmen kedua (PSUN.SPF50 vs PSUN.PF123001). Segmen bundling (SPF502 = SPF50 isi 2) ikut induknya.
+  const code = (s2: string) => s2.match(/^[A-Za-z]*\d{2,}/)?.[0] ?? null;
+  const seg = (sku: string) => sku.split(".").map((x) => x.trim()).filter(Boolean);
+  const byPre = new Map<string, Map<string, Set<string>>>();
+  for (const r of rows) { const sg = seg(r.sku || ""); if (sg.length < 2) continue;
+    const m = byPre.get(sg[0]) ?? new Map<string, Set<string>>(); byPre.set(sg[0], m);
+    const t = m.get(sg[1]) ?? new Set<string>(); t.add(r.store_id + "\u0001" + r.produk); m.set(sg[1], t); }
+  const split = new Map<string, Set<string>>();
+  for (const [pre, m] of byPre) {
+    if (m.size < 2) continue;
+    // Pisah kalau di satu toko ada dua segmen kedua yang judul listingnya sama sekali berbeda
+    const perStore = new Map<string, Map<string, Set<string>>>();
+    for (const [s2, set] of m) for (const k of set) { const [st, pr] = k.split("\u0001"); const mm = perStore.get(st) ?? new Map<string, Set<string>>(); perStore.set(st, mm); (mm.get(s2) ?? mm.set(s2, new Set()).get(s2)!).add(pr); }
+    const differs = [...perStore.values()].some((mm) => { const L = [...mm.values()]; return L.some((x, i) => L.some((y, j) => j > i && ![...x].some((t) => y.has(t)))); });
+    // Hanya kalau segmen kedua berupa kode produk (huruf + ≥2 angka: PF123001, SPF50, 9763), bukan warna/ukuran
+    const codes = new Set([...m.keys()].map(code).filter(Boolean) as string[]);
+    if (differs && codes.size >= 2) split.set(pre, codes);
+  }
+  const keyOf = (sku: string, produk: string) => { const sg = seg(sku || ""); if (!sg.length) return "NAMA:" + produk; const pre = sg[0].toUpperCase();
+    const ss = split.get(sg[0]); let c = sg.length > 1 ? code(sg[1]) : null; if (!ss || !c) return pre;
+    const base = c.slice(0, -1); if (ss.has(base) && base.length >= 3) c = base; // SPF502 (isi 2) → SPF50
+    return pre + "." + c.toUpperCase(); };
+  // Kelompok tersimpan tetap dipakai (sudah menggabungkan kode berbeda untuk produk yang sama);
+  // hanya kode depan yang terbukti dipakai beberapa produk berbeda yang dipecah per kode produk.
+  const byName = new Map<string, string>();
+  for (const r of rows) if (r.sku) { const sg = seg(r.sku); if (split.has(sg[0])) { r.g = keyOf(r.sku, r.produk); byName.set(r.store_id + "\u0001" + r.produk, r.g); } }
+  for (const r of rows) if (!r.sku) { const k = byName.get(r.store_id + "\u0001" + r.produk); if (k) r.g = k; }
   type G = { gmv: number; qty: number; o: number; pg: number; pq: number; toko: Set<string>; nm: Map<string, number>; pnm: Map<string, number>; kd: Map<string, number>; vr: Map<string, { sku: string; varian: string; toko: string; qty: number; gmv: number }> };
   const M = new Map<string, G>();
   for (const r of rows) {
@@ -48,7 +78,7 @@ export async function produkSku(storeIds: string[], from: string, to: string, pf
     if (Number(r.cur)) {
       x.gmv += gmv; x.qty += qty; x.o += Number(r.pesanan); x.toko.add(r.store_id);
       x.nm.set(r.produk, (x.nm.get(r.produk) ?? 0) + gmv);
-      if (r.sku) { const k = r.sku.split(".")[0]; x.kd.set(k, (x.kd.get(k) ?? 0) + gmv); }
+      if (r.sku) { const k = r.g.startsWith("NAMA:") ? r.sku.split(".")[0] : r.g; x.kd.set(k, (x.kd.get(k) ?? 0) + gmv); }
       const vk = r.sku + "\u0001" + r.varian + "\u0001" + r.store_id;
       const v = x.vr.get(vk) ?? { sku: r.sku, varian: r.varian, toko: r.store_id, qty: 0, gmv: 0 };
       v.qty += qty; v.gmv += gmv; x.vr.set(vk, v);

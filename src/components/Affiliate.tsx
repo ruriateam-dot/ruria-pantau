@@ -18,7 +18,7 @@ export default function Affiliate({ client, user, nama }: { client: string; user
       if (!w().__affInit) await add("/aff/shim.js?v=2");
       if (off) return;
       w().__affInit!(client, user);
-      const b: Brand = await fetch(w().AFF_SRC("brand.json")).then((r) => (r.ok ? r.json() : null)).catch(() => null) ?? { nama };
+      const b: Brand = await fetch(w().AFF_SRC("brand.json")).then((r) => (r.ok ? r.json() : null)).catch(() => null) ?? { nama: client === "jf" ? "Just Fluff" : nama };
       const fix = (t: string) => { let x = t; if (b.nama !== "Just Fluff") { for (const [a, z] of b.ganti ?? []) x = x.split(a).join(z); x = x.split("JustFluff").join(b.nama).split("Just Fluff").join(b.nama); } return x; };
       if (off) return;
       el.innerHTML = fix(markup as string);

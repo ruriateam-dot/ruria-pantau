@@ -39,6 +39,10 @@ async function ready() {
         for (const [id, akun] of [["cahaya-cabydut-shopee", "cabydutkids"], ["cahaya-qaira-shopee", "qairaofficial"], ["cahaya-pepisun-shopee", "pepisun"], ["cahaya-pepico-shopee", "pepico.id"]])
           await pool().query("update stores set akun = ? where id = ? and akun is null", [akun, id]);
       }
+      // Nama klien = nama perusahaan (hanya mengganti nama bawaan lama, nama yang sudah diubah manual dibiarkan)
+      for (const [id, lama, baru] of [["ot", "Organic Treasure", "PT Bara Infinity Group"], ["jf", "Just Fluff", "PT Justfluff Nusantara Indo"], ["voie", "VOIE", "PT Natural Sense Asia"],
+        ["dren", "Dren", "CV Mitra Berkat Indokreasi"], ["pmg", "PMG", "Putera Mahkota Group"]])
+        await pool().query("update clients set nama = ? where id = ? and nama = ?", [baru, id, lama]);
     })().catch((e) => { g._ready = undefined; throw e; });
   }
   return g._ready;
