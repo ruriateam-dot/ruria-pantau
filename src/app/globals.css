@@ -260,3 +260,15 @@ a{color:var(--accent-ink)}
 .jrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .jact{display:flex;gap:8px;align-items:center;margin-top:6px}
 button.danger{color:var(--bad)}
+/* Checklist upload */
+.ck{display:inline-flex;gap:3px}
+.ck i{width:14px;height:14px;border-radius:3px;display:inline-block}
+.ck i.y{background:var(--good)}
+.ck i.n{background:var(--line)}
+.cktab tr.first td{border-top:2px solid var(--line)}
+.cktab td{padding-top:4px;padding-bottom:4px}
+.kform{display:grid;gap:8px;margin:10px 0}
+.kform.inline{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:4px 0}
+.kform.inline input{width:auto;min-width:140px;flex:1}
+.kcard summary{cursor:pointer}
+.kcard h3{margin:14px 0 4px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}

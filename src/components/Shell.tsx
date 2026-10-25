@@ -46,6 +46,7 @@ export default function Shell({ user, staff, clients, active, dashHref, children
         {link("/dashboard/upload", "Upload data", path === "/dashboard/upload")}
         {link("/dashboard/jadwal", "Jadwal live", path === "/dashboard/jadwal")}
         {link("/dashboard/tim", staff ? "Kelola tim" : "Akun saya", path === "/dashboard/tim")}
+        {staff && link("/dashboard/klien", "Kelola klien", path === "/dashboard/klien")}
         {staff && link("/dashboard/log", "Log aktivitas", path === "/dashboard/log")}
       </nav>
       <div className="sfoot">

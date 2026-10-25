@@ -3,6 +3,7 @@ import { logAct } from "@/lib/log";
 import { requireUser, allowedClients } from "@/lib/auth";
 import { q } from "@/lib/db";
 import Uploader from "./Uploader";
+import Checklist from "@/components/Checklist";
 import { recentUploads } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,7 @@ export default async function UploadPage() {
     <main className="wrap dv tim">
       <p className="muted">Pilih klien dan toko, lalu masukkan file dari Seller Centre. Jenis file dikenali otomatis. Data di tanggal yang sama akan diperbarui, bukan dobel.</p>
       <Uploader clients={clients} stores={stores} />
+      <Checklist clientIds={ok} />
       <div className="card"><h2>File yang dibutuhkan per tab</h2>
         <div className="tw"><table><thead><tr><th>Tab</th><th>File</th><th>Cara ambil</th></tr></thead>
           <tbody>{PANDUAN.map((r) => <tr key={r[0]}><td>{r[0]}</td><td>{r[1]}</td><td className="muted">{r[2]}</td></tr>)}</tbody></table></div>
