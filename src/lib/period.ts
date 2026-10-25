@@ -17,6 +17,8 @@ export function resolvePeriod(key = "yday"): Range {
   if (key === "30d") return mk(addDays(T, -30), addDays(T, -1), addDays(T, -60), addDays(T, -31), "30 hari terakhir", "vs 30 hari sebelumnya");
   if (key === "3m") return mk(addDays(T, -91), addDays(T, -1), addDays(T, -182), addDays(T, -92), "3 bulan terakhir", "vs 3 bulan sebelumnya");
   if (key === "6m") return mk(addDays(T, -182), addDays(T, -1), addDays(T, -364), addDays(T, -183), "6 bulan terakhir", "vs 6 bulan sebelumnya");
+  // Semua data yang ada (arsip mulai 2025), tanpa periode pembanding
+  if (key === "all") return mk("2025-01-01", addDays(T, -1), "2024-01-01", "2024-01-01", "Semua waktu", "tanpa pembanding");
   if (key === "mtd") { const f = T.slice(0, 8) + "01", pm = prevMonth(T.slice(0, 7)); let pt = addDays(pm + "-01", dayDiff(f, T)); if (pt > lastDay(pm)) pt = lastDay(pm); return mk(f, T, pm + "-01", pt, `Bulan ini (${BLNF[+T.slice(5, 7) - 1]})`, "vs periode sama bulan lalu"); }
   let m = key.match(/^month:(\d{4}-\d{2})$/);
   if (m) { const ym = m[1], pm = prevMonth(ym); let to = lastDay(ym); if (to > T) to = T; return mk(ym + "-01", to, pm + "-01", lastDay(pm), `${BLNF[+ym.slice(5) - 1]} ${ym.slice(0, 4)}`, "vs bulan sebelumnya"); }

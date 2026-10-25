@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { BLN, BLNF, todayWIB, addDays, lastDay } from "@/lib/period";
 
 type Mode = "day" | "week" | "month" | "year" | "range";
-const PRESETS: [string, string][] = [["today", "Hari ini"], ["yday", "Kemarin"], ["7d", "7 hari terakhir"], ["30d", "30 hari terakhir"], ["3m", "3 bulan terakhir"], ["6m", "6 bulan terakhir"], ["mtd", "Bulan ini"]];
+const PRESETS: [string, string][] = [["today", "Hari ini"], ["yday", "Kemarin"], ["7d", "7 hari terakhir"], ["30d", "30 hari terakhir"], ["3m", "3 bulan terakhir"], ["6m", "6 bulan terakhir"], ["mtd", "Bulan ini"], ["all", "Semua waktu"]];
 const MODES: [Mode, string][] = [["day", "Per Hari"], ["week", "Per Minggu"], ["month", "Per Bulan"], ["year", "Berdasarkan Tahun"], ["range", "Rentang sendiri"]];
 const DOW = ["S", "S", "R", "K", "J", "S", "M"];
 const mondayOf = (d: string) => addDays(d, -((new Date(d + "T00:00:00Z").getUTCDay() + 6) % 7));
