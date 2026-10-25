@@ -3,17 +3,18 @@ const TODAY = new Date(); TODAY.setHours(0,0,0,0);
 const RESP = ['Belum ada respon','Tertarik','Tanya detail/komisi','Minta sampel dulu','Minta fee/rate card','Tidak tertarik','Akun/nomor tidak aktif'];
 const STAT = ['Belum dihubungi','Sudah dihubungi','Setuju','Menolak','Tidak respon','Produk dikirim','Sudah posting'];
 const PRIO = {1:'Hubungi duluan',2:'Hubungi minggu ini',3:'Undang ke campaign pendaftaran',4:'Tahan / evaluasi dulu',5:'Tidak perlu dihubungi'};
-const TT_M = ['Mei','Jun','Jul','Agu','Sep','Okt'], SH_M = ['Mei','Jun','Jul','Agu','Sep','Okt'];
+const TT_M = D.TT_M || ['Mei','Jun','Jul','Agu','Sep','Okt'], SH_M = D.SH_M || ['Mei','Jun','Jul','Agu','Sep','Okt'];
+const NT = TT_M.length, NS = SH_M.length, oT = NT - 6, oS = NS - 6;
 const PAGE = 50;
 
 /* ---------- rows ---------- */
 const TT = D.tt.map(r => {
-  const g = r.slice(2,8); return {k:'tt', key:r[0], u:r[0], tipe:D.tip[r[1]], g, okt:g[5], tot:g.reduce((a,b)=>a+b,0), bln:g.filter(v=>v>0).length,
-    vid:r[8], live:r[9], gagal:r[10], samp:r[11], cat:r[12], pr:r[13], aksi:D.aks[r[14]], gk:r[15]||0, gb:r[16]||0, gx:r[17]||0, gest:r[18]?1:0};
+  const g = r.slice(2,2+NT); return {k:'tt', key:r[0], u:r[0], tipe:D.tip[r[1]], g, okt:g[NT-1], tot:g.reduce((a,b)=>a+b,0), bln:g.filter(v=>v>0).length,
+    vid:r[8+oT], live:r[9+oT], gagal:r[10+oT], samp:r[11+oT], cat:r[12+oT], pr:r[13+oT], aksi:D.aks[r[14+oT]], gk:r[15+oT]||0, gb:r[16+oT]||0, gx:r[17+oT]||0, gest:r[18+oT]?1:0};
 });
 const SH = D.sh.map(r => {
-  const g = r.slice(4,10); return {k:'sh', key:r[0], u:r[0], nama:r[1], tipe:D.tip[r[2]], ch:r[3], g, okt:g[5], tot:g.reduce((a,b)=>a+b,0), bln:g.filter(v=>v>0).length,
-    pb:r[10], batal:r[11], samp:r[12], cat:r[13], pr:r[14], aksi:D.aks[r[15]], gk:r[16]||0, gb:r[17]||0, gx:r[18]||0, gest:r[19]?1:0};
+  const g = r.slice(4,4+NS); return {k:'sh', key:r[0], u:r[0], nama:r[1], tipe:D.tip[r[2]], ch:r[3], g, okt:g[NS-1], tot:g.reduce((a,b)=>a+b,0), bln:g.filter(v=>v>0).length,
+    pb:r[10+oS], batal:r[11+oS], samp:r[12+oS], cat:r[13+oS], pr:r[14+oS], aksi:D.aks[r[15+oS]], gk:r[16+oS]||0, gb:r[17+oS]||0, gx:r[18+oS]||0, gest:r[19+oS]?1:0};
 });
 const MEM = {}; D.C.forEach(c => (MEM[c[0]] ||= []).push({u:c[1], nama:c[2], om:c[3], ok:c[4], all:c[5]}));
 const AGA = D.A.map(r => ({k:'ag', key:'A '+r[0], grp:'A', nama:r[0], om:r[1], ok:r[2], batal:r[3], top:r[4], pr:r[6], aksi:r[7], mem:MEM[r[0]]||[]}));
@@ -280,7 +281,7 @@ function renderList(which){
       <td>${prioChip(r.pr)}</td>
       <td class="u">${esc(r.u)}${!isTT && r.nama && r.nama !== r.u ? `<small>${esc(r.nama)}</small>` : ''}${fuOf(r)?.kontak ? `<small class="kt">☎ ${esc(fuOf(r).kontak)}</small>`:''}</td>
       <td class="t">${tipeChip(r.tipe)}</td>
-      <td class="num">${rpShort(r.okt)}</td><td class="num">${rpShort(r.tot)}</td><td class="num">${r.bln}/6</td><td class="num">${sampCell(r)}</td><td class="num">${hasilCell(r)}</td>
+      <td class="num">${rpShort(r.okt)}</td><td class="num">${rpShort(r.tot)}</td><td class="num">${r.bln}/${r.g.length}</td><td class="num">${sampCell(r)}</td><td class="num">${hasilCell(r)}</td>
       <td class="aksi">${esc(r.aksi)}</td>
       <td>${statChip(dispStatus(r))}</td>
       <td>${esc(fuOf(r)?.respon || '') || '<span class="muted">–</span>'}</td>
@@ -419,7 +420,7 @@ function renderDb(){
       <td class="t">${tipeChip(r.tipe)}</td>
       <td class="num">${rpShort(r.okt)}</td><td class="num">${rpShort(r.gk)}${est(r)}</td><td class="num"><b>${rpShort(r.gb)}</b>${est(r)}</td>
       <td class="num">${rpShort(r.gx)}${est(r)}${r.gk && r.gx ? `<br><small class="${r.gx/r.gk>=.4?'late':'muted'}">${pct(r.gx/r.gk)}</small>` : ''}</td>
-      <td class="num">${r.bln}/6</td><td class="num">${sampCell(r)}</td><td class="num">${hasilCell(r)}</td>
+      <td class="num">${r.bln}/${r.g.length}</td><td class="num">${sampCell(r)}</td><td class="num">${hasilCell(r)}</td>
       <td class="aksi">${esc(r.aksi)}</td>
       <td>${statChip(dispStatus(r))}</td>
       <td>${esc(fuOf(r)?.respon || '') || '<span class="muted">–</span>'}</td>
