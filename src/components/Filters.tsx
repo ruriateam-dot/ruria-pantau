@@ -13,7 +13,7 @@ export default function Filters({ base = "/dashboard", clients, brands, platform
     for (const [k, v] of Object.entries(patch)) { if (v) q.set(k, v); else q.delete(k); }
     go(base + "?" + q.toString());
   };
-  const per = get("per", "yday");
+  const per = get("per", "30d");
   return (
     <div className="filters" aria-busy={pending}>
       {!hideClient && clients.length > 1 && <select aria-label="Klien" value={get("c", clients[0]?.id ?? "")} onChange={(e) => set({ c: e.target.value, b: "", p: "" })}>

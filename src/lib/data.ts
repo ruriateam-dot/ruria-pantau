@@ -71,3 +71,10 @@ export async function clientsFor(ids: string[]): Promise<Cl[]> {
     .map((x) => ({ ...x, modul: x.modul.split(",") })) : [];
 }
 
+
+/* Tanggal data penjualan terakhir per toko */
+export async function storeLast(storeIds: string[]): Promise<Record<string, string>> {
+  if (!storeIds.length) return {};
+  const r = await q<{ store_id: string; d: string }>("select store_id, date_format(max(tanggal), '%Y-%m-%d') d from daily_sales where store_id in (?) group by store_id", [storeIds]);
+  return Object.fromEntries(r.map((x) => [x.store_id, x.d]));
+}

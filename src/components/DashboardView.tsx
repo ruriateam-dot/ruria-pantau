@@ -9,8 +9,9 @@ import ExportBar from "@/components/ExportBar";
 import { RuriaWord } from "@/components/Logo";
 import { logAct } from "@/lib/log";
 import ProdukTable, { type PRow } from "@/components/ProdukTable";
-import { Kpi, Insight, Bars, LineChart, Share } from "@/components/ui";
-import { clientsFor, loadClient, freshness, produkSku, type Sale, type Ad, type Live, type Store } from "@/lib/data";
+import { shortName } from "@/lib/nama";
+import { Kpi, Insight, Bars, LineChart, Share, Spark } from "@/components/ui";
+import { clientsFor, loadClient, freshness, produkSku, storeLast, type Sale, type Ad, type Live, type Store } from "@/lib/data";
 import { resolvePeriod, buckets, fmt, pct, jm, tgl, addDays, dayDiff, todayWIB, type Range } from "@/lib/period";
 
 type SPv = Record<string, string | undefined>;
@@ -27,7 +28,10 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
   let tab = sp.m ?? (sp.c || share ? "toko" : "sum");
   if (share && tab === "sum") tab = "toko";
   if (c && tab !== "sum" && !c.modul.includes(tab)) tab = c.modul[0];
-  const R = resolvePeriod(sp.per);
+  // Periode relatif dihitung mundur dari tanggal data terakhir klien (per jenis data)
+  const F0 = c && tab !== "sum" ? (await freshness([c.id]))[0] : undefined;
+  const lastData = tab === "iklan" ? F0?.iklan : tab === "live" ? F0?.live : F0?.penjualan;
+  const R = resolvePeriod(sp.per, tab === "sum" ? null : lastData);
   const qs = (patch: Record<string, string>) => { const q = new URLSearchParams(Object.entries(sp).filter(([, v]) => v) as [string, string][]); for (const [k, v] of Object.entries(patch)) q.set(k, v); return "?" + q.toString(); };
 
   let body: React.ReactNode = <p className="muted">Belum ada klien yang bisa diakses akun ini. Minta admin menambahkan akses.</p>;
@@ -43,7 +47,9 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
       const ts = st.filter((s) => s.platform !== "CPAS");
       let prod: Prod[] = [], prodErr: string | undefined;
       try { prod = await produkSku(ts.map((s) => s.id), R.from, R.to, R.pf, R.pt); } catch (e) { prodErr = (e as Error).message; }
-      body = <><TokoTab R={R} stores={ts} sales={D.sales} /><ProdukSection R={R} rows={prod} stores={ts} err={prodErr} /></>;
+      const SL = await storeLast(ts.map((s) => s.id));
+      const PS = prodStats(prod, ts);
+      body = <><TokoTab R={R} stores={ts} sales={D.sales} last={SL} prod={PS} /><ProdukSection R={R} ps={PS} err={prodErr} /></>;
     }
     else if (tab === "iklan") body = <IklanTab R={R} stores={st} ads={D.ads} sales={D.sales} target={c.target_roas} />;
     else if (tab === "affiliate") {
@@ -71,7 +77,9 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
       {tab !== "sum" && tabs}
     </header>
   );
-  const main = <main className="wrap dv">{isAdmin && <AutoImport />}{body}</main>;
+  const lag = lastData ? dayDiff(lastData, addDays(todayWIB(), -1)) : 0;
+  const warn = tab !== "sum" && tab !== "affiliate" && lastData && lag > 3 ? <p className="note warnnote">Data {tab === "iklan" ? "iklan" : tab === "live" ? "live" : "penjualan"} klien ini baru sampai <b>{tgl(lastData)} {lastData.slice(0, 4)}</b> (tertinggal {lag} hari). Periode dihitung sampai tanggal itu supaya data yang belum diupload tidak terbaca sebagai penurunan.</p> : null;
+  const main = <main className="wrap dv">{isAdmin && <AutoImport />}{warn}{body}</main>;
   if (share || !profile) return <><LoadingBar />{head}{main}</>;
   return <AppShell user={profile} active={tab === "sum" ? undefined : c?.id} keep={{ m: tab, per: sp.per }}>{head}{main}</AppShell>;
 }
@@ -111,45 +119,55 @@ async function SumTab(R: Range, clients: { id: string; nama: string; modul: stri
 }
 
 /* ---------------- Toko ---------------- */
-function TokoTab({ R, stores, sales }: { R: Range; stores: Store[]; sales: Sale[] }) {
-  const ids = new Set(stores.map((s) => s.id));
-  const S = sales.filter((s) => ids.has(s.store_id));
-  const agg = (a: string, b: string, only?: string) => { const r = { g: 0, o: 0, v: 0, vok: true }; S.filter((s) => s.tanggal >= a && s.tanggal <= b && (!only || s.store_id === only)).forEach((s) => { r.g += s.gmv; r.o += s.pesanan; if (s.pengunjung == null) r.vok = false; else r.v += s.pengunjung; }); return r; };
-  const n = agg(R.from, R.to), o = agg(R.pf, R.pt);
+function TokoTab({ R, stores, sales, last, prod }: { R: Range; stores: Store[]; sales: Sale[]; last: Record<string, string>; prod: PStats }) {
   if (!stores.length) return <p className="muted">Tidak ada toko untuk pilihan ini.</p>;
-  const aov = n.o ? n.g / n.o : 0, aovP = o.o ? o.g / o.o : 0, cr = n.vok && n.v ? (n.o / n.v) * 100 : NaN, crP = o.vok && o.v ? (o.o / o.v) * 100 : NaN;
-  const per = stores.map((s) => { const a = agg(R.from, R.to, s.id), b = agg(R.pf, R.pt, s.id); return { s, g: a.g, o: a.o, ch: pct(a.g, b.g) }; }).sort((a, b) => b.g - a.g);
+  // Toko yang datanya berhenti sebelum akhir periode (lebih dari 3 hari) tidak ikut dibandingkan
+  const stale = (id: string) => !last[id] || dayDiff(last[id], R.to) > 3;
+  const fresh = stores.filter((s) => !stale(s.id));
+  const ids = new Set(stores.map((s) => s.id)), fids = new Set(fresh.map((s) => s.id));
+  const S = sales.filter((s) => ids.has(s.store_id));
+  const agg = (a: string, b: string, only?: Set<string> | string) => { const r = { g: 0, o: 0, v: 0, vok: true }; S.filter((s) => s.tanggal >= a && s.tanggal <= b && (!only || (typeof only === "string" ? s.store_id === only : only.has(s.store_id)))).forEach((s) => { r.g += s.gmv; r.o += s.pesanan; if (s.pengunjung == null) r.vok = false; else r.v += s.pengunjung; }); return r; };
+  const n = agg(R.from, R.to), nf = agg(R.from, R.to, fids), o = agg(R.pf, R.pt, fids);
+  const cmp = R.key !== "all" && fresh.length > 0;
+  const aov = n.o ? n.g / n.o : 0, aovF = nf.o ? nf.g / nf.o : 0, aovP = o.o ? o.g / o.o : 0;
+  const cr = n.vok && n.v ? (n.o / n.v) * 100 : NaN, crF = nf.vok && nf.v ? (nf.o / nf.v) * 100 : NaN, crP = o.vok && o.v ? (o.o / o.v) * 100 : NaN;
   const B = buckets(R.from, R.to);
+  const per = stores.map((s) => { const a = agg(R.from, R.to, s.id), b = agg(R.pf, R.pt, s.id), st = stale(s.id);
+    return { s, g: a.g, o: a.o, v: a.vok ? a.v : null, aov: a.o ? a.g / a.o : 0, cr: a.vok && a.v ? (a.o / a.v) * 100 : NaN, ch: st ? NaN : pct(a.g, b.g), st, last: last[s.id], tr: B.map((k) => agg(k.f, k.t, s.id).g) }; }).sort((a, b) => b.g - a.g);
   const vals = B.map((b) => agg(b.f, b.t).g);
-  // Garis pembanding hanya kalau periode sendiri cukup panjang (tidak diperluas ke 30 hari)
   const PB = dayDiff(R.from, R.to) >= 13 ? buckets(R.pf, R.pt) : null;
   const prevVals = PB ? PB.map((b) => agg(b.f, b.t).g) : undefined;
-  const last = S.reduce((m, s) => (s.tanggal > m ? s.tanggal : m), "");
-  const worst = [...per].sort((a, b) => a.ch - b.ch)[0], best = [...per].sort((a, b) => b.ch - a.ch)[0];
-  const dA = pct(aov, aovP), dC = pct(cr, crP);
-  const ana = [isFinite(dC) && Math.abs(dC) > Math.abs(dA) ? `Perubahan GMV lebih didorong konversi (${dC.toFixed(1)}%) daripada AOV (${dA.toFixed(1)}%).` : `Perubahan GMV lebih didorong AOV (${dA.toFixed(1)}%)${isFinite(dC) ? ` daripada konversi (${dC.toFixed(1)}%)` : ""}.`];
-  if (per.length > 1 && worst.ch < -5) ana.push(`${worst.s.brand} · ${worst.s.platform} paling melemah (${worst.ch.toFixed(1)}%).`);
-  if (per.length > 1 && best.ch > 5) ana.push(`${best.s.brand} · ${best.s.platform} paling tumbuh (+${best.ch.toFixed(1)}%).`);
-  const next: string[] = [];
-  if (per.length > 1 && worst.ch < -5) next.push(`Cek ${worst.s.brand} · ${worst.s.platform}: listing, stok varian laris, harga, status iklan.`);
-  if (dA < -3) next.push("AOV turun: dorong bundling atau voucher minimum belanja.");
-  if (isFinite(dC) && dC < -3) next.push("Konversi turun: cek harga vs kompetitor, voucher, dan ulasan produk utama.");
-  next.push("Pastikan stok produk andalan aman untuk 14 hari ke depan.");
+  const cmpd = per.filter((r) => !r.st && isFinite(r.ch));
+  const worst = [...cmpd].sort((a, b) => a.ch - b.ch)[0], best = [...cmpd].sort((a, b) => b.ch - a.ch)[0];
+  const dG = pct(nf.g, o.g), dA = pct(aovF, aovP), dC = pct(crF, crP);
+  const staleN = per.filter((r) => r.st);
+  // Satu kotak ringkasan per tab: toko + produk, maksimal 3–4 poin per kolom
+  const sum = [`GMV ${fmt(n.g)}${cmp ? `, ${dG >= 0 ? "naik" : "turun"} ${Math.abs(dG).toFixed(1)}% ${R.sub}` : ""}${staleN.length ? ` (perbandingan tanpa ${staleN.length} toko yang datanya belum lengkap)` : ""}.`,
+    ...(per.length > 1 ? [`Kontributor terbesar: ${per[0].s.brand} · ${per[0].s.platform} (${(per[0].g / (n.g || 1) * 100).toFixed(0)}%).`] : []), ...prod.sum.slice(0, 2)];
+  const ana = [...(cmp ? [isFinite(dC) && Math.abs(dC) > Math.abs(dA) ? `Perubahan GMV lebih didorong konversi (${dC.toFixed(1)}%) daripada AOV (${dA.toFixed(1)}%).` : `Perubahan GMV lebih didorong AOV (${dA.toFixed(1)}%)${isFinite(dC) ? ` daripada konversi (${dC.toFixed(1)}%)` : ""}.`] : []),
+    ...(worst && worst.ch < -5 && cmpd.length > 1 ? [`${worst.s.brand} · ${worst.s.platform} paling melemah (${worst.ch.toFixed(1)}%).`] : []),
+    ...(best && best.ch > 5 && cmpd.length > 1 ? [`${best.s.brand} · ${best.s.platform} paling tumbuh (+${best.ch.toFixed(1)}%).`] : []), ...prod.ana.slice(0, 2)];
+  const next = [...(worst && worst.ch < -5 && cmpd.length > 1 ? [`Cek ${worst.s.brand} · ${worst.s.platform}: listing, stok varian laris, harga, status iklan.`] : []),
+    ...(staleN.length ? [`Upload data terbaru: ${staleN.map((r) => `${r.s.brand} · ${r.s.platform}`).join(", ")}.`] : []), ...prod.next.slice(0, 2)];
+  const tot = n.g || 1;
   return (<>
-    <p className="note">Periode: {R.label}. {last ? `Data terakhir ${tgl(last)} ${last.slice(0, 4)}.` : "Belum ada data penjualan di periode ini."}</p>
-    <Insight src="Data asli" sum={[`GMV ${fmt(n.g)}${R.key === "all" ? "" : `, ${pct(n.g, o.g) >= 0 ? "naik" : "turun"} ${Math.abs(pct(n.g, o.g)).toFixed(1)}% ${R.sub}`}.`, `${n.o.toLocaleString("id")} pesanan, AOV ${fmt(aov)}.`, ...(per.length > 1 ? [`Kontributor terbesar: ${per[0].s.brand} · ${per[0].s.platform} (${(per[0].g / (n.g || 1) * 100).toFixed(0)}%).`] : [])]} ana={ana} next={next} />
-    <div className="kpis"><Kpi l="GMV" v={fmt(n.g)} d={R.key === "all" ? undefined : pct(n.g, o.g)} sub={R.sub} /><Kpi l="Pesanan" v={n.o.toLocaleString("id")} d={R.key === "all" ? undefined : pct(n.o, o.o)} sub={R.sub} /><Kpi l="AOV" v={fmt(aov)} d={R.key === "all" ? undefined : dA} sub={R.sub} /><Kpi l="Konversi" v={isFinite(cr) ? cr.toFixed(2) + "%" : "–"} d={R.key === "all" ? undefined : isFinite(dC) ? dC : undefined} sub={isFinite(cr) ? R.sub : "butuh data pengunjung semua toko"} /></div>
+    <Insight src="Data asli" sum={sum} ana={ana.length ? ana : ["Belum ada pembanding untuk periode ini."]} next={next.length ? next : ["Pastikan stok produk andalan aman untuk 14 hari ke depan."]} />
+    <div className="kpis"><Kpi l="GMV" v={fmt(n.g)} d={cmp ? dG : undefined} sub={R.sub} /><Kpi l="Pesanan" v={n.o.toLocaleString("id")} d={cmp ? pct(nf.o, o.o) : undefined} sub={R.sub} /><Kpi l="AOV" v={fmt(aov)} d={cmp ? dA : undefined} sub={R.sub} /><Kpi l="Konversi" v={isFinite(cr) ? cr.toFixed(2) + "%" : "–"} d={cmp && isFinite(dC) ? dC : undefined} sub={isFinite(cr) ? R.sub : "butuh data pengunjung semua toko"} /></div>
     <div className="card"><h2>Tren GMV {B[0].f === B[0].t ? "harian" : "bulanan"}</h2>
       <LineChart title="Tren GMV" labels={B.map((b) => b.l)} cur={vals} prev={prevVals} />
       <div className="chart-legend"><span><i />Periode ini</span>{prevVals && <span><i className="prev" />Periode pembanding ({R.sub.replace(/^vs /, "")})</span>}</div></div>
-    {per.length > 1 && <div className="grid2c">
-      <div className="card"><h2>Porsi GMV per toko</h2><Share items={per.map((r) => ({ l: `${r.s.brand} · ${r.s.platform}`, v: r.g }))} /></div>
-      <div className="card"><h2>Porsi per platform</h2>{(() => { const P = ["Shopee", "TikTok"].map((pf) => ({ l: pf, v: per.filter((r) => r.s.platform === pf).reduce((a, r) => a + r.g, 0) })).filter((x) => x.v > 0); const t = P.reduce((a, x) => a + x.v, 0) || 1;
-        return <><div className="pfsplit">{P.map((x) => <i key={x.l} style={{ width: `${(x.v / t) * 100}%`, background: x.l === "Shopee" ? "var(--accent)" : "var(--aqua)" }} />)}</div>
-          <Share items={P.map((x) => ({ l: x.l, v: x.v }))} /></>; })()}</div>
-    </div>}
-    <div className="card"><h2>Per toko</h2><div className="tbl"><table><thead><tr><th>Toko</th><th className="n">GMV</th><th className="n">Pesanan</th><th className="n">Δ</th><th>Status</th></tr></thead>
-      <tbody>{per.map((r) => <tr key={r.s.id}><td>{r.s.brand} · {r.s.platform}</td><td className="n">{fmt(r.g)}</td><td className="n">{r.o.toLocaleString("id")}</td><td className={"n " + (r.ch >= 0 ? "up" : "dn")}>{r.ch >= 0 ? "+" : ""}{r.ch.toFixed(1)}%</td><td>{r.ch < -25 ? <span className="pill bad">Turun tajam</span> : r.ch < -5 ? <span className="pill warn">Turun</span> : <span className="pill good">Stabil/naik</span>}</td></tr>)}</tbody></table></div></div>
+    <div className="card"><h2>Per toko</h2>
+      {per.length > 1 && (() => { const P = ["Shopee", "TikTok"].map((pf) => ({ l: pf, v: per.filter((r) => r.s.platform === pf).reduce((a, r) => a + r.g, 0) })).filter((x) => x.v > 0); const t = P.reduce((a, x) => a + x.v, 0) || 1;
+        return P.length > 1 ? <div className="pfrow"><div className="pfsplit">{P.map((x) => <i key={x.l} style={{ width: `${(x.v / t) * 100}%`, background: x.l === "Shopee" ? "var(--accent)" : "var(--aqua)" }} />)}</div>
+          <div className="muted small">{P.map((x) => <span key={x.l} style={{ marginRight: 14 }}><b style={{ color: x.l === "Shopee" ? "var(--accent)" : "var(--aqua)" }}>■</b> {x.l} {fmt(x.v)} · {((x.v / t) * 100).toFixed(0)}%</span>)}</div></div> : null; })()}
+      <div className="tbl"><table><thead><tr><th>Toko</th><th className="n">GMV</th><th className="n">Porsi</th><th className="n">Pesanan</th><th className="n">AOV</th><th className="n">Pengunjung</th><th className="n">Konversi</th><th className="n">Δ GMV</th><th>Tren</th><th>Data s.d.</th><th>Status</th></tr></thead>
+      <tbody>{per.map((r) => <tr key={r.s.id}><td>{r.s.brand} · {r.s.platform}</td><td className="n">{fmt(r.g)}</td>
+        <td className="n"><div className="minibar"><i style={{ width: `${(r.g / tot) * 100}%` }} /></div>{((r.g / tot) * 100).toFixed(0)}%</td>
+        <td className="n">{r.o.toLocaleString("id")}</td><td className="n">{r.o ? fmt(r.aov) : "–"}</td><td className="n">{r.v != null ? r.v.toLocaleString("id") : "–"}</td><td className="n">{isFinite(r.cr) ? r.cr.toFixed(2) + "%" : "–"}</td>
+        <td className={"n " + (!isFinite(r.ch) ? "" : r.ch >= 0 ? "up" : "dn")}>{!isFinite(r.ch) || R.key === "all" ? "–" : `${r.ch >= 0 ? "+" : ""}${r.ch.toFixed(1)}%`}</td>
+        <td><Spark v={r.tr} /></td><td className="small">{r.last ? tgl(r.last) : "–"}</td>
+        <td>{r.st ? <span className="pill mute">Data belum lengkap</span> : R.key === "all" ? "–" : r.ch < -25 ? <span className="pill bad">Turun tajam</span> : r.ch < -5 ? <span className="pill warn">Turun</span> : <span className="pill good">Stabil/naik</span>}</td></tr>)}</tbody></table></div>
+      {staleN.length > 0 && <p className="muted small">Toko bertanda &quot;Data belum lengkap&quot; datanya berhenti lebih dari 3 hari sebelum akhir periode, jadi tidak dihitung dalam perbandingan.</p>}</div>
   </>);
 }
 
@@ -244,40 +262,39 @@ function LiveTab({ R, live, brand, plat, jadwal }: { R: Range; live: Live[]; bra
 
 /* ---------------- Analisa produk ---------------- */
 type Prod = { grup: string; nama: string; kode: string[] | null; gmv: number; qty: number; pesanan: number; gmv_prev: number; qty_prev: number; toko: string[] | null; varian: PRow["varian"] };
-function ProdukSection({ R, rows, stores, err }: { R: Range; rows: Prod[]; stores: Store[]; err?: string }) {
-  if (err) return <div className="card"><h2>Analisa produk</h2><p className="err">Data produk gagal dimuat: {err}</p></div>;
-  if (!rows.length) return (
-    <div className="card"><h2>Analisa produk</h2><p className="muted">Belum ada data penjualan per produk untuk pilihan ini. Data produk berasal dari ekspor pesanan (Shopee &quot;Pesanan Saya → Ekspor&quot;, TikTok &quot;Pesanan → Ekspor&quot;).</p></div>);
+type PStats = { st: PRow[]; tokoName: Record<string, string>; sum: string[]; ana: string[]; next: string[]; stop: PRow[]; turun: PRow[]; baru: PRow[]; naik: PRow[] };
+function prodStats(rows: Prod[], stores: Store[]): PStats {
   const tokoName: Record<string, string> = Object.fromEntries(stores.map((s) => [s.id, `${s.brand} ${s.platform === "TikTok" ? "TT" : s.platform === "Shopee" ? "SP" : s.platform}`]));
   const P = rows.map((r) => ({ ...r, gmv: +r.gmv, gmv_prev: +r.gmv_prev, qty: +r.qty, qty_prev: +r.qty_prev }));
   const tot = P.reduce((a, r) => a + r.gmv, 0) || 1;
   let cum = 0;
   const st: PRow[] = P.map((r) => { cum += r.gmv; const ch = pct(r.gmv, r.gmv_prev);
     const status = r.gmv === 0 && r.qty_prev >= 10 ? "stop" : r.gmv_prev === 0 && r.gmv > 0 ? "baru" : cum - r.gmv < tot * 0.8 && r.gmv > 0 ? "andalan" : ch <= -30 && r.gmv_prev > tot * 0.005 ? "turun" : ch >= 30 && r.gmv > tot * 0.005 ? "naik" : "biasa";
-    return { grup: r.grup, nama: r.nama ?? r.grup, kode: r.kode, gmv: r.gmv, qty: r.qty, ch, prev: r.gmv_prev, share: (r.gmv / tot) * 100, status, tokoLabel: (r.toko ?? []).map((t) => tokoName[t] ?? t).join(", "), varian: r.varian }; });
-  const name = (r: PRow) => { const c = r.kode?.[0] ?? (r.grup.startsWith("NAMA:") ? "" : r.grup); const n = c ? `${c} (${r.nama})` : r.nama; return n.length > 70 ? n.slice(0, 68) + "…" : n; };
+    return { grup: r.grup, nama: r.nama ?? r.grup, kode: r.kode, gmv: r.gmv, qty: r.qty, ch, prev: r.gmv_prev, share: (r.gmv / tot) * 100, cum: (cum / tot) * 100, status, toko: r.toko ?? [], tokoLabel: (r.toko ?? []).map((t) => tokoName[t] ?? t).join(", "), varian: r.varian }; });
+  const nm = (r: PRow) => shortName(r.nama);
   const sold = st.filter((r) => r.gmv > 0), andalan = st.filter((r) => r.status === "andalan"), stop = st.filter((r) => r.status === "stop");
-  const turun = st.filter((r) => r.status === "turun").sort((a, b) => a.gmv - a.prev - (b.gmv - b.prev)), naik = st.filter((r) => r.status === "naik").sort((a, b) => b.gmv - b.prev - (a.gmv - a.prev)), baru = st.filter((r) => r.status === "baru");
-  const top5 = sold.slice(0, 5).reduce((a, r) => a + r.share, 0);
-  const multi = sold.filter((r) => (r.tokoLabel.match(/,/g)?.length ?? 0) >= 1).length;
+  const turun = st.filter((r) => r.prev > tot * 0.005 && r.ch <= -50 && r.gmv > 0).sort((a, b) => a.gmv - a.prev - (b.gmv - b.prev)), naik = st.filter((r) => r.status === "naik").sort((a, b) => b.gmv - b.prev - (a.gmv - a.prev)), baru = st.filter((r) => r.status === "baru");
+  if (!sold.length) return { st, tokoName, sum: [], ana: [], next: [], stop, turun, baru, naik };
+  return { st, tokoName, stop, turun, baru, naik,
+    sum: [`${andalan.length} dari ${sold.length} SKU menyumbang 80% GMV; terlaris ${nm(sold[0])} (${sold[0].share.toFixed(0)}%).`],
+    ana: [...(stop.length ? [`${stop.length} SKU yang biasanya laku berhenti terjual.`] : []), ...turun.slice(0, 1).map((r) => `${nm(r)} turun ${Math.abs(r.ch).toFixed(0)}% (${fmt(r.prev)} → ${fmt(r.gmv)}).`)],
+    next: [...(stop.length ? [`Cek stok & listing SKU yang berhenti terjual (lihat "Perlu tindakan").`] : []), ...(naik.length ? [`Tambah stok dan exposure ${nm(naik[0])} selagi naik.`] : [])] };
+}
+function ProdukSection({ R, ps, err }: { R: Range; ps: PStats; err?: string }) {
+  if (err) return <div className="card"><h2>Analisa produk</h2><p className="err">Data produk gagal dimuat: {err}</p></div>;
+  if (!ps.st.length) return (
+    <div className="card"><h2>Analisa produk</h2><p className="muted">Belum ada data penjualan per produk untuk pilihan ini. Data produk berasal dari ekspor pesanan (Shopee &quot;Pesanan Saya → Ekspor&quot;, TikTok &quot;Pesanan → Ekspor&quot;).</p></div>);
+  const L = (t: string, xs: PRow[], f: (r: PRow) => string, cls: string) => <div className="act"><h3><span className={"pill " + cls}>{xs.length}</span> {t}</h3>{xs.length ? <ul>{xs.slice(0, 6).map((r) => <li key={r.grup} title={r.nama}><b>{shortName(r.nama)}</b> <span className="muted small">{f(r)}</span></li>)}{xs.length > 6 && <li className="muted small">+{xs.length - 6} lainnya (filter status di tabel)</li>}</ul> : <p className="muted small">Tidak ada.</p>}</div>;
   return (<>
     <h2 style={{ margin: "8px 0 0" }}>Analisa produk per SKU</h2>
-    <Insight src="Data asli, dari ekspor pesanan"
-      sum={[`${sold.length} SKU induk terjual ${R.label.toLowerCase()}; ${andalan.length} SKU andalan menyumbang 80% GMV.`, `5 SKU teratas = ${top5.toFixed(0)}% GMV. Terlaris: ${sold[0] ? name(sold[0]) : "-"} (${sold[0] ? sold[0].share.toFixed(0) : 0}%).`, `${multi} SKU dijual di lebih dari satu toko.`]}
-      ana={[...(top5 > 60 ? ["Ketergantungan pada sedikit SKU tinggi; kalau satu SKU andalan kosong stok, GMV langsung terpukul."] : []),
-        ...turun.slice(0, 2).map((r) => `${name(r)} turun ${Math.abs(r.ch).toFixed(0)}% (${fmt(r.prev)} → ${fmt(r.gmv)}).`),
-        ...naik.slice(0, 2).map((r) => `${name(r)} naik ${r.ch.toFixed(0)}% (${fmt(r.prev)} → ${fmt(r.gmv)}).`),
-        ...(stop.length ? [`${stop.length} SKU yang laku ≥10 unit di periode pembanding tidak terjual sama sekali sekarang.`] : [])]}
-      next={[...(stop.length ? [`Cek stok dan listing: ${stop.slice(0, 3).map(name).join("; ")}.`] : []),
-        ...turun.slice(0, 2).map((r) => `${name(r)}: buka detail varian untuk melihat varian mana yang turun atau kosong.`),
-        ...(naik.length ? [`Tambah stok dan exposure untuk ${name(naik[0])} selagi naik.`] : []),
-        ...(baru.length ? [`Pantau ${baru.length} SKU yang baru mulai terjual.`] : []),
-        "Pastikan varian terlaris SKU andalan tidak kosong stok di semua toko."]} />
-    <div className="card"><h2>SKU teratas · {R.label}</h2>
-      <p className="muted small" style={{ marginTop: -4 }}>Klik baris SKU untuk melihat semua SKU varian beserta toko, qty, dan GMV-nya.</p>
-      <ProdukTable rows={st.slice(0, 40)} tokoName={tokoName} />
-      {st.length > 40 && <details><summary className="small" style={{ cursor: "pointer", marginTop: 8 }}>Tampilkan semua ({st.length} SKU)</summary><ProdukTable rows={st.slice(40)} tokoName={tokoName} /></details>}
-      <p className="muted small">SKU induk = kode SKU sebelum titik pertama; listing yang memakai kode sama di toko berbeda digabung menjadi satu baris. Andalan = SKU teratas yang bersama-sama menyumbang 80% GMV. Berhenti terjual = laku ≥10 unit di periode pembanding, 0 di periode ini. Pembanding: {R.sub}.</p>
+    {(ps.stop.length + ps.turun.length + ps.baru.length) > 0 && <div className="card"><h2>Perlu tindakan</h2><div className="acts">
+      {L("Andalan berhenti terjual", ps.stop, (r) => `sebelumnya ${fmt(r.prev)}`, "bad")}
+      {L("Turun lebih dari 50%", ps.turun, (r) => `${fmt(r.prev)} → ${fmt(r.gmv)}`, "warn")}
+      {L("Baru mulai laku", ps.baru, (r) => `${fmt(r.gmv)} · ${r.tokoLabel}`, "good")}
+    </div></div>}
+    <div className="card"><h2>SKU · {R.label}</h2>
+      <ProdukTable rows={ps.st} tokoName={ps.tokoName} />
+      <p className="muted small">Klik baris untuk melihat SKU varian. SKU induk = kode SKU sebelum titik pertama; kode sama di toko berbeda digabung. Andalan = SKU teratas yang bersama-sama menyumbang 80% GMV (lihat kolom Kumulatif). Berhenti terjual = laku ≥10 unit di periode pembanding, 0 di periode ini. Pembanding: {R.sub}.</p>
     </div>
   </>);
 }

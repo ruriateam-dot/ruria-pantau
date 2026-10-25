@@ -72,3 +72,11 @@ export function Share({ items, color = "var(--accent)" }: { items: { l: string; 
 
 export const Chg = ({ a, b }: { a: number; b: number }) => { const v = pct(a, b); return <b className={v >= 0 ? "up" : "dn"}>{v >= 0 ? "naik" : "turun"} {Math.abs(v).toFixed(1)}%</b>; };
 export { fmt };
+
+/* Grafik tren kecil untuk tabel */
+export function Spark({ v }: { v: number[] }) {
+  const W = 90, H = 24, n = v.length, mx = Math.max(1, ...v);
+  if (n < 2) return null;
+  const d = v.map((x, i) => `${i ? "L" : "M"}${((i * W) / (n - 1)).toFixed(1)},${(H - 2 - (x / mx) * (H - 4)).toFixed(1)}`).join("");
+  return <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} aria-hidden="true" className="spark"><path d={d} fill="none" stroke="var(--accent)" strokeWidth="1.5" /></svg>;
+}

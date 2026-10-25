@@ -276,3 +276,17 @@ button.danger{color:var(--bad)}
 .main{min-width:0;overflow-x:clip}
 #aff-root{max-width:100%;min-width:0}
 #aff-root main{overflow-x:auto}
+
+/* Toko & produk */
+.warnnote{border-left:3px solid var(--accent)}
+.minibar{display:inline-block;width:46px;height:6px;border-radius:3px;background:var(--line);margin-right:6px;vertical-align:middle;overflow:hidden}
+.minibar i{display:block;height:100%;background:var(--accent)}
+.pfrow{margin:0 0 12px}.pfrow .pfsplit{margin-bottom:6px}
+.spark{display:block}
+.pfil{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 10px}
+.pfil input,.pfil select{padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--fg);font:inherit;font-size:13px}
+.pfil input{min-width:220px;flex:1;max-width:320px}
+.acts{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.act h3{font-size:14px;margin:0 0 8px;display:flex;gap:8px;align-items:center}
+.act ul{margin:0;padding-left:16px;display:grid;gap:6px;font-size:13px}
+@media(max-width:800px){.acts{grid-template-columns:1fr}}
