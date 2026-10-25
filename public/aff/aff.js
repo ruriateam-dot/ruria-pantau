@@ -186,7 +186,7 @@ function sortDefs(which){
   const isTT = which === 'tiktok', months = isTT ? TT_M : SH_M, pre = isTT ? 'GMV ' : 'Omzet ';
   const d = {
     pr:{lbl:'Prioritas', fn:r=>r.pr, t:'pr', dir:'asc'},
-    okt:{lbl:pre+'Okt', fn:r=>r.okt, t:'num', dir:'desc'},
+    okt:{lbl:pre+'30 hari terakhir', fn:r=>r.okt, t:'num', dir:'desc'},
     tot:{lbl:pre+'Mei–Okt', fn:r=>r.tot, t:'num', dir:'desc'},
     bln:{lbl:'Bulan aktif', fn:r=>r.bln, t:'num', dir:'desc'},
   };
@@ -248,7 +248,7 @@ function renderList(which){
   const list = filtered(which), pages = Math.max(1, Math.ceil(list.length / PAGE));
   if (f.page >= pages) f.page = pages - 1;
   const slice = list.slice(f.page*PAGE, f.page*PAGE + PAGE);
-  const mLbl = isTT ? 'GMV Okt' : 'Omzet Okt', tLbl = isTT ? 'GMV Mei–Okt' : 'Omzet Mei–Okt';
+  const mLbl = isTT ? 'GMV 30 hari terakhir' : 'Omzet 30 hari terakhir', tLbl = isTT ? 'GMV Mei–Okt' : 'Omzet Mei–Okt';
   const nAct = activeFilters(f);
   const th = (key, label, cls='') => { const on = f.sort === key; const arrow = on ? (dir === 'asc' ? '▲' : '▼') : '↕';
     return `<th class="${cls}" aria-sort="${on ? (dir==='asc'?'ascending':'descending') : 'none'}"><button class="sorth${on?' on':''}" data-sort="${key}" title="Urutkan menurut ${esc(defs[key].lbl)}">${label}<span class="arr" aria-hidden="true">${arrow}</span></button></th>`; };
@@ -314,7 +314,7 @@ const dbRows = () => S.dbpl === 'TikTok' ? TT : S.dbpl === 'Shopee' ? SH : TT.co
 const dbF = () => S.dbpl === 'Shopee' ? S.f.shopee : S.f.tiktok;
 function dbDefs(){
   const d = sortDefs('tiktok');
-  d.okt.lbl = 'GMV Okt (kotor)'; delete d.tot;
+  d.okt.lbl = 'GMV 30 hari terakhir (kotor)'; delete d.tot;
   SH_M.forEach((m,i) => { if (d['m'+i]) d['m'+i].lbl = 'GMV ' + m + ' (kotor TikTok / bersih Shopee)'; });
   d.gk = {lbl:'GMV kotor', fn:r=>r.gk, t:'num', dir:'desc'};
   d.gb = {lbl:'GMV bersih', fn:r=>r.gb, t:'num', dir:'desc'};
@@ -414,7 +414,7 @@ function renderDb(){
     <span class="count">${nf.format(list.length)} dari ${nf.format(rows.length)} akun · GMV kotor ${rpShort(tot('gk'))} · bersih ${rpShort(tot('gb'))} · batal/retur ${rpShort(tot('gx'))}</span>
   </div>
   <div class="tscroll"><table>
-    <thead><tr>${th('pr','Prio')}<th>Platform</th>${th('u','Username')}<th>Tipe</th>${th('okt','GMV Okt','num')}${th('gk','GMV kotor','num')}${th('gb','GMV bersih','num')}${th('gx','GMV batal/retur','num')}${th('bln','Bulan aktif','num')}${th('sn','Sampel (all time)','num')}${th('sroi','Efektivitas sampel (all time)','num')}<th>Saran aksi</th>${th('st','Status')}${th('resp','Respon')}${th('last','Terakhir dihubungi')}</tr></thead>
+    <thead><tr>${th('pr','Prio')}<th>Platform</th>${th('u','Username')}<th>Tipe</th>${th('okt','GMV 30 hari terakhir','num')}${th('gk','GMV kotor','num')}${th('gb','GMV bersih','num')}${th('gx','GMV batal/retur','num')}${th('bln','Bulan aktif','num')}${th('sn','Sampel (all time)','num')}${th('sroi','Efektivitas sampel (all time)','num')}<th>Saran aksi</th>${th('st','Status')}${th('resp','Respon')}${th('last','Terakhir dihubungi')}</tr></thead>
     <tbody>${slice.length ? slice.map((r,i) => `<tr class="click" tabindex="0" data-i="${f.page*PAGE+i}">
       <td>${prioChip(r.pr)}</td><td>${plChip(r.k==='tt'?'TikTok':'Shopee')}</td>
       <td class="u">${esc(r.u)}${liveChip(r)}${andalan(r) ? ' <span class="chip p1" title="Kreator andalan: jualan ≥5 dari 6 bulan, GMV bersih ≥Rp3 jt, masih jualan bulan terakhir. Pertahankan dengan komisi khusus/prioritas produk baru">Andalan</span>' : ''}${halOf(r) ? ` <span class="chip" title="Peserta acara Haluan ClickConnect Semarang (${esc(halOf(r))}), dapat 1 sampel">Haluan</span>` : ''}${r.k==='sh' && r.nama && r.nama !== r.u ? `<small>${esc(r.nama)}</small>` : ''}${fuOf(r)?.kontak ? `<br>${kontakHtml(fuOf(r).kontak, r)}`:''}</td>
@@ -915,7 +915,7 @@ function todayPanel(){
       ${btn('td-p1', p1, 'P1 belum dihubungi')}
       ${btn('td-p2', p2, 'P2 belum dihubungi')}
       ${btn('td-tagih', ready ? tg.length : 0, ready ? 'sampel perlu ditagih kontennya' : 'sampel perlu ditagih (memuat…)', 'dikirim 14–45 hari lalu, belum SESUAI, belum jualan bulan terakhir')}
-      ${btn('td-andalan', an.length, 'kreator andalan', `${anBelum} belum dihubungi · jualan ≥5 dari 6 bulan, GMV bersih ≥Rp3 jt, masih jualan Okt`)}
+      ${btn('td-andalan', an.length, 'kreator andalan', `${anBelum} belum dihubungi · jualan ≥5 dari 6 bulan, GMV bersih ≥Rp3 jt, masih jualan bulan terakhir`)}
     </div>
     <p class="note" style="${syncBad ? 'color:var(--bad)' : ''}">${esc(syncTxt)}${syncBad ? ' · cek jadwal sinkron' : ''}</p>
     <div id="td-tagih-list" ${S.f.tagihOpen ? '' : 'hidden'}>${S.f.tagihOpen ? tagihTable(tg) : ''}</div>
