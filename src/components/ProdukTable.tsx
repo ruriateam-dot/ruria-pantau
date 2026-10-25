@@ -25,12 +25,13 @@ export default function ProdukTable({ rows, tokoName }: { rows: PRow[]; tokoName
       <span className="muted small">{F.length} SKU</span>
     </div>
     <div className="tbl"><table className="ptab">
-      <thead><tr><th>SKU induk</th><th>Produk</th><th className="n">GMV</th><th className="n">Qty</th><th className="n">Harga rata²</th><th className="n">Δ GMV</th><th className="n">Porsi</th><th className="n">Kumulatif</th><th>Status</th></tr></thead>
+      <thead><tr><th>#</th><th>SKU induk</th><th>Produk</th><th className="n">GMV</th><th className="n">Qty</th><th className="n">Harga rata²</th><th className="n">Δ GMV</th><th className="n">Porsi</th><th className="n">Kumulatif</th><th>Status</th></tr></thead>
       <tbody>{F.slice(0, n).map((r) => {
         const isOpen = open.has(r.grup), code = r.kode?.[0] ?? (r.grup.startsWith("NAMA:") ? "–" : r.grup);
         return (
           <Fragment key={r.grup}>
-            <tr className={"prow" + (isOpen ? " open" : "")} onClick={() => toggle(r.grup)} tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(r.grup); } }} aria-expanded={isOpen}>
+            <tr className={"prow" + (isOpen ? " open" : "")} data-rank={rows.indexOf(r) + 1} onClick={() => toggle(r.grup)} tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(r.grup); } }} aria-expanded={isOpen}>
+              <td>{(() => { const k = rows.indexOf(r) + 1; return r.gmv > 0 ? <span className={"rk" + (k <= 3 ? " r" + k : "")}>{k}</span> : "–"; })()}</td>
               <td><span className="chev" aria-hidden="true">{isOpen ? "▾" : "▸"}</span> <b>{code}</b>{r.kode && r.kode.length > 1 && <div className="muted small">+{r.kode.length - 1} kode lain</div>}</td>
               <td className="wrapcell" title={r.nama}>{shortName(r.nama)}<div className="muted small">{r.tokoLabel}</div></td>
               <td className="n">{fmt(r.gmv)}</td><td className="n">{r.qty.toLocaleString("id")}</td><td className="n">{r.qty ? fmt(r.gmv / r.qty) : "–"}</td>
@@ -39,7 +40,7 @@ export default function ProdukTable({ rows, tokoName }: { rows: PRow[]; tokoName
               <td><span className={"pill " + PILL[r.status][0]}>{PILL[r.status][1]}</span></td>
             </tr>
             {isOpen && (
-              <tr className="vrow"><td colSpan={9}>
+              <tr className="vrow"><td colSpan={10}>
                 <p className="small" style={{ margin: "0 0 6px" }}>{r.nama}</p>
                 {r.varian?.length ? (
                   <table className="vtab"><thead><tr><th>SKU varian</th><th>Varian</th><th>Toko</th><th className="n">Qty</th><th className="n">GMV</th><th className="n">Porsi di SKU</th></tr></thead>

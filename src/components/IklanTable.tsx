@@ -13,14 +13,14 @@ export default function IklanTable({ rows }: { rows: CRow[] }) {
   const F = useMemo(() => { const c = cari.trim().toLowerCase(); return rows.filter((r) => (!toko || r.toko === toko) && (!tipe || r.tipe === tipe) && (!st || r.st === st) && (!c || r.nama.toLowerCase().includes(c))); }, [rows, toko, tipe, st, cari]);
   const set = (f: (v: string) => void) => (e: { target: { value: string } }) => { f(e.target.value); setN(STEP); };
   return (<>
+    <div className="chips">{["", ...opt("tipe")].map((t) => <button type="button" key={t || "all"} className={"chip-b" + (tipe === t ? " on" : "")} onClick={() => { setTipe(t); setN(STEP); }}>{t || "Semua tipe"} ({rows.filter((r) => !t || r.tipe === t).length})</button>)}</div>
+    <div className="chips">{["", ...Object.keys(ST)].map((k) => <button type="button" key={k || "all"} className={"chip-b" + (st === k ? " on" : "")} onClick={() => { setSt(k); setN(STEP); }}>{k ? ST[k][1] : "Semua status"} ({rows.filter((r) => (!tipe || r.tipe === tipe) && (!k || r.st === k)).length})</button>)}</div>
     <div className="pfil">
       <input type="search" placeholder="Cari kampanye / produk" value={cari} onChange={set(setCari)} aria-label="Cari kampanye" />
       <select value={toko} onChange={set(setToko)} className={toko ? "act" : ""} aria-label="Toko"><option value="">Semua toko</option>{opt("toko").map((x) => <option key={x}>{x}</option>)}</select>
-      <select value={tipe} onChange={set(setTipe)} className={tipe ? "act" : ""} aria-label="Tipe iklan"><option value="">Semua tipe iklan</option>{opt("tipe").map((x) => <option key={x}>{x}</option>)}</select>
-      <select value={st} onChange={set(setSt)} className={st ? "act" : ""} aria-label="Status"><option value="">Semua status</option>{Object.entries(ST).map(([k, v]) => <option key={k} value={k}>{v[1]}</option>)}</select>
       <span className="muted small">{F.length} kampanye</span>
     </div>
-    <div className="tbl"><table><thead><tr><th>Kampanye</th><th>Tipe</th><th className="n">Biaya</th><th className="n">GMV</th><th className="n">Pesanan</th><th className="n">CPA</th><th className="n">ROAS</th><th className="n">Δ ROAS</th><th>Status</th></tr></thead>
+    <div className="tbl"><table><thead><tr><th>Kampanye</th><th>Tipe</th><th className="n">Biaya</th><th className="n">GMV</th><th className="n">Pesanan</th><th className="n">CPA</th><th className="n">ROAS</th><th className="n">Δ ROAS</th><th>Diagnosis</th></tr></thead>
       <tbody>{F.slice(0, n).map((c) => <tr key={c.k}><td className="wrapcell" title={c.nama}>{shortName(c.nama)}<div className="muted small">{c.toko}</div></td><td className="small">{c.tipe}</td>
         <td className="n">{fmt(c.s)}</td><td className="n">{fmt(c.g)}</td><td className="n">{c.o ? c.o.toLocaleString("id") : "–"}</td><td className="n">{c.o ? fmt(c.s / c.o) : "–"}</td><td className="n">{c.r.toFixed(1)}</td>
         <td className={"n " + (c.dr == null ? "" : c.dr >= 0 ? "up" : "dn")}>{c.dr == null ? "–" : `${c.dr >= 0 ? "+" : ""}${c.dr.toFixed(1)}`}</td>

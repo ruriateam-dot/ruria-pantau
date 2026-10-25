@@ -12,6 +12,7 @@ import ProdukTable, { type PRow } from "@/components/ProdukTable";
 import IklanTable, { type CRow } from "@/components/IklanTable";
 import MetricBoard, { type Metric } from "@/components/MetricBoard";
 import LiveSessions from "@/components/LiveSessions";
+import ProdukDiag from "@/components/ProdukDiag";
 import SaldoIklan, { type SaldoRow } from "@/components/SaldoIklan";
 import { shortName } from "@/lib/nama";
 import { Kpi, Insight, Bars, LineChart, Share, Spark } from "@/components/ui";
@@ -53,7 +54,7 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
       try { prod = await produkSku(ts.map((s) => s.id), R.from, R.to, R.pf, R.pt); } catch (e) { prodErr = (e as Error).message; }
       const SL = await storeLast(ts.map((s) => s.id));
       const PS = prodStats(prod, ts);
-      body = <><TokoTab R={R} stores={ts} sales={D.sales} last={SL} prod={PS} /><ProdukSection R={R} ps={PS} err={prodErr} /></>;
+      body = <><TokoTab R={R} stores={ts} sales={D.sales} last={SL} prod={PS} live={D.live} ads={D.ads} plat={sp.p} /><ProdukSection R={R} ps={PS} err={prodErr} /></>;
     }
     else if (tab === "iklan") {
       // Saldo iklan hanya untuk tim (tidak tampil di link klien)
@@ -143,7 +144,7 @@ async function SumTab(R: Range, clients: { id: string; nama: string; modul: stri
 }
 
 /* ---------------- Toko ---------------- */
-function TokoTab({ R, stores, sales, last, prod }: { R: Range; stores: Store[]; sales: Sale[]; last: Record<string, string>; prod: PStats }) {
+function TokoTab({ R, stores, sales, last, prod, live, ads, plat }: { R: Range; stores: Store[]; sales: Sale[]; last: Record<string, string>; prod: PStats; live: Live[]; ads: Ad[]; plat?: string }) {
   if (!stores.length) return <p className="muted">Tidak ada toko untuk pilihan ini.</p>;
   // Toko yang datanya berhenti sebelum akhir periode (lebih dari 3 hari) tidak ikut dibandingkan
   const stale = (id: string) => !last[id] || dayDiff(last[id], R.to) > 3;
@@ -179,14 +180,28 @@ function TokoTab({ R, stores, sales, last, prod }: { R: Range; stores: Store[]; 
     {(() => { const ser = (f: (x: ReturnType<typeof agg>) => number, bs: { f: string; t: string }[]) => bs.map((k) => f(agg(k.f, k.t)));
       const PBs = PB ?? undefined, cv = (x: ReturnType<typeof agg>) => x.vok && x.v ? (x.o / x.v) * 100 : NaN;
       const M: Metric[] = [
-        { k: "g", l: "Penjualan", f: "rp", v: n.g, d: cmp ? dG : null, s: vals, ps: prevVals },
-        { k: "o", l: "Pesanan", f: "n", v: n.o, d: cmp ? pct(nf.o, o.o) : null, s: ser((x) => x.o, B), ps: PBs && ser((x) => x.o, PBs) },
-        { k: "v", l: "Pengunjung", f: "n", v: n.vok ? n.v : NaN, d: cmp && o.vok && nf.vok ? pct(nf.v, o.v) : null, s: ser((x) => x.v, B), ps: PBs && ser((x) => x.v, PBs), note: n.vok ? undefined : "data pengunjung belum lengkap" },
-        { k: "cr", l: "Tingkat konversi", f: "pct", v: cr, d: cmp ? dC : null, s: ser(cv, B), ps: PBs && ser(cv, PBs) },
-        { k: "aov", l: "Penjualan per pesanan", f: "rp", v: aov, d: cmp ? dA : null, s: ser((x) => (x.o ? x.g / x.o : 0), B), ps: PBs && ser((x) => (x.o ? x.g / x.o : 0), PBs) },
-        { k: "vp", l: "Penjualan per pengunjung", f: "rp", v: n.vok && n.v ? n.g / n.v : NaN, d: cmp && nf.vok && nf.v && o.vok && o.v ? pct(nf.g / nf.v, o.g / o.v) : null, s: ser((x) => (x.v ? x.g / x.v : 0), B), ps: PBs && ser((x) => (x.v ? x.g / x.v : 0), PBs) },
+        { g: "Penjualan", k: "g", l: "Penjualan", f: "rp", v: n.g, d: cmp ? dG : null, s: vals, ps: prevVals },
+        { g: "Penjualan", k: "o", l: "Pesanan", f: "n", v: n.o, d: cmp ? pct(nf.o, o.o) : null, s: ser((x) => x.o, B), ps: PBs && ser((x) => x.o, PBs) },
+        { g: "Trafik", k: "v", l: "Pengunjung", f: "n", v: n.vok ? n.v : NaN, d: cmp && o.vok && nf.vok ? pct(nf.v, o.v) : null, s: ser((x) => x.v, B), ps: PBs && ser((x) => x.v, PBs), note: n.vok ? undefined : "data pengunjung belum lengkap" },
+        { g: "Trafik", k: "cr", l: "Tingkat konversi", f: "pct", v: cr, d: cmp ? dC : null, s: ser(cv, B), ps: PBs && ser(cv, PBs) },
+        { g: "Penjualan", k: "aov", l: "Penjualan per pesanan", f: "rp", v: aov, d: cmp ? dA : null, s: ser((x) => (x.o ? x.g / x.o : 0), B), ps: PBs && ser((x) => (x.o ? x.g / x.o : 0), PBs) },
+        { g: "Trafik", k: "vp", l: "Penjualan per pengunjung", f: "rp", v: n.vok && n.v ? n.g / n.v : NaN, d: cmp && nf.vok && nf.v && o.vok && o.v ? pct(nf.g / nf.v, o.g / o.v) : null, s: ser((x) => (x.v ? x.g / x.v : 0), B), ps: PBs && ser((x) => (x.v ? x.g / x.v : 0), PBs) },
       ];
       return <MetricBoard metrics={M} labels={B.map((b) => b.l)} sub={R.sub} init={["g", "o"]} />; })()}
+    {(() => { // Rincian kontribusi penjualan (ala Seller Centre)
+      const brands = new Set(stores.map((x) => x.brand.toLowerCase()));
+      const lv = live.filter((x) => x.tanggal >= R.from && x.tanggal <= R.to && (!x.brand || brands.has(x.brand.toLowerCase()))).reduce((t, x) => t + (plat === "TikTok" ? 0 : +x.gmv_shopee) + (plat === "Shopee" ? 0 : +x.gmv_tiktok), 0);
+      const lvP = live.filter((x) => x.tanggal >= R.pf && x.tanggal <= R.pt && (!x.brand || brands.has(x.brand.toLowerCase()))).reduce((t, x) => t + (plat === "TikTok" ? 0 : +x.gmv_shopee) + (plat === "Shopee" ? 0 : +x.gmv_tiktok), 0);
+      const ids2 = new Set(stores.map((x) => x.id)), pr = (x: Ad, a: string, b: string) => { const f = x.dari > a ? x.dari : a, t = x.sampai < b ? x.sampai : b; return f > t ? 0 : (dayDiff(f, t) + 1) / (dayDiff(x.dari, x.sampai) + 1); };
+      const ad = ads.filter((x) => ids2.has(x.store_id)).reduce((t, x) => t + +x.gmv * pr(x, R.from, R.to), 0), adP = ads.filter((x) => ids2.has(x.store_id)).reduce((t, x) => t + +x.gmv * pr(x, R.pf, R.pt), 0);
+      if (!lv && !ad) return null;
+      const tot = n.g || 1, ch = (a2: number, b2: number) => cmp && b2 ? <span className={a2 >= b2 ? "up" : "dn"}> {a2 >= b2 ? "▲" : "▼"} {Math.abs(pct(a2, b2)).toFixed(1)}%</span> : null;
+      return <div className="card"><h2>Rincian kontribusi penjualan</h2><div className="contrib">
+        <div className="tot"><span>Total penjualan (100%)</span><b>{fmt(n.g)}</b><small className="small">{ch(n.g, o.g)}</small></div>
+        {lv > 0 && <div><span>Livestream (data laporan live)</span><b>{fmt(lv)}</b><small className="small muted">{Math.min(100, (lv / tot) * 100).toFixed(0)}% dari penjualan{ch(lv, lvP)}</small></div>}
+        {lv > 0 && <div><span>Di luar livestream</span><b>{fmt(Math.max(0, n.g - lv))}</b><small className="small muted">{Math.max(0, 100 - (lv / tot) * 100).toFixed(0)}% dari penjualan</small></div>}
+        {ad > 0 && <div><span>Dipengaruhi iklan (atribusi platform)</span><b>{fmt(ad)}</b><small className="small muted">{Math.min(100, (ad / tot) * 100).toFixed(0)}% dari penjualan{ch(ad, adP)}</small></div>}
+      </div><p className="muted small">Kontribusi iklan dan livestream bisa saling tumpang tindih (pesanan dari live juga bisa tercatat sebagai hasil iklan), jadi persentasenya tidak dijumlahkan. Video & affiliate belum termasuk karena belum ada data hariannya.</p></div>; })()}
     <div className="card"><h2>Per toko</h2>
       {per.length > 1 && (() => { const P = ["Shopee", "TikTok"].map((pf) => ({ l: pf, v: per.filter((r) => r.s.platform === pf).reduce((a, r) => a + r.g, 0) })).filter((x) => x.v > 0); const t = P.reduce((a, x) => a + x.v, 0) || 1;
         return P.length > 1 ? <div className="pfrow"><div className="pfsplit">{P.map((x) => <i key={x.l} style={{ width: `${(x.v / t) * 100}%`, background: x.l === "Shopee" ? "var(--accent)" : "var(--aqua)" }} />)}</div>
@@ -250,12 +265,12 @@ function IklanTab({ R, stores, ads, sales }: { R: Range; stores: Store[]; ads: A
         const om2 = sales.filter((x) => ids.has(x.store_id) && x.tanggal >= k.f && x.tanggal <= k.t).reduce((a, x) => a + x.gmv, 0); return { ...r, om: om2 }; });
       const c = ser(B0), pv = PB0 ? ser(PB0) : null, Oo = [...C.values()].reduce((a, x) => a + x.o, 0), Op = [...CP.values()].reduce((a, x) => a + x.o, 0);
       const M: Metric[] = [
-        { k: "s", l: "Biaya iklan", f: "rp", v: S, p: cmp ? Sp : null, inv: true, s: c.map((x) => x.s), ps: pv?.map((x) => x.s) },
-        { k: "g", l: "GMV atribusi iklan", f: "rp", v: G, p: cmp ? Gp : null, s: c.map((x) => x.g), ps: pv?.map((x) => x.g) },
-        { k: "r", l: "ROAS", f: "x", v: roas, p: cmp ? roasP : null, s: c.map((x) => (x.s ? x.g / x.s : 0)), ps: pv?.map((x) => (x.s ? x.g / x.s : 0)) },
-        { k: "o", l: "Pesanan dari iklan", f: "n", v: Oo, p: cmp ? Op : null, s: c.map((x) => x.o), ps: pv?.map((x) => x.o) },
-        { k: "cpa", l: "Biaya per pesanan", f: "rp", v: Oo ? S / Oo : NaN, p: cmp && Op ? Sp / Op : null, inv: true, s: c.map((x) => (x.o ? x.s / x.o : 0)), ps: pv?.map((x) => (x.o ? x.s / x.o : 0)) },
-        { k: "bo", l: "Biaya iklan / omzet", f: "pct", v: om ? (S / om) * 100 : NaN, p: cmp && omP ? (Sp / omP) * 100 : null, inv: true, s: c.map((x) => (x.om ? (x.s / x.om) * 100 : 0)), ps: pv?.map((x) => (x.om ? (x.s / x.om) * 100 : 0)) },
+        { g: "Biaya & hasil", k: "s", l: "Biaya iklan", f: "rp", v: S, p: cmp ? Sp : null, inv: true, s: c.map((x) => x.s), ps: pv?.map((x) => x.s) },
+        { g: "Biaya & hasil", k: "g", l: "GMV atribusi iklan", f: "rp", v: G, p: cmp ? Gp : null, s: c.map((x) => x.g), ps: pv?.map((x) => x.g) },
+        { g: "Efisiensi", k: "r", l: "ROAS", f: "x", v: roas, p: cmp ? roasP : null, s: c.map((x) => (x.s ? x.g / x.s : 0)), ps: pv?.map((x) => (x.s ? x.g / x.s : 0)) },
+        { g: "Biaya & hasil", k: "o", l: "Pesanan dari iklan", f: "n", v: Oo, p: cmp ? Op : null, s: c.map((x) => x.o), ps: pv?.map((x) => x.o) },
+        { g: "Efisiensi", k: "cpa", l: "Biaya per pesanan", f: "rp", v: Oo ? S / Oo : NaN, p: cmp && Op ? Sp / Op : null, inv: true, s: c.map((x) => (x.o ? x.s / x.o : 0)), ps: pv?.map((x) => (x.o ? x.s / x.o : 0)) },
+        { g: "Efisiensi", k: "bo", l: "Biaya iklan / omzet", f: "pct", v: om ? (S / om) * 100 : NaN, p: cmp && omP ? (Sp / omP) * 100 : null, inv: true, s: c.map((x) => (x.om ? (x.s / x.om) * 100 : 0)), ps: pv?.map((x) => (x.om ? (x.s / x.om) * 100 : 0)) },
       ];
       return <MetricBoard metrics={M} labels={B0.map((b) => b.l)} sub={R.sub} init={["s", "r"]} />; })()}
     {G > om && om > 0 && <p className="muted small" style={{ marginTop: -6 }}>GMV atribusi iklan bisa lebih besar dari omzet toko: platform menghitung pesanan dalam beberapa hari setelah klik (satu pesanan bisa tercatat di lebih dari satu kampanye) dan belum mengurangi pembatalan sebelum pesanan dikirim.</p>}
@@ -268,7 +283,7 @@ function IklanTab({ R, stores, ads, sales }: { R: Range; stores: Store[]; ads: A
       {L("Bisa di-scale", scale, (r) => `${fmt(r.s)} · ROAS ${r.r.toFixed(1)}`, "good", `ROAS ≥ ${(roas * 1.3).toFixed(1)}, biaya masih kecil`)}
       {L("Tanpa penjualan", nol, (r) => `${fmt(r.s)} · 0 pesanan`, "bad", "Biaya ≥ Rp100 rb, 0 pesanan")}
     </div><p className="muted small">Patokan memakai ROAS rata-rata periode ini ({roas.toFixed(1)}), sampai KPI tiap klien diisi.</p></div>}
-    <div className="card"><h2>Kampanye</h2><IklanTable rows={rows} /></div>
+    <div className="card"><h2>Daftar iklan</h2><IklanTable rows={rows} /></div>
   </>);
 }
 
@@ -336,15 +351,16 @@ function LiveTab({ R, live, brand, plat, jadwal }: { R: Range; live: Live[]; bra
       // Penonton hanya dibandingkan kalau kedua periode punya data penonton hampir lengkap
       const cov = (xs: Live[]) => xs.length ? xs.filter((x) => x.penonton != null).length / xs.length : 0, cmPen = cm && cov(cur) > 0.9 && cov(prev) > 0.9;
       const M: Metric[] = [
-        { k: "g", l: "GMV live", f: "rp", v: a.g, p: cm ? b.g : null, s: c.map((x) => x.g), ps: pv?.map((x) => x.g) },
-        { k: "j", l: "Durasi live", f: "jam", v: a.j, p: cm ? b.j : null, s: c.map((x) => x.j), ps: pv?.map((x) => x.j) },
-        { k: "n", l: "Sesi", f: "n", v: a.n, p: cm ? b.n : null, s: c.map((x) => x.n), ps: pv?.map((x) => x.n) },
-        { k: "gj", l: "GMV per jam", f: "rp", v: gj, p: cm ? gjp : null, s: c.map((x) => (x.j ? x.g / x.j : 0)), ps: pv?.map((x) => (x.j ? x.g / x.j : 0)) },
-        ...(hasPen ? [{ k: "pen", l: "Penonton", f: "n", v: pen, p: cmPen ? penP : null, note: cmPen ? undefined : "data penonton belum lengkap untuk dibandingkan", s: c.map((x) => x.pen), ps: pv?.map((x) => x.pen) } as Metric,
-          { k: "gp", l: "GMV per penonton", f: "rp", v: pen ? a.g / pen : NaN, p: cmPen && penP ? b.g / penP : null, note: cmPen ? undefined : "data penonton belum lengkap untuk dibandingkan", s: c.map((x) => (x.pen ? x.g / x.pen : 0)), ps: pv?.map((x) => (x.pen ? x.g / x.pen : 0)) } as Metric] : []),
-        { k: "gs", l: "GMV Shopee", f: "rp", v: a.gs, p: cm ? b.gs : null, s: c.map((x) => x.gs), ps: pv?.map((x) => x.gs) },
-        { k: "gt", l: "GMV TikTok", f: "rp", v: a.gt, p: cm ? b.gt : null, s: c.map((x) => x.gt), ps: pv?.map((x) => x.gt) },
-        { k: "z", l: "Sesi tanpa penjualan", f: "pct", v: zr, p: cm && b.n ? (b.z / b.n) * 100 : null, inv: true, s: c.map((x) => (x.n ? (x.z / x.n) * 100 : 0)) },
+        { g: "Transaksi", k: "g", l: "GMV live", f: "rp", v: a.g, p: cm ? b.g : null, s: c.map((x) => x.g), ps: pv?.map((x) => x.g) },
+        { g: "Kunjungan", k: "rd", l: "Rata-rata durasi", f: "jam", v: a.n ? a.j / a.n : NaN, p: cm && b.n ? b.j / b.n : null, s: c.map((x) => (x.n ? x.j / x.n : 0)), ps: pv?.map((x) => (x.n ? x.j / x.n : 0)) },
+        { g: "Kunjungan", k: "j", l: "Durasi live", f: "jam", v: a.j, p: cm ? b.j : null, s: c.map((x) => x.j), ps: pv?.map((x) => x.j) },
+        { g: "Kunjungan", k: "n", l: "Sesi", f: "n", v: a.n, p: cm ? b.n : null, s: c.map((x) => x.n), ps: pv?.map((x) => x.n) },
+        { g: "Konversi", k: "gj", l: "GMV per jam", f: "rp", v: gj, p: cm ? gjp : null, s: c.map((x) => (x.j ? x.g / x.j : 0)), ps: pv?.map((x) => (x.j ? x.g / x.j : 0)) },
+        ...(hasPen ? [{ g: "Kunjungan", k: "pen", l: "Penonton", f: "n", v: pen, p: cmPen ? penP : null, note: cmPen ? undefined : "data penonton belum lengkap untuk dibandingkan", s: c.map((x) => x.pen), ps: pv?.map((x) => x.pen) } as Metric,
+          { g: "Konversi", k: "gp", l: "GMV per penonton", f: "rp", v: pen ? a.g / pen : NaN, p: cmPen && penP ? b.g / penP : null, note: cmPen ? undefined : "data penonton belum lengkap untuk dibandingkan", s: c.map((x) => (x.pen ? x.g / x.pen : 0)), ps: pv?.map((x) => (x.pen ? x.g / x.pen : 0)) } as Metric] : []),
+        { g: "Transaksi", k: "gs", l: "GMV Shopee", f: "rp", v: a.gs, p: cm ? b.gs : null, s: c.map((x) => x.gs), ps: pv?.map((x) => x.gs) },
+        { g: "Transaksi", k: "gt", l: "GMV TikTok", f: "rp", v: a.gt, p: cm ? b.gt : null, s: c.map((x) => x.gt), ps: pv?.map((x) => x.gt) },
+        { g: "Konversi", k: "z", l: "Sesi tanpa penjualan", f: "pct", v: zr, p: cm && b.n ? (b.z / b.n) * 100 : null, inv: true, s: c.map((x) => (x.n ? (x.z / x.n) * 100 : 0)) },
       ];
       return <MetricBoard metrics={M} labels={B.map((x) => x.l)} sub={R.sub} init={["g", "gj"]} />; })()}
     <JadwalVsLive jadwal={jadwal} live={cur} />
@@ -400,12 +416,14 @@ function ProdukSection({ R, ps, err }: { R: Range; ps: PStats; err?: string }) {
   const L = (t: string, xs: PRow[], f: (r: PRow) => string, cls: string) => <div className="act"><h3><span className={"pill " + cls}>{xs.length}</span> {t}</h3>{xs.length ? <ul>{xs.slice(0, 6).map((r) => <li key={r.grup} title={r.nama}><b>{shortName(r.nama)}</b> <span className="muted small">{f(r)}</span></li>)}{xs.length > 6 && <li className="muted small">+{xs.length - 6} lainnya (filter status di tabel)</li>}</ul> : <p className="muted small">Tidak ada.</p>}</div>;
   return (<>
     <h2 style={{ margin: "8px 0 0" }}>Analisa produk per SKU</h2>
-    {(ps.stop.length + ps.turun.length + ps.baru.length) > 0 && <div className="card"><h2>Perlu tindakan</h2><div className="acts">
-      {L("Andalan berhenti terjual", ps.stop, (r) => `sebelumnya ${fmt(r.prev)}`, "bad")}
-      {L("Turun lebih dari 50%", ps.turun, (r) => `${fmt(r.prev)} → ${fmt(r.gmv)}`, "warn")}
-      {L("Baru mulai laku", ps.baru, (r) => `${fmt(r.gmv)} · ${r.tokoLabel}`, "good")}
-    </div></div>}
-    <div className="card"><h2>SKU · {R.label}</h2>
+    <div className="card"><h2>Analisis produk</h2>
+      <ProdukDiag sub={R.sub} groups={[
+        { k: "turun", l: "Penurunan penjualan", def: "penjualan SKU turun 50% atau lebih dibanding periode pembanding (SKU dengan porsi ≥0,5%).", rows: ps.turun.map((r) => ({ grup: r.grup, nama: r.nama, toko: r.tokoLabel, prev: r.prev, gmv: r.gmv })) },
+        { k: "stop", l: "Berhenti terjual", def: "laku ≥10 unit di periode pembanding, tidak terjual sama sekali di periode ini. Cek stok & status listing.", rows: ps.stop.map((r) => ({ grup: r.grup, nama: r.nama, toko: r.tokoLabel, prev: r.prev, gmv: r.gmv })) },
+        { k: "naik", l: "Penjualan naik", def: "penjualan naik 30% atau lebih (SKU dengan porsi ≥0,5%). Tambah stok & exposure.", rows: ps.naik.map((r) => ({ grup: r.grup, nama: r.nama, toko: r.tokoLabel, prev: r.prev, gmv: r.gmv })) },
+        { k: "baru", l: "Baru mulai laku", def: "tidak terjual di periode pembanding, mulai terjual di periode ini.", rows: ps.baru.map((r) => ({ grup: r.grup, nama: r.nama, toko: r.tokoLabel, prev: r.prev, gmv: r.gmv })) },
+      ]} /></div>
+    <div className="card"><h2>Produk dengan performa terbaik · {R.label}</h2>
       <ProdukTable rows={ps.st} tokoName={ps.tokoName} />
       <p className="muted small">Klik baris untuk melihat SKU varian. SKU induk = kode SKU sebelum titik pertama; kode sama di toko berbeda digabung. Andalan = SKU teratas yang bersama-sama menyumbang 80% GMV (lihat kolom Kumulatif). Berhenti terjual = laku ≥10 unit di periode pembanding, 0 di periode ini. Pembanding: {R.sub}.</p>
     </div>
