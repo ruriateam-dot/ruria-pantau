@@ -31,14 +31,17 @@ async function inner(clientIds: string[]) {
       rows.push({ c: c.nama, t: `${s.brand} · ${s.platform}`, cells: [...(m.includes("toko") ? [["Penjualan", sales, s.id], ["Produk", prod, s.id]] as [string, Set<string>, string][] : []), ...(m.includes("iklan") ? [["Iklan", ads, s.id]] as [string, Set<string>, string][] : [])] });
     if (m.includes("live")) rows.push({ c: c.nama, t: "Livestream", cells: [["Live", live, c.id]] });
   }
+  // Hanya tampilkan data yang belum masuk untuk kemarin
+  const todo = rows.map((r) => ({ ...r, cells: r.cells.filter(([, st, k]) => !yk(st, k)) })).filter((r) => r.cells.length);
   const miss = rows.reduce((n, r) => n + r.cells.filter(([, s, k]) => !yk(s, k)).length, 0);
   const tot = rows.reduce((n, r) => n + r.cells.length, 0);
   return <div className="card">
     <h2>Checklist upload · kemarin {tgl(y)} <span className={"pill " + (miss ? "warn" : "good")}>{tot - miss}/{tot} lengkap</span></h2>
-    <p className="muted small">Kotak = 7 hari terakhir ({tgl(d0)}–{tgl(y)}), paling kanan kemarin. Hijau = sudah masuk, abu-abu = belum. Iklan bulanan dihitung sudah ada untuk semua hari di periodenya.</p>
+    {!todo.length ? <p className="ok">Semua data sampai kemarin sudah masuk.</p> : <>
+    <p className="muted small">Hanya data yang belum masuk yang ditampilkan. Kotak = 7 hari terakhir ({tgl(d0)}–{tgl(y)}), paling kanan kemarin. Hijau = sudah masuk, abu-abu = belum. Iklan bulanan dihitung sudah ada untuk semua hari di periodenya.</p>
     <div className="tbl"><table className="cktab"><thead><tr><th>Klien</th><th>Toko</th><th>Data</th><th>7 hari</th><th>Kemarin</th></tr></thead>
-      <tbody>{rows.flatMap((r) => r.cells.map(([lbl, s, k], i) => <tr key={r.c + r.t + lbl} className={i === 0 ? "first" : ""}>
+      <tbody>{todo.flatMap((r) => r.cells.map(([lbl, s, k], i) => <tr key={r.c + r.t + lbl} className={i === 0 ? "first" : ""}>
         <td>{i === 0 ? r.c : ""}</td><td>{i === 0 ? r.t : ""}</td><td>{lbl}</td><td>{strip(s, k)}</td>
-        <td>{yk(s, k) ? <span className="pill good">Sudah</span> : <span className="pill bad">Belum</span>}</td></tr>))}</tbody></table></div>
+        <td><span className="pill bad">Belum</span></td></tr>))}</tbody></table></div></>}
   </div>;
 }
