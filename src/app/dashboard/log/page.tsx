@@ -1,14 +1,14 @@
 import { redirect } from "next/navigation";
 import AppShell from "@/components/AppShell";
-import { requireUser, isStaff, PERAN_LABEL } from "@/lib/auth";
+import { requireUser, PERAN_LABEL } from "@/lib/auth";
 import { q } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-/* Log aktivitas semua peran. Hanya superadmin & admin yang bisa membuka. */
+/* Log aktivitas semua peran. Hanya superadmin yang bisa membuka. */
 export default async function LogPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const me = await requireUser();
-  if (!isStaff(me)) redirect("/dashboard");
+  if (me.peran !== "superadmin") redirect("/dashboard");
   const sp = await searchParams;
   const where: string[] = [], args: unknown[] = [];
   if (sp.u) { if (sp.u === "tamu") where.push("l.user_id is null"); else { where.push("l.user_id = ?"); args.push(Number(sp.u)); } }
@@ -22,7 +22,7 @@ export default async function LogPage({ searchParams }: { searchParams: Promise<
   const clients = await q<{ id: string; nama: string }>("select id, nama from clients order by nama");
   const aksi = (await q<{ aksi: string }>("select distinct aksi from activity_log order by aksi")).map((x) => x.aksi);
   return <AppShell user={me}>
-    <header className="dh"><div className="wrap top ctitle"><h1>Log aktivitas</h1><span className="muted small">Semua peran tercatat · hanya terlihat oleh superadmin & admin</span></div></header>
+    <header className="dh"><div className="wrap top ctitle"><h1>Log aktivitas</h1><span className="muted small">Semua peran tercatat · hanya terlihat oleh superadmin</span></div></header>
     <main className="wrap dv tim">
       <form className="card filters" method="get">
         <select name="u" defaultValue={sp.u ?? ""}><option value="">Semua orang</option>{users.map((u) => <option key={u.id} value={u.id}>{u.nama}</option>)}<option value="tamu">Link klien / tamu</option></select>

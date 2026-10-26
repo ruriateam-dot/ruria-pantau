@@ -47,7 +47,7 @@ export default function Shell({ user, staff, clients, active, dashHref, children
         {link("/dashboard/jadwal", "Jadwal live", path === "/dashboard/jadwal")}
         {link("/dashboard/tim", staff ? "Kelola tim" : "Akun saya", path === "/dashboard/tim")}
         {staff && link("/dashboard/klien", "Kelola klien", path === "/dashboard/klien")}
-        {staff && link("/dashboard/log", "Log aktivitas", path === "/dashboard/log")}
+        {user?.peran === "superadmin" && link("/dashboard/log", "Log aktivitas", path === "/dashboard/log")}
       </nav>
       <div className="sfoot">
         <Theme />
