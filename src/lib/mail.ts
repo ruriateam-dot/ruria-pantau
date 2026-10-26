@@ -48,3 +48,13 @@ export async function sendInvite(to: string, nama: string, link: string, oleh: s
     return `server email menolak (${x.code ?? ""} ${(x.message ?? "").slice(0, 120)})`;
   }
 }
+
+/* Email umum (mis. pengingat jadwal upload). Hasil: "" jika terkirim, atau alasan gagal */
+export async function sendMail(to: string[], subject: string, text: string, html: string): Promise<string> {
+  if (!mailReady()) return "SMTP belum diatur";
+  const port = Number(process.env.SMTP_PORT || 465);
+  const tr = nodemailer.createTransport({ host: process.env.SMTP_HOST, port, secure: port === 465, auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD } });
+  try { await tr.sendMail({ from: `"Ruria" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`, to, subject, text, html }); return ""; }
+  catch (e) { const x = e as { code?: string; message?: string }; console.error("Email gagal", x.code, x.message); return `${x.code ?? ""} ${(x.message ?? "").slice(0, 120)}`; }
+}
+export { esc };
