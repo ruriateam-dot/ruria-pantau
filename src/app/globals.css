@@ -317,3 +317,7 @@ button.danger{color:var(--bad)}
 .contrib small{display:block;margin-top:2px}
 
 .logu{border-top:1px solid var(--line);padding:8px 0}.logu>summary{cursor:pointer;list-style:none}.logu>summary::-webkit-details-marker{display:none}.logu>summary::before{content:"▸ ";color:var(--muted)}.logu[open]>summary::before{content:"▾ "}.logu .tbl{margin-top:8px}
+
+.jday.out{opacity:.35;min-height:0;background:transparent}
+.jgrid.multi .jday{min-height:96px}
+.seg{display:inline-flex;gap:4px;flex-wrap:wrap}.seg button.on{background:var(--accent);color:#fff;border-color:var(--accent)}

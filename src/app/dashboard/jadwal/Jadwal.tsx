@@ -14,7 +14,7 @@ const dur = (a: string, b: string) => { let m = (+b.slice(0, 2) * 60 + +b.slice(
 const jm = (h: number) => `${Math.floor(h)}j${Math.round((h % 1) * 60) ? ` ${Math.round((h % 1) * 60)}m` : ""}`;
 const PAL = ["#D16D3D", "#0aa9b5", "#7c5cc4", "#2f9e5b", "#c2417a", "#b7791f", "#3d7bd1", "#8a6b52"];
 
-export default function Jadwal({ week, today, shifts, hosts, clients, canEdit }: { week: string; today: string; shifts: S[]; hosts: H[]; clients: C[]; canEdit: boolean }) {
+export default function Jadwal({ mode, week, bulan, from, to, gFrom, gTo, today, shifts, hosts, clients, canEdit }: { mode: string; week: string; bulan: string; from: string; to: string; gFrom: string; gTo: string; today: string; shifts: S[]; hosts: H[]; clients: C[]; canEdit: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [brand, setBrand] = useState("");
@@ -22,33 +22,45 @@ export default function Jadwal({ week, today, shifts, hosts, clients, canEdit }:
   const [edit, setEdit] = useState<Partial<S> | null>(null);
   const [nh, setNh] = useState("");
   const dlg = useRef<HTMLDialogElement>(null);
-  const days = Array.from({ length: 7 }, (_, i) => add(week, i));
+  const days: string[] = []; for (let d = gFrom; d <= gTo; d = add(d, 1)) days.push(d);
+  const inP = (d: string) => d >= from && d <= to;
+  const BL = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+  const addM = (m: string, n: number) => { const x = new Date(Date.UTC(+m.slice(0, 4), +m.slice(5, 7) - 1 + n, 1)); return x.toISOString().slice(0, 7); };
+  const [cf, setCf] = useState(from), [ct, setCt] = useState(to);
   const color = useMemo(() => Object.fromEntries(hosts.map((h, i) => [h.id, PAL[i % PAL.length]])), [hosts]);
   const cname = (id: string) => clients.find((c) => c.id === id)?.nama ?? id;
   const list = shifts.filter((s) => !brand || s.client_id === brand);
   const run = (p: Promise<{ ok: boolean; msg: string }>, close = false) => start(async () => { const r = await p; setMsg(r); if (r.ok) { if (close) dlg.current?.close(); router.refresh(); } });
   const open = (s: Partial<S>) => { setEdit(s); setMsg(null); dlg.current?.showModal(); };
   const go = (w: string) => router.push("/dashboard/jadwal?w=" + w);
+  const goM = (m: string) => router.push("/dashboard/jadwal?v=bulan&m=" + m);
+  const goK = (a: string, b: string) => router.push(`/dashboard/jadwal?v=kustom&dari=${a}&sampai=${b}`);
+  const label = mode === "bulan" ? `${BL[+bulan.slice(5) - 1]} ${bulan.slice(0, 4)}` : `${tg(from)} – ${tg(to)} ${to.slice(0, 4)}`;
+  const per = mode === "minggu" ? "minggu ini" : mode === "bulan" ? "bulan ini" : "periode ini";
   const used = clients.filter((c) => list.some((x) => x.client_id === c.id));
   const rekap = useMemo(() => { const m = new Map<string, { h: number; n: number; b: Record<string, number> }>(); list.forEach((s) => { const x = m.get(s.host) ?? { h: 0, n: 0, b: {} }; const d = dur(s.mulai, s.selesai); x.h += d; x.n++; x.b[s.client_id] = (x.b[s.client_id] ?? 0) + d; m.set(s.host, x); }); return [...m].sort((a, b) => b[1].h - a[1].h); }, [list]);
 
   return <>
     <div className="card jbar">
-      <div className="jnav">
-        <button type="button" className="ghost" onClick={() => go(add(week, -7))} aria-label="Minggu sebelumnya">‹</button>
-        <b>{tg(days[0])} – {tg(days[6])} {days[6].slice(0, 4)}</b>
-        <button type="button" className="ghost" onClick={() => go(add(week, 7))} aria-label="Minggu berikutnya">›</button>
-        <button type="button" className="ghost" onClick={() => go(today)}>Minggu ini</button>
-      </div>
+      <div className="seg" role="tablist" aria-label="Periode">{[["minggu", "Per minggu"], ["bulan", "Per bulan"], ["kustom", "Pilih tanggal"]].map(([k, l]) => <button key={k} type="button" className={mode === k ? "on" : "ghost"} onClick={() => k === "minggu" ? go(from) : k === "bulan" ? goM(from.slice(0, 7)) : goK(from, to)}>{l}</button>)}</div>
+      {mode !== "kustom" ? <div className="jnav">
+        <button type="button" className="ghost" onClick={() => mode === "bulan" ? goM(addM(bulan, -1)) : go(add(week, -7))} aria-label="Sebelumnya">‹</button>
+        <b>{label}</b>
+        <button type="button" className="ghost" onClick={() => mode === "bulan" ? goM(addM(bulan, 1)) : go(add(week, 7))} aria-label="Berikutnya">›</button>
+        <button type="button" className="ghost" onClick={() => mode === "bulan" ? goM(today.slice(0, 7)) : go(today)}>{mode === "bulan" ? "Bulan ini" : "Minggu ini"}</button>
+      </div> : <form className="jnav" onSubmit={(e) => { e.preventDefault(); goK(cf, ct); }}>
+        <input type="date" value={cf} onChange={(e) => setCf(e.target.value)} aria-label="Dari tanggal" /><span>–</span><input type="date" value={ct} onChange={(e) => setCt(e.target.value)} aria-label="Sampai tanggal" /><button>Tampilkan</button>
+      </form>}
       <select value={brand} onChange={(e) => setBrand(e.target.value)} aria-label="Brand"><option value="">Semua brand</option>{clients.map((c) => <option key={c.id} value={c.id}>{c.nama}</option>)}</select>
-      {canEdit && <><button type="button" onClick={() => open({ tanggal: days.includes(today) ? today : days[0], mulai: "19:00", selesai: "22:00", platform: "Shopee+TikTok", client_id: brand || clients[0].id })}>+ Tambah jadwal</button>
-        <button type="button" className="ghost" disabled={pending} onClick={() => confirm("Salin semua jadwal minggu ini ke minggu depan?") && run(copyWeek(week, brand || null))}>Salin ke minggu depan</button></>}
+      {canEdit && <><button type="button" onClick={() => open({ tanggal: inP(today) ? today : from, mulai: "19:00", selesai: "22:00", platform: "Shopee+TikTok", client_id: brand || clients[0].id })}>+ Tambah jadwal</button>
+        {mode === "minggu" && <button type="button" className="ghost" disabled={pending} onClick={() => confirm("Salin semua jadwal minggu ini ke minggu depan?") && run(copyWeek(week, brand || null))}>Salin ke minggu depan</button>}</>}
     </div>
     {msg && !edit && <p className={msg.ok ? "ok" : "err"} role="status">{msg.msg}</p>}
 
-    <div className="jgrid">{days.map((d, i) => { const it = list.filter((s) => s.tanggal === d);
-      return <section key={d} className={"jday" + (d === today ? " today" : "")} aria-label={`${HARI[i]} ${tg(d)}`}>
-        <header><b>{HARI[i]}</b><span className="muted small">{tg(d)}</span></header>
+    <div className={"jgrid" + (days.length > 7 ? " multi" : "")}>{days.map((d, i) => { const it = list.filter((s) => s.tanggal === d);
+      if (!inP(d)) return <section key={d} className="jday out" aria-hidden="true"><header><span className="muted small">{tg(d)}</span></header></section>;
+      return <section key={d} className={"jday" + (d === today ? " today" : "")} aria-label={`${HARI[i % 7]} ${tg(d)}`}>
+        <header><b>{HARI[i % 7]}</b><span className="muted small">{tg(d)}</span></header>
         {it.map((s) => <button type="button" key={s.id} className="shift" style={{ borderLeftColor: color[s.host_id] }} onClick={() => canEdit && open(s)} disabled={!canEdit}>
           <b>{s.mulai}–{s.selesai}</b><span>{s.host}</span><span className="muted small">{cname(s.client_id)} · {s.platform.replace("+", " + ")}</span>{s.catatan && <span className="muted small">{s.catatan}</span>}
         </button>)}
@@ -57,10 +69,10 @@ export default function Jadwal({ week, today, shifts, hosts, clients, canEdit }:
       </section>; })}</div>
 
     <div className="grid2c">
-      <div className="card"><h2>Rekap jam host minggu ini</h2>
+      <div className="card"><h2>Rekap jam host {per}</h2>
         {rekap.length ? <div className="tbl"><table><thead><tr><th>Host</th><th className="n">Sesi</th><th className="n">Total jam</th>{used.map((c) => <th key={c.id} className="n">{c.nama}</th>)}</tr></thead>
           <tbody>{rekap.map(([h, x]) => <tr key={h}><td>{h}</td><td className="n">{x.n}</td><td className="n">{jm(x.h)}</td>{used.map((c) => <td key={c.id} className="n">{x.b[c.id] ? jm(x.b[c.id]) : "–"}</td>)}</tr>)}</tbody></table></div>
-          : <p className="muted">Belum ada jadwal minggu ini.</p>}
+          : <p className="muted">Belum ada jadwal {per}.</p>}
       </div>
       {canEdit && <div className="card"><h2>Daftar host</h2>
         <div className="hostlist">{hosts.map((h) => <span key={h.id} className={"hchip" + (h.aktif ? "" : " off")}><i style={{ background: color[h.id] }} />{h.nama}
