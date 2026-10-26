@@ -40,6 +40,8 @@ async function ready() {
           await pool().query("update stores set akun = ? where id = ? and akun is null", [akun, id]);
       }
       // Saldo iklan per akun toko, diinput tim (riwayat disimpan)
+      // Link klien bisa berisi beberapa klien (dipisah koma)
+      await pool().query("alter table share_links modify client_id varchar(400) not null");
       await pool().query("create table if not exists ad_balance (id bigint auto_increment primary key, store_id varchar(80) not null, saldo decimal(16,2) not null, catatan varchar(200) null, oleh int null, nama varchar(160) null, waktu datetime not null, index (store_id, waktu))");
       // Metrik tambahan dari ekspor Seller Centre (statistik toko, performa produk, laporan iklan)
       await pool().query("create table if not exists store_period (store_id varchar(80) not null, dari date not null, sampai date not null, data longtext not null, primary key (store_id, dari, sampai))");

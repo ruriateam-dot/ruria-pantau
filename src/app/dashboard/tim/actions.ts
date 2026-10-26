@@ -104,10 +104,12 @@ export async function changeOwn(_p: string | null, f: FormData): Promise<string 
 export async function addLink(_p: string | null, f: FormData): Promise<string | null> {
   const me = await requireAdmin();
   if (!me) return "Hanya admin.";
-  const c = String(f.get("klien") || ""), label = String(f.get("label") || "").trim().slice(0, 120);
-  if (!(await q("select id from clients where id = ?", [c])).length) return "Pilih klien.";
+  const pick = [...new Set(f.getAll("klien").map(String).filter(Boolean))], label = String(f.get("label") || "").trim().slice(0, 120);
+  const ok = pick.length ? (await q<{ id: string }>("select id from clients where id in (?)", [pick])).map((x) => x.id) : [];
+  if (!ok.length) return "Pilih minimal satu klien.";
+  const c = pick.filter((x) => ok.includes(x)).join(",");
   await exec("insert into share_links (token, client_id, label, dibuat_oleh) values (?, ?, ?, ?)", [randomBytes(20).toString("hex"), c, label || null, me.id]);
-  await logAct(me, "buat link klien", c, label || "");
+  await logAct(me, "buat link klien", c.split(",")[0], (label || "") + (c.includes(",") ? ` · ${c}` : ""));
   return done("Link dibuat. Salin dan kirim ke klien.");
 }
 export async function revokeLink(_p: string | null, f: FormData): Promise<string | null> {
@@ -115,7 +117,7 @@ export async function revokeLink(_p: string | null, f: FormData): Promise<string
   if (!me) return "Hanya admin.";
   const l = (await q<{ client_id: string; label: string | null }>("select client_id, label from share_links where token = ?", [String(f.get("token") || "")]))[0];
   await exec("update share_links set aktif = 0 where token = ?", [String(f.get("token") || "")]);
-  if (l) await logAct(me, "nonaktifkan link klien", l.client_id, l.label ?? "");
+  if (l) await logAct(me, "nonaktifkan link klien", l.client_id.split(",")[0], l.label ?? "");
   return done("Link dinonaktifkan. Link itu tidak bisa dibuka lagi.");
 }
 

@@ -74,14 +74,14 @@ export function Links({ clients, links, origin }: { clients: C[]; links: { token
     <h2>Link untuk klien (lihat tanpa login)</h2>
     <p className="muted small">Siapa pun yang memegang link bisa melihat dashboard klien tersebut (Analisa Toko, Iklan, Livestream) tanpa bisa mengubah apa pun. Nonaktifkan link kalau tidak dipakai lagi.</p>
     <form action={a} className="inline">
-      <select name="klien" required defaultValue=""><option value="" disabled>Pilih klien…</option>{clients.map((c) => <option key={c.id} value={c.id}>{c.nama}</option>)}</select>
+      <div style={{ flexBasis: "100%" }}><p className="muted small" style={{ margin: "0 0 6px" }}>Klien yang bisa dilihat lewat link ini (boleh lebih dari satu):</p><div className="chk">{clients.map((c) => <label key={c.id}><input type="checkbox" name="klien" value={c.id} /> {c.nama}</label>)}</div></div>
       <input name="label" placeholder="Catatan, mis. untuk owner" />
       <button disabled={p}>Buat link</button>
     </form>
     <Msg m={m} /><Msg m={m2} />
     {links.length > 0 && <div className="tw"><table><thead><tr><th>Klien</th><th>Catatan</th><th>Link</th><th></th></tr></thead><tbody>
       {links.map((l) => <tr key={l.token}>
-        <td>{clients.find((c) => c.id === l.client_id)?.nama ?? l.client_id}</td><td>{l.label ?? "–"}</td>
+        <td>{l.client_id.split(",").map((id) => clients.find((c) => c.id === id)?.nama ?? id).join(", ")}</td><td>{l.label ?? "–"}</td>
         <td><button type="button" className="ghost" onClick={() => { navigator.clipboard?.writeText(url(l.token)); setCopied(l.token); }}>{copied === l.token ? "Tersalin ✓" : "Salin link"}</button> <a href={url(l.token)} target="_blank" rel="noreferrer">Buka</a></td>
         <td><form action={a2}><input type="hidden" name="token" value={l.token} /><button className="danger ghost">Nonaktifkan</button></form></td>
       </tr>)}</tbody></table></div>}
