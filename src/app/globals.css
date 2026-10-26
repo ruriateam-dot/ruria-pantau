@@ -321,3 +321,5 @@ button.danger{color:var(--bad)}
 .jday.out{opacity:.35;min-height:0;background:transparent}
 .jgrid.multi .jday{min-height:96px}
 .seg{display:inline-flex;gap:4px;flex-wrap:wrap}.seg button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.logh{font-size:13px;margin:12px 0 6px;font-weight:700}.logv>summary{cursor:pointer}
+.logk{margin:8px 0 4px 18px;display:grid;gap:2px}.logc>summary{cursor:pointer;padding:6px 0;list-style:none}.logc>summary::-webkit-details-marker{display:none}.logc>summary::before{content:"▸ ";color:var(--muted)}.logc[open]>summary::before{content:"▾ "}.logc .tbl{margin:4px 0 10px}

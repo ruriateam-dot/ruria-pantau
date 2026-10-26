@@ -42,10 +42,14 @@ export default async function LogPage({ searchParams }: { searchParams: Promise<
           <h2>{tglL(tgl)} <span className="muted small">{[...U.values()].reduce((a, x) => a + x.length, 0)} aktivitas · {U.size} orang</span></h2>
           {[...U].sort((a, b) => b[1].length - a[1].length).map(([u, L]) => { const [nama, peran] = u.split("|"); const cnt = new Map<string, number>(); L.forEach((x) => cnt.set(x.aksi, (cnt.get(x.aksi) ?? 0) + 1));
             return <details key={u} className="logu">
-              <summary><b>{nama}</b> <span className="muted small">{PERAN_LABEL[peran] ?? peran}</span> · {L.length} aktivitas · <span className="small">{L[L.length - 1].t.slice(11, 16)}–{L[0].t.slice(11, 16)}</span>
-                <div className="muted small">{[...cnt].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, v]) => `${k} ${v}×`).join(" · ")}</div></summary>
-              <div className="tbl"><table><thead><tr><th>Jam</th><th>Aktivitas</th><th>Klien</th><th>Detail</th><th>IP</th></tr></thead>
-                <tbody>{L.map((r, i) => <tr key={i}><td>{r.t.slice(11, 19)}</td><td>{r.aksi}</td><td>{r.klien ?? "–"}</td><td className="wrapcell">{r.detail}</td><td className="muted small">{r.ip ?? ""}</td></tr>)}</tbody></table></div>
+              <summary><b>{nama}</b> <span className="muted small">{PERAN_LABEL[peran] ?? peran}</span> · {L.length} aktivitas · <span className="small">{L.reduce((m, x) => x.t < m ? x.t : m, L[0].t).slice(11, 16)}–{L.reduce((m, x) => x.t > m ? x.t : m, L[0].t).slice(11, 16)}</span>
+                <div className="muted small">{[...cnt].filter(([k]) => k !== "lihat").sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, v]) => `${k} ${v}×`).join(" · ") || "hanya melihat"}{cnt.get("lihat") ? ` · lihat ${cnt.get("lihat")}×` : ""}</div></summary>
+              {(() => { const tb = (R: typeof L) => <div className="tbl"><table><thead><tr><th>Jam</th><th>Klien</th><th>Detail</th><th>IP</th></tr></thead>
+                <tbody>{R.map((r, i) => <tr key={i}><td>{r.t.slice(11, 19)}</td><td>{r.klien ?? "–"}</td><td className="wrapcell">{r.detail}</td><td className="muted small">{r.ip ?? ""}</td></tr>)}</tbody></table></div>;
+                const S = [...L].sort((x, y) => (x.t < y.t ? 1 : -1));
+                const K = [...new Set(S.map((r) => r.aksi))].sort((x, y) => (x === "lihat" ? 1 : y === "lihat" ? -1 : S.filter((r) => r.aksi === y).length - S.filter((r) => r.aksi === x).length));
+                return <div className="logk">{K.map((k) => { const R = S.filter((r) => r.aksi === k); return <details key={k} className="logc">
+                  <summary><b>{k}</b> <span className="muted small">{R.length}× · {R[R.length - 1].t.slice(11, 16)}–{R[0].t.slice(11, 16)}</span></summary>{tb(R)}</details>; })}</div>; })()}
             </details>; })}
         </section>)}<p className="muted small">Menampilkan 500 aktivitas terbaru.</p></>;
       })()}
