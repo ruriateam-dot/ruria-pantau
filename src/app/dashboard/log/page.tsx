@@ -14,7 +14,7 @@ export default async function LogPage({ searchParams }: { searchParams: Promise<
   if (sp.u) { if (sp.u === "tamu") where.push("l.user_id is null"); else { where.push("l.user_id = ?"); args.push(Number(sp.u)); } }
   if (sp.c) { where.push("l.client_id = ?"); args.push(sp.c); }
   if (sp.a) { where.push("l.aksi = ?"); args.push(sp.a); }
-  if (sp.d && /^\d{4}-\d{2}-\d{2}$/.test(sp.d)) { where.push("date(l.waktu) = ?"); args.push(sp.d); }
+  if (sp.d && /^\d{4}-\d{2}-\d{2}$/.test(sp.d)) { where.push("date(l.waktu + interval 7 hour) = ?"); args.push(sp.d); }
   const rows = await q<{ waktu: string; nama: string; peran: string; aksi: string; klien: string | null; detail: string; ip: string | null }>(
     `select l.waktu, l.nama, l.peran, l.aksi, c.nama klien, l.detail, l.ip from activity_log l left join clients c on c.id = l.client_id
      ${where.length ? "where " + where.join(" and ") : ""} order by l.id desc limit 500`, args);
@@ -22,7 +22,7 @@ export default async function LogPage({ searchParams }: { searchParams: Promise<
   const clients = await q<{ id: string; nama: string }>("select id, nama from clients order by nama");
   const aksi = (await q<{ aksi: string }>("select distinct aksi from activity_log order by aksi")).map((x) => x.aksi);
   return <AppShell user={me}>
-    <header className="dh"><div className="wrap top ctitle"><h1>Log aktivitas</h1><span className="muted small">Semua peran tercatat · hanya terlihat oleh superadmin</span></div></header>
+    <header className="dh"><div className="wrap top ctitle"><h1>Log aktivitas</h1><span className="muted small">Semua peran tercatat · jam dalam WIB · hanya terlihat oleh superadmin</span></div></header>
     <main className="wrap dv tim">
       <form className="card filters" method="get">
         <select name="u" defaultValue={sp.u ?? ""}><option value="">Semua orang</option>{users.map((u) => <option key={u.id} value={u.id}>{u.nama}</option>)}<option value="tamu">Link klien / tamu</option></select>
@@ -32,9 +32,9 @@ export default async function LogPage({ searchParams }: { searchParams: Promise<
         <button>Terapkan</button>
       </form>
       {(() => {
-        const ts = (w: unknown) => { const d = w instanceof Date ? w : new Date(String(w).replace(" ", "T")); return isNaN(+d) ? String(w).slice(0, 19) : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`; };
+        const ts = (w: unknown) => { const d0 = w instanceof Date ? w : new Date(String(w).replace(" ", "T") + "Z"); if (isNaN(+d0)) return String(w).slice(0, 19); return new Date(+d0 + 7 * 36e5).toISOString().slice(0, 19).replace("T", " "); }; // tampil dalam WIB
         const HR = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"], BL = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
-        const tglL = (t: string) => { const d = new Date(t + "T00:00:00"); return `${HR[d.getDay()]}, ${d.getDate()} ${BL[d.getMonth()]} ${d.getFullYear()}`; };
+        const tglL = (t: string) => { const d = new Date(t + "T00:00:00Z"); return `${HR[d.getUTCDay()]}, ${d.getUTCDate()} ${BL[d.getUTCMonth()]} ${d.getUTCFullYear()}`; };
         const D = new Map<string, Map<string, (typeof rows[number] & { t: string })[]>>();
         for (const r of rows) { const t = ts(r.waktu), k = t.slice(0, 10), u = `${r.nama}|${r.peran}`; if (!D.has(k)) D.set(k, new Map()); const m = D.get(k)!; if (!m.has(u)) m.set(u, []); m.get(u)!.push({ ...r, t }); }
         if (!rows.length) return <div className="card"><p className="muted">Belum ada aktivitas untuk filter ini.</p></div>;
