@@ -13,6 +13,9 @@ async function run(req: NextRequest) {
   if (key.length < 16 || got.length !== key.length || !timingSafeEqual(Buffer.from(got), Buffer.from(key))) return NextResponse.json({ error: "Tidak diizinkan" }, { status: 401 });
   const to = (process.env.PENGINGAT_TO || "anindraptr@gmail.com,vava.shufa@gmail.com").split(",").map((s) => s.trim()).filter(Boolean);
   const { judul, L } = jadwalHariIni();
+  // Cron boleh jalan setiap jam; email hanya dikirim pada jam 09.xx WIB (tidak bergantung zona waktu server)
+  const jamWIB = new Date(Date.now() + 7 * 36e5).getUTCHours();
+  if (!req.nextUrl.searchParams.has("ulang") && jamWIB !== Number(process.env.PENGINGAT_JAM || 9)) return NextResponse.json({ ok: true, info: `bukan jam kirim (sekarang jam ${jamWIB} WIB)` });
   const tag = "pengingat:" + new Date(Date.now() + 7 * 36e5).toISOString().slice(0, 10);
   if (!req.nextUrl.searchParams.has("ulang") && (await q("select 1 from uploads where jenis = ? limit 1", [tag])).length) return NextResponse.json({ ok: true, info: "sudah terkirim hari ini" });
   const text = `Halo Anin, Vava,\n\nIni jadwal upload hari ini (${judul}) ke report.ruria.id:\n\n` + L.map((x) => `${x.j.toUpperCase()}\n` + x.isi.map((s) => `- ${s}`).join("\n")).join("\n\n") + `\n\nPanduan lengkap: ${PANDUAN}\nAbaikan bagian yang sudah kamu upload.\n\nTerima kasih,\nAhmad — Ruria`;
