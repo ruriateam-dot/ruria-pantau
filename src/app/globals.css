@@ -323,3 +323,70 @@ button.danger{color:var(--bad)}
 .seg{display:inline-flex;gap:4px;flex-wrap:wrap}.seg button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 .logh{font-size:13px;margin:12px 0 6px;font-weight:700}.logv>summary{cursor:pointer}
 .logk{margin:8px 0 4px 18px;display:grid;gap:2px}.logc>summary{cursor:pointer;padding:6px 0;list-style:none}.logc>summary::-webkit-details-marker{display:none}.logc>summary::before{content:"▸ ";color:var(--muted)}.logc[open]>summary::before{content:"▾ "}.logc .tbl{margin:4px 0 10px}
+
+/* ===== Tema kaca gradien (Okt 2026) ===== */
+:root{--glass:rgba(255,255,255,.62);--glass-b:rgba(255,255,255,.9);--solid:#fffaf7;--grad:linear-gradient(135deg,#fde9dd 0%,#f7eef8 45%,#e9eefc 100%);--gshadow:0 8px 30px rgba(160,90,60,.09);--bg:rgba(255,255,255,.55);--panel:var(--glass);--line:rgba(120,80,60,.12)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--glass:rgba(32,26,24,.62);--glass-b:rgba(255,255,255,.07);--solid:#1b1614;--grad:linear-gradient(135deg,#2a1610 0%,#1a1220 50%,#0f1626 100%);--gshadow:0 8px 30px rgba(0,0,0,.35);--bg:rgba(255,255,255,.05);--line:rgba(255,255,255,.09)}}
+:root[data-theme="dark"]{--glass:rgba(32,26,24,.62);--glass-b:rgba(255,255,255,.07);--solid:#1b1614;--grad:linear-gradient(135deg,#2a1610 0%,#1a1220 50%,#0f1626 100%);--gshadow:0 8px 30px rgba(0,0,0,.35);--bg:rgba(255,255,255,.05);--line:rgba(255,255,255,.09)}
+html{background:var(--solid) var(--grad) no-repeat;background-size:100% 100%;min-height:100%}
+body{background:transparent;min-height:100vh}
+.card,.kpi,.ins,.hc,.jday,.autoimp,.note,.auth-card,.ccard{background:var(--glass);border:1px solid var(--glass-b);border-radius:18px;box-shadow:var(--gshadow);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.kpi{border-top:1px solid var(--glass-b);padding:16px 18px}
+.insc{background:var(--bg);border-radius:12px}
+input,select,textarea{background:var(--bg);border-color:var(--glass-b);border-radius:11px}
+button{border-radius:11px}
+.seg button,.ph button,.mg button,.pi,.cd,.bbar button,.stog{background:none}
+
+.seg button:not(.on){background:none!important}.seg button.on{background:linear-gradient(135deg,#e8895c,#c2552a)!important;color:#fff!important}
+.seg{background:var(--bg);border:1px solid var(--glass-b);border-radius:12px}
+.dh{background:color-mix(in srgb,var(--solid) 70%,transparent);border-bottom:1px solid var(--glass-b);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
+.ppop,select option{background:var(--solid)}
+.tab{border-radius:12px}.tab.on{background:var(--glass);box-shadow:0 4px 14px rgba(160,90,60,.12)}
+th,td{border-bottom-color:var(--line)}
+/* menu samping */
+.app{grid-template-columns:262px minmax(0,1fr);transition:grid-template-columns .2s ease}
+.side{background:var(--glass);border:1px solid var(--glass-b);border-radius:22px;margin:14px 0 14px 14px;height:calc(100vh - 28px);top:14px;box-shadow:var(--gshadow);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);scrollbar-width:thin}
+.sbrand{align-items:center;justify-content:space-between}.sbw{display:flex;align-items:flex-end;gap:8px}.sbm{display:none;color:var(--accent)}
+.stog{color:var(--muted);padding:6px;border-radius:9px;line-height:0}.stog:hover{background:var(--bg);color:var(--fg)}
+.ico{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.cdot{width:9px;height:9px;border-radius:50%;flex:none;margin:0 4.5px}
+.side{overflow-x:hidden}.sl{min-width:0;display:flex;align-items:center;gap:10px;border-radius:11px;padding:9px 10px}.slt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sl.on{background:linear-gradient(135deg,#e8895c,#c2552a);color:#fff!important;box-shadow:0 6px 16px rgba(194,85,42,.25)}
+.sl:hover:not(.on){background:var(--bg)}
+@media (min-width:901px){
+  .app.mini{grid-template-columns:96px minmax(0,1fr)}
+  .app.mini .side{width:72px;overflow-x:hidden;transition:width .18s ease;z-index:40}
+  .app.mini .side .sbw,.app.mini .side .sh,.app.mini .side .slt,.app.mini .side .sfoot>*:not(form){display:none}
+  .app.mini .side .sbm{display:block}.app.mini .sbrand{flex-direction:column;gap:10px;padding:4px 0}
+  .app.mini .side .sl{justify-content:center;padding:10px 0}
+  .app.mini .side .sfoot form button{font-size:0;padding:8px}.app.mini .side .sfoot form button::after{content:"⎋";font-size:16px}
+  .app.mini .side:hover,.app.mini .side:focus-within{width:250px;box-shadow:0 20px 60px rgba(0,0,0,.18)}
+  .app.mini .side:is(:hover,:focus-within) .sbw{display:flex}.app.mini .side:is(:hover,:focus-within) .sh{display:block}.app.mini .side:is(:hover,:focus-within) .slt{display:inline}
+  .app.mini .side:is(:hover,:focus-within) .sfoot>.seg{display:inline-flex}.app.mini .side:is(:hover,:focus-within) .sfoot>.suser{display:grid}
+  .app.mini .side:is(:hover,:focus-within){background:color-mix(in srgb,var(--solid) 94%,transparent)}
+  .app.mini .side:is(:hover,:focus-within) .sbm{display:none}
+  .app.mini .side:is(:hover,:focus-within) .sbrand{flex-direction:row;padding:4px 10px}
+  .app.mini .side:is(:hover,:focus-within) .sl{justify-content:flex-start;padding:9px 10px}
+  .app.mini .side:is(:hover,:focus-within) .sfoot form button{font-size:inherit}.app.mini .side:is(:hover,:focus-within) .sfoot form button::after{content:none}
+  .app.mini .side .sgroup{gap:4px}
+  .app.mini .side{position:fixed;left:0}
+  .app.mini .main{grid-column:2}
+}
+.bbar{display:none}
+@media (max-width:900px){
+  .side{margin:0;border-radius:0 22px 22px 0;height:auto;background:var(--solid)}
+  .mbar{background:transparent;border:0}
+  .stog{display:none}
+  .bbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:50;justify-content:space-around;padding:6px 4px calc(8px + env(safe-area-inset-bottom,0px));background:color-mix(in srgb,var(--solid) 80%,transparent);border-top:1px solid var(--glass-b);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
+  .bbar a,.bbar button{display:grid;justify-items:center;gap:2px;font-size:10px;font-weight:600;color:var(--muted);text-decoration:none;padding:4px 8px;border:0}
+  .bbar .on{color:var(--accent-ink)}
+  .main{padding-bottom:72px}
+  .loadpill{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+}
+@media (prefers-reduced-motion:reduce){.app,.app.mini .side{transition:none}}
+@media print{body{background:#fff}.bbar{display:none!important}.card,.kpi{backdrop-filter:none;box-shadow:none}}
+/* ruang kerja affiliate ikut tema */
+#aff-root{background:transparent}
+#aff-root header.top{background:color-mix(in srgb,var(--solid) 75%,transparent);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
+#aff-root .toast{color:#fff}
+#aff-root :is(.drawer,.sheet,.modal,.dlg,.pop,dialog){background:var(--solid)}
