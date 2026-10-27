@@ -27,6 +27,28 @@ async function log(clientId: string, jenis: string, file: string, dari: string, 
 }
 const span = (ds: string[]) => { const s = [...ds].sort(); return [s[0], s[s.length - 1]]; };
 
+/* Sesi live dari ekspor platform (Shopee: Daftar Livestream, TikTok: Analitik LIVE) masuk ke tab Livestream.
+   Tanggal yang sudah punya data dari laporan host tidak ditimpa; sesi Shopee & TikTok yang mulai bersamaan (<=20 menit) digabung. */
+async function liveFromPlatform(clientId: string, brand: string, p: Extract<Parsed, { kind: "file" }>, uid: number) {
+  const d = p.data as { rows: (string | number)[][] }, tt = p.jenis === "live-tiktok";
+  let rows = d.rows;
+  if (tt) { const c = new Map<string, number>(); rows.forEach((r) => c.set(String(r[2]), (c.get(String(r[2])) ?? 0) + 1)); const own = [...c].sort((a, b) => b[1] - a[1])[0]?.[0]; rows = rows.filter((r) => String(r[2]) === own); }
+  if (!rows.length) return;
+  const dates = [...new Set(rows.map((r) => String(r[0]).slice(0, 10)))];
+  const manual = new Set((await q<{ t: string }>("select distinct date_format(tanggal, '%Y-%m-%d') t from live_sessions where client_id = ? and tanggal in (?) and (sumber is null or sumber not like 'platform%')", [clientId, dates])).map((x) => x.t));
+  const use = rows.filter((r) => !manual.has(String(r[0]).slice(0, 10)));
+  const other = tt ? "platform-shopee" : "platform-tiktok", mine = tt ? "platform-tiktok" : "platform-shopee";
+  await exec("delete from live_sessions where client_id = ? and brand = ? and sumber = ? and tanggal between ? and ?", [clientId, brand, mine, p.dari, p.sampai]);
+  const ex = await q<{ id: number; t: string; j: number; s: string }>("select id, date_format(tanggal, '%Y-%m-%d') t, jam_mulai j, sumber s from live_sessions where client_id = ? and brand = ? and sumber in (?, 'platform-gabung') and tanggal between ? and ?", [clientId, brand, other, p.dari, p.sampai]);
+  for (const r of use) {
+    const t = String(r[0]), day = t.slice(0, 10), jam = +t.slice(11, 13) + +t.slice(14, 16) / 60, du = Number(r[1]), g = Number(tt ? r[4] : r[9]) || 0, pen = Number(tt ? r[7] : r[3]) || null;
+    const m = ex.find((x) => x.t === day && Math.abs(Number(x.j) - jam) <= 0.34);
+    if (m) { await exec(`update live_sessions set ${tt ? "gmv_tiktok" : "gmv_shopee"} = ?, sumber = 'platform-gabung' where id = ?`, [g, m.id]); ex.splice(ex.indexOf(m), 1); continue; }
+    await exec("insert into live_sessions (client_id, brand, tanggal, jam_mulai, durasi_jam, gmv_shopee, gmv_tiktok, host, penonton, diupload_oleh, sumber) values (?, ?, ?, ?, ?, ?, ?, null, ?, ?, ?)",
+      [clientId, brand, day, +jam.toFixed(2), du, tt ? 0 : g, tt ? g : 0, pen, uid, mine]);
+  }
+}
+
 /* Simpan satu file. Untuk data produk yang besar, dipanggil bertahap (part). */
 export async function saveUpload(clientId: string, storeId: string, file: string, p: Parsed, part = 0, parts = 1, rng?: [string, string]): Promise<Res> {
   try {
@@ -43,7 +65,21 @@ export async function saveUpload(clientId: string, storeId: string, file: string
       }
     }
 
+    if (p.kind === "file") {
+      if (p.platform && st!.platform !== p.platform) return { ok: false, msg: `File ini laporan ${p.platform}, tetapi toko yang dipilih ${st!.brand} ${st!.platform}.` };
+      if (p.akun && /^penghasilan/.test(p.jenis)) {
+        if (st!.akun && st!.akun.toLowerCase() !== p.akun.toLowerCase()) return { ok: false, msg: `File ini milik akun "${p.akun}", sedangkan toko ${st!.brand} ${st!.platform} tercatat sebagai akun "${st!.akun}". Periksa lagi pilihan toko.` };
+      }
+      await exec("insert into seller_files (store_id, jenis, dari, sampai, n, data, diupload_oleh) values (?, ?, ?, ?, ?, ?, ?) on duplicate key update n = values(n), data = values(data), diupload_oleh = values(diupload_oleh)",
+        [st!.id, p.jenis, p.dari, p.sampai, p.n, JSON.stringify(p.data), uid]);
+      if (p.jenis === "produk-shopee" && p.pp) await exec("insert into product_period (store_id, dari, sampai, data) values (?, ?, ?, ?) on duplicate key update data = values(data)", [st!.id, p.dari, p.sampai, JSON.stringify(p.pp)]);
+      if (p.jenis === "live-shopee" || p.jenis === "live-tiktok") await liveFromPlatform(clientId, st!.brand, p, uid);
+      await log(clientId, p.jenis, file, p.dari, p.sampai, p.n, uid);
+      return { ok: true, msg: `Tersimpan: ${p.info} (${p.dari} s/d ${p.sampai}).` };
+    }
+
     if (p.kind === "sales") {
+      if (p.sp) await exec("insert into store_period (store_id, dari, sampai, data) values (?, ?, ?, ?) on duplicate key update data = values(data)", [st!.id, p.sp.dari, p.sp.sampai, JSON.stringify(p.sp.data)]);
       await exec("insert into daily_sales (store_id, tanggal, gmv, pesanan, pengunjung, sumber, diupload_oleh) values ? on duplicate key update gmv = values(gmv), pesanan = values(pesanan), pengunjung = values(pengunjung), sumber = values(sumber), diupload_oleh = values(diupload_oleh)",
         [p.rows.map((r) => [st!.id, r[0], r[1], r[2], r[3], p.sumber, uid])]);
       const [d0, d1] = span(p.rows.map((r) => r[0]));
@@ -54,6 +90,7 @@ export async function saveUpload(clientId: string, storeId: string, file: string
     if (p.kind === "ads") {
       await exec("delete from ads where store_id = ? and dari >= ? and sampai <= ?", [st!.id, p.dari, p.sampai]);
       await exec("insert into ads (store_id, dari, sampai, kampanye, biaya, gmv, pesanan, diupload_oleh) values ?", [p.rows.map((r) => [st!.id, ...r, uid])]);
+      if (p.meta?.length) await exec("insert into ads_meta (store_id, dari, sampai, kampanye, dilihat, klik, keranjang) values ? on duplicate key update dilihat = values(dilihat), klik = values(klik), keranjang = values(keranjang)", [p.meta.map((m) => [st!.id, p.dari, p.sampai, ...m])]);
       await log(clientId, "iklan", file, p.dari, p.sampai, p.rows.length, uid);
       const b = p.rows.reduce((s, r) => s + r[3], 0), g = p.rows.reduce((s, r) => s + r[4], 0);
       return { ok: true, msg: `${p.rows.length} baris iklan tersimpan (${p.dari} s/d ${p.sampai}), biaya ${rp(b)}, ROAS ${b ? (g / b).toFixed(1) : "–"}.` };

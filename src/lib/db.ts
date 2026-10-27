@@ -42,6 +42,11 @@ async function ready() {
       // Saldo iklan per akun toko, diinput tim (riwayat disimpan)
       // Link klien bisa berisi beberapa klien (dipisah koma)
       await pool().query("alter table share_links modify client_id varchar(400) not null");
+      // File Seller Centre tambahan (live, produk, affiliate, penghasilan) disimpan utuh per toko & periode
+      await pool().query("create table if not exists seller_files (store_id varchar(80) not null, jenis varchar(40) not null, dari date not null, sampai date not null, n int not null default 0, data longtext not null, diupload_oleh int null, diupdate timestamp not null default current_timestamp on update current_timestamp, primary key (store_id, jenis, dari, sampai))");
+      // Klien live tanpa toko (Dren) butuh toko Shopee/TikTok agar ekspor live bisa diunggah
+      await pool().query("insert ignore into stores (id, client_id, brand, platform) select 'dren-dren-shopee', 'dren', 'Dren', 'Shopee' from clients where id = 'dren' union all select 'dren-dren-tiktok', 'dren', 'Dren', 'TikTok' from clients where id = 'dren'");
+      try { await pool().query("alter table live_sessions add column sumber varchar(20) null"); } catch { /* sudah ada */ }
       await pool().query("create table if not exists ad_balance (id bigint auto_increment primary key, store_id varchar(80) not null, saldo decimal(16,2) not null, catatan varchar(200) null, oleh int null, nama varchar(160) null, waktu datetime not null, index (store_id, waktu))");
       // Metrik tambahan dari ekspor Seller Centre (statistik toko, performa produk, laporan iklan)
       await pool().query("create table if not exists store_period (store_id varchar(80) not null, dari date not null, sampai date not null, data longtext not null, primary key (store_id, dari, sampai))");

@@ -31,6 +31,7 @@ async function readSheets(f: File): Promise<{ name: string; sheets: Record<strin
 }
 
 function summary(p: Parsed) {
+  if (p.kind === "file") return `${p.dari} s/d ${p.dari === p.sampai ? "" : p.sampai} · ${p.info}`.replace(" s/d  ·", " ·");
   if (p.kind === "sales") { const d = p.rows.map((r) => r[0]).sort(); return `${p.rows.length} hari (${d[0]} s/d ${d[d.length - 1]}) · GMV ${rp(p.rows.reduce((s, r) => s + r[1], 0))}${p.akun ? ` · akun ${p.akun}` : ""}`; }
   if (p.kind === "produk") { const d = p.rows.map((r) => r[0]).sort(); return `${new Set(p.rows.map((r) => r[1])).size} produk, ${p.rows.length.toLocaleString("id")} baris (${d[0]} s/d ${d[d.length - 1]}) · GMV ${rp(p.rows.reduce((s, r) => s + r[5], 0))}`; }
   if (p.kind === "ads") { const b = p.rows.reduce((s, r) => s + r[3], 0), g = p.rows.reduce((s, r) => s + r[4], 0); return `${p.rows.length} baris (${p.dari} s/d ${p.sampai}) · biaya ${rp(b)} · ROAS ${b ? (g / b).toFixed(1) : "–"}${p.akun ? ` · akun ${p.akun}` : ""}`; }

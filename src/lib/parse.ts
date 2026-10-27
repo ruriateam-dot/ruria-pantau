@@ -1,9 +1,12 @@
 /* Pembaca file laporan marketplace (berjalan di browser). Jenis file dikenali otomatis dari isinya. */
 export type Sheet = unknown[][];
+export type SP = { dari: string; sampai: string; data: Record<string, unknown> };
+export type FileData = { kind: "file"; jenis: string; label: string; scope: "store" | "client"; platform?: "Shopee" | "TikTok"; akun?: string; dari: string; sampai: string; n: number; info: string; data: unknown; pp?: unknown[] };
 export type Parsed =
-  | { kind: "sales"; label: string; sumber: string; akun?: string; rows: [string, number, number, number | null][] }
+  | FileData
+  | { kind: "sales"; label: string; sumber: string; akun?: string; rows: [string, number, number, number | null][]; sp?: SP }
   | { kind: "produk"; label: string; rows: [string, string, string, string, number, number, number][] }
-  | { kind: "ads"; label: string; akun?: string; dari: string; sampai: string; rows: [string, string, string, number, number, number][] }
+  | { kind: "ads"; label: string; akun?: string; dari: string; sampai: string; rows: [string, string, string, number, number, number][]; meta?: [string, number | null, number | null, number | null][] }
   | { kind: "live"; label: string; rows: [string, number, number, number, number, string, number | null, string][] };
 
 const S = (v: unknown) => String(v ?? "").replace(/^﻿/, "").trim();
@@ -34,21 +37,42 @@ const hm = (v: unknown) => { if (typeof v === "number" && v < 2) return v * 24; 
 const hdr = (rows: Sheet, test: (H: string[]) => boolean) => rows.findIndex((r) => Array.isArray(r) && test(r.map(S)));
 const col = (H: string[], re: RegExp) => H.findIndex((c) => re.test(c));
 
-/* ---------- Statistik toko Shopee: sheet "Pesanan Siap Dikirim" ---------- */
+/* ---------- Statistik toko Shopee: sheet "Pesanan Siap Dikirim" ----------
+   Ekspor 1 hari berisi rincian per jam: dijumlah per tanggal (bukan ditimpa jam terakhir). */
+const rangeRow = (v: unknown) => S(v).match(/^(\d{1,2})-(\d{1,2})-(\d{4})-(\d{1,2})-(\d{1,2})-(\d{4})$/);
 function shopeeStats(sheets: Record<string, Sheet>, file: string): Parsed | null {
   const rows = sheets["Pesanan Siap Dikirim"];
   if (!rows) return null;
   const hi = hdr(rows, (H) => H[0] === "Tanggal" && H.includes("Total Penjualan (IDR)"));
   if (hi < 0) return null;
   const H = rows[hi].map(S), iG = H.indexOf("Total Penjualan (IDR)"), iO = H.indexOf("Total Pesanan"), iV = H.indexOf("Total Pengunjung");
-  const out: [string, number, number, number | null][] = [];
+  const sum = rows.find((r) => rangeRow(r?.[0]));
+  const M = new Map<string, [number, number, number | null, number]>();
   for (const r of rows.slice(hi + 1)) {
     if (S(r?.[0]) === "Tanggal") continue;
     const d = day(r?.[0]); if (!d) continue;
-    out.push([d, num(r[iG]), num(r[iO]), iV >= 0 ? num(r[iV]) : null]);
+    const x = M.get(d) ?? [0, 0, iV >= 0 ? 0 : null, 0]; x[0] += num(r[iG]); x[1] += num(r[iO]); if (x[2] != null) x[2] += num(r[iV]); x[3]++; M.set(d, x);
   }
+  // Satu hari: pakai baris ringkasan (pengunjung unik), bukan jumlah per jam
+  if (M.size === 1 && sum) { const m = rangeRow(sum[0])!, d = `${m[3]}-${pad(m[2])}-${pad(m[1])}`; if (M.has(d) && `${m[6]}-${pad(m[5])}-${pad(m[4])}` === d) M.set(d, [num(sum[iG]), num(sum[iO]), iV >= 0 ? num(sum[iV]) : null, 1]); }
+  const out = [...M].map(([d, x]) => [d, x[0], x[1], x[2]] as [string, number, number, number | null]);
   const akun = file.match(/([^/\\]+?)\.shopee-shop-stats/i)?.[1]?.replace(/^[0-9a-f]{8}-/, "");
-  return out.length ? { kind: "sales", label: "Statistik toko Shopee (Pesanan Siap Dikirim)", sumber: "shop-stats", akun, rows: out } : null;
+  return out.length ? { kind: "sales", label: "Statistik toko Shopee (Pesanan Siap Dikirim)", sumber: "shop-stats", akun, rows: out, sp: shopeeExtra(sheets, file) } : null;
+}
+/* Metrik tambahan statistik toko (pembatalan, pembeli, asal penjualan, sesi live) untuk kartu "Detail Seller Centre" */
+function shopeeExtra(sheets: Record<string, Sheet>, file: string): SP | undefined {
+  const m = file.match(/shopee-shop-stats\.(\d{4})(\d{2})(\d{2})-(\d{4})(\d{2})(\d{2})/); if (!m) return undefined;
+  const first = Object.values(sheets)[0]; if (!first?.length) return undefined;
+  const H = first[0].map(S), r = first.find((x) => rangeRow(x?.[0])) ?? first[1]; if (!r) return undefined;
+  const g = (k: string) => { const i = H.indexOf(k); return i >= 0 ? num(r[i]) : null; };
+  const D: Record<string, unknown> = { penjualan: g("Total Penjualan (IDR)"), pesanan: g("Total Pesanan"), diklik: g("Produk Diklik"), pengunjung: g("Total Pengunjung"),
+    batal_o: g("Pesanan Dibatalkan"), batal_g: g("Penjualan Dibatalkan"), retur_o: g("Pesanan Dikembalikan"), retur_g: g("Penjualan Dikembalikan"),
+    pembeli: g("Pembeli"), baru: g("Total Pembeli Baru"), lama: g("Total Pembeli Saat Ini"), potensi: g("Total Potensi Pembeli"), ulang: g("Tingkat Pembelian Berulang") };
+  for (const [n, R] of Object.entries(sheets)) {
+    if (n.startsWith("Asal Kunjungan") && S(R[0]?.[0]) === "Tanggal" && R[1]) { const k = R[1]; Object.assign(D, { k_halaman: num(k[3]), k_live: num(k[4]), k_video: num(k[5]), k_aff: num(k[6]), k_iklan: num(k[7]) }); }
+    if (n === "Kontribusi Livestream (Dibuat)") D.live = R.slice(2).filter((y) => y && S(y[0])).slice(0, 300).map((y) => [S(y[1]).slice(0, 80), num(y[3]), num(y[5]), num(y[7]), num(y[8]), S(y[9]), num(y[10]), num(y[11]), num(y[13])]);
+  }
+  return { dari: `${m[1]}-${m[2]}-${m[3]}`, sampai: `${m[4]}-${m[5]}-${m[6]}`, data: D };
 }
 
 /* ---------- TikTok: Key metrics / Overview My Business Performance ---------- */
@@ -98,14 +122,16 @@ function shopeeAds(rows: Sheet): Parsed | null {
   if (!m) return null;
   const dari = toDT(m[1])![0], sampai = toDT(m[2])![0];
   const akun = S(rows.find((r) => S(r?.[0]) === "Username")?.[1]) || undefined;
-  const H = rows[hi].map(S), iN = H.indexOf("Nama Iklan"), iC = H.indexOf("Biaya"), iG = H.indexOf("Omzet Penjualan"), iO = H.indexOf("Konversi");
-  const C = new Map<string, [number, number, number]>();
+  const H = rows[hi].map(S), iN = H.indexOf("Nama Iklan"), iC = H.indexOf("Biaya"), iG = H.indexOf("Omzet Penjualan"), iO = H.indexOf("Konversi"), iL = H.indexOf("Dilihat"), iK = H.indexOf("Jumlah Klik"), iT = H.indexOf("Tambah ke Keranjang");
+  const C = new Map<string, [number, number, number]>(), MT = new Map<string, [number | null, number | null, number | null]>();
   for (const r of rows.slice(hi + 1)) {
     const n = S(r?.[iN]); if (!n) continue;
     const c = C.get(n) ?? [0, 0, 0]; c[0] += num(r[iC]); c[1] += num(r[iG]); c[2] += num(r[iO]); C.set(n, c);
+    const z = (i: number) => (i >= 0 && S(r[i]) !== "-" && S(r[i]) !== "" ? num(r[i]) : null);
+    MT.set(n.replace(/\s+/g, " ").trim().slice(0, 255), [z(iL), z(iK), z(iT)]);
   }
   const out = [...C].filter(([, c]) => c[0] || c[1]).map(([n, c]) => [dari, sampai, n.slice(0, 255), Math.round(c[0]), Math.round(c[1]), Math.round(c[2])] as [string, string, string, number, number, number]);
-  return out.length ? { kind: "ads", label: "Iklan Shopee (ringkasan per iklan)", akun, dari, sampai, rows: out } : null;
+  return out.length ? { kind: "ads", label: "Iklan Shopee (ringkasan per iklan)", akun, dari, sampai, rows: out, meta: [...MT].map(([n, v]) => [n, ...v]) } : null;
 }
 
 /* ---------- Iklan TikTok (Campaign overview per hari) ---------- */
@@ -171,10 +197,168 @@ function mergeLive(R: LR[]) {
   return out.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : a[1] - b[1]));
 }
 
+/* ================= File Seller Centre tambahan (disimpan utuh per periode) ================= */
+const ymd = (v: unknown) => toDT(v)?.[0] ?? null;
+const addD = (d: string, n: number) => { const x = new Date(d + "T00:00:00Z"); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
+const rangeOf = (ds: (string | null)[]) => { const s = ds.filter(Boolean).sort() as string[]; return s.length ? [s[0], s[s.length - 1]] : null; };
+const dur = (v: unknown) => { const t = S(v); let m; if ((m = t.match(/^(\d+):(\d{2}):(\d{2})$/))) return +m[1] + +m[2] / 60 + +m[3] / 3600; if ((m = t.match(/(?:(\d+)\s*h)?\s*(?:(\d+)\s*min)?/)) && (m[1] || m[2])) return (+(m[1] || 0)) + (+(m[2] || 0)) / 60; return hm(v) ?? 0; };
+const rp = (n: number) => "Rp" + Math.round(n).toLocaleString("id");
+/* CSV ekspor Shopee/TikTok memakai titik sebagai desimal (mis. 1043.625) */
+const pf = (v: unknown) => { if (typeof v === "number") return v; const n = parseFloat(S(v).replace(/[^0-9.\-]/g, "")); return isNaN(n) ? 0 : n; };
+const fileYmd = (f: string, re: RegExp) => { const m = f.match(re); return m ? [`${m[1]}-${m[2]}-${m[3]}`, `${m[4]}-${m[5]}-${m[6]}`] : null; };
+
+/* Daftar livestream Shopee (Live & Video → Daftar Livestream → Export) */
+function shopeeLive(rows: Sheet): FileData | null {
+  const hi = hdr(rows, (H) => H.includes("Nama Livestream") && H.includes("Start Time") && H.includes("Penonton")); if (hi < 0) return null;
+  const H = rows[hi].map(S), c = (k: string) => H.indexOf(k);
+  const R = rows.slice(hi + 1).filter((r) => toDT(r?.[c("Start Time")])).map((r) => {
+    const t = toDT(r[c("Start Time")])!;
+    return [`${t[0]} ${pad(Math.floor(t[1] ?? 0))}:${pad(Math.round(((t[1] ?? 0) % 1) * 60))}`, +dur(r[c("Durasi:")]).toFixed(2), S(r[c("Nama Livestream")]).slice(0, 120),
+      num(r[c("Penonton")]), num(r[c("Penonton Aktif")]), num(r[c("Komentar")]), num(r[c("Tambah ke Keranjang")]), S(r[c("Rata-rata durasi ditonton")]),
+      num(r[c("Pesanan(Pesanan Dibuat)")]), num(r[c("Penjualan(Pesanan Dibuat)")]), num(r[c("Pesanan(Pesanan Siap Dikirim)")]), num(r[c("Penjualan(Pesanan Siap Dikirim)")])];
+  });
+  if (!R.length) return null;
+  const pm = S(rows[hi + 1]?.[c("Periode Data")]).match(/(\d{1,2}-\d{1,2}-\d{4})\s*-\s*(\d{1,2}-\d{1,2}-\d{4})/);
+  const rg = pm ? [ymd(pm[1])!, ymd(pm[2])!] : rangeOf(R.map((x) => String(x[0]).slice(0, 10)))!;
+  const jam = R.reduce((a, x) => a + (x[1] as number), 0), g = R.reduce((a, x) => a + (x[9] as number), 0);
+  return { kind: "file", jenis: "live-shopee", label: "Daftar livestream Shopee", scope: "store", platform: "Shopee", akun: S(rows[hi + 1]?.[c("User Id")]).replace(/\.0$/, "") || undefined,
+    dari: rg[0], sampai: rg[1], n: R.length, info: `${R.length} sesi · ${jam.toFixed(0)} jam · penjualan ${rp(g)}`, data: { h: ["mulai", "durasi_jam", "judul", "penonton", "penonton_aktif", "komentar", "keranjang", "rata_tonton", "pesanan", "penjualan", "pesanan_siap", "penjualan_siap"], rows: R } };
+}
+
+/* Sesi LIVE TikTok (Analitik LIVE & video → Detail → Unduh) */
+function tiktokLive(rows: Sheet): FileData | null {
+  const hi = hdr(rows, (H) => H.includes("Waktu Live") && H.includes("Durasi") && H.some((c) => /^GMV LIVE/.test(c))); if (hi < 0) return null;
+  const H = rows[hi].map(S), c = (k: string) => H.indexOf(k), cr = (re: RegExp) => col(H, re);
+  const R = rows.slice(hi + 1).filter((r) => toDT(r?.[c("Waktu Live")])).map((r) => {
+    const t = toDT(r[c("Waktu Live")])!;
+    return [`${t[0]} ${pad(Math.floor(t[1] ?? 0))}:${pad(Math.round(((t[1] ?? 0) % 1) * 60))}`, +dur(r[c("Durasi")]).toFixed(2), S(r[c("Nama panggilan")]) || S(r[c("Kreator")]),
+      num(r[cr(/^GMV dari LIVE/)]), num(r[cr(/^GMV LIVE/)]), num(r[c("Pesanan Dibayar")]), num(r[c("Produk Terjual")]), num(r[c("Penonton")]), num(r[c("Live Stream Dilihat")]),
+      num(r[c("Komentar")]), num(r[c("Suka pada LIVE")]), num(r[c("Produk Dilihat")]), num(r[c("Klik Produk")]), S(r[c("Durasi menonton rata-rata (Siaran LIVE)")])];
+  });
+  if (!R.length) return null;
+  const dm = S(rows[0]?.[0]).match(/(\d{4}-\d{2}-\d{2})\s*~\s*(\d{4}-\d{2}-\d{2})/);
+  const rg = dm ? [dm[1], dm[2]] : rangeOf(R.map((x) => String(x[0]).slice(0, 10)))!;
+  const akunL = [...new Set(R.map((x) => x[2]))];
+  const jam = R.reduce((a, x) => a + (x[1] as number), 0), g = R.reduce((a, x) => a + (x[3] as number), 0);
+  return { kind: "file", jenis: "live-tiktok", label: "Sesi LIVE TikTok", scope: "store", platform: "TikTok", dari: rg[0], sampai: rg[1], n: R.length,
+    info: `${R.length} sesi · ${jam.toFixed(0)} jam · GMV ${rp(g)} · akun: ${akunL.slice(0, 3).join(", ")}${akunL.length > 3 ? "…" : ""}`,
+    data: { h: ["mulai", "durasi_jam", "akun", "gmv_dari_live", "gmv_live", "pesanan", "terjual", "penonton", "dilihat", "komentar", "suka", "produk_dilihat", "klik_produk", "rata_tonton"], rows: R } };
+}
+
+/* Analitik produk TikTok (Analitik produk → Berdasarkan produk → Unduh) */
+function tiktokProduk(rows: Sheet): FileData | null {
+  const dm = S(rows[0]?.[0]).match(/Tanggal analisis:\s*(\d{1,2}\/\d{1,2}\/\d{4})\s*~\s*(\d{1,2}\/\d{1,2}\/\d{4})/); if (!dm) return null;
+  const hi = hdr(rows, (H) => H[0] === "Nama" && H[1] === "ID Produk"); if (hi < 0) return null;
+  const H = rows[hi].map(S), c = (k: string) => H.indexOf(k);
+  const R = rows.slice(hi + 1).filter((r) => S(r?.[1])).map((r) => [S(r[1]), S(r[0]).slice(0, 150), num(r[c("GMV")]), num(r[c("Pesanan")]), num(r[c("Produk terjual")]), num(r[c("Impresi produk")]), num(r[c("Klik produk")]),
+    num(r[c("Jumlah tambahkan ke keranjang")]), num(r[c("Pengembalian dana")]), num(r[c("GMV dari LIVE penjual")]), num(r[c("GMV dari video penjual")]), num(r[c("GMV dari kreator")]), num(r[c("GMV kartu produk penjual")])]);
+  if (!R.length) return null;
+  const g = R.reduce((a, x) => a + (x[2] as number), 0);
+  return { kind: "file", jenis: "produk-tiktok", label: "Analitik produk TikTok", scope: "store", platform: "TikTok", dari: ymd(dm[1])!, sampai: ymd(dm[2])!, n: R.length, info: `${R.length} produk · GMV ${rp(g)}`,
+    data: { h: ["id", "nama", "gmv", "pesanan", "terjual", "impresi", "klik", "keranjang", "refund", "gmv_live", "gmv_video", "gmv_kreator", "gmv_kartu"], rows: R } };
+}
+
+/* Performa produk Shopee (Performa Toko → Produk → Performa Produk → Download) */
+function shopeeProduk(sheets: Record<string, Sheet>, file: string): FileData | null {
+  const rows = sheets["Produk dengan Performa Terbaik"]; if (!rows) return null;
+  const H = (rows[0] ?? []).map(S), c = (k: string) => H.indexOf(k);
+  if (c("Kode Produk") < 0 || c("Total Penjualan (Pesanan Dibuat) (IDR)") < 0) return null;
+  const rg = fileYmd(file, /parentskudetail\.(\d{4})(\d{2})(\d{2})_(\d{4})(\d{2})(\d{2})/); if (!rg) throw new Error("Nama file performa produk Shopee tidak berisi periode (parentskudetail.YYYYMMDD_YYYYMMDD). Unggah file asli tanpa mengganti nama.");
+  const par = rows.slice(1).filter((r) => r && S(r[0]) && (S(r[3]) === "-" || !S(r[3])));
+  const pp = par.map((r) => [S(r[0]), S(r[1]).slice(0, 150), num(r[c("Total Penjualan (Pesanan Dibuat) (IDR)")]), num(r[c("Pesanan Dibuat")]), num(r[c("Jumlah Produk Dilihat")]), num(r[c("Produk Diklik")]),
+    num(r[c("Pengunjung Produk (Kunjungan)")]), num(r[c("Dimasukkan ke Keranjang (Produk)")]), num(r[c("Pengunjung Produk (Menambahkan Produk ke Keranjang)")])]);
+  if (!pp.length) return null;
+  const g = pp.reduce((a, x) => a + (x[2] as number), 0);
+  return { kind: "file", jenis: "produk-shopee", label: "Performa produk Shopee", scope: "store", platform: "Shopee", dari: rg[0], sampai: rg[1], n: pp.length, info: `${pp.length} produk · penjualan ${rp(g)}`, data: { n: pp.length }, pp };
+}
+
+/* Performa affiliate Shopee (Performa Affiliate → Ekspor). File tidak memuat periode: dianggap "7 hari terakhir" (berakhir H-2 dari waktu ekspor di nama file) */
+function shopeeAff(rows: Sheet, file: string): FileData | null {
+  const hi = hdr(rows, (H) => H[0] === "ID Affiliates" && H.includes("Username Affiliate")); if (hi !== 0) return null;
+  const H = rows[0].map(S), c = (k: string) => H.indexOf(k);
+  const R = rows.slice(1).filter((r) => S(r?.[c("Username Affiliate")])).map((r) => [S(r[c("Username Affiliate")]), S(r[c("Nama Affiliate")]).slice(0, 80), pf(r[c("Omzet Penjualan(Rp)")]), pf(r[c("Produk Terjual")]), pf(r[c("Pesanan")]),
+    pf(r[c("Clicks")]), pf(r[c("Estimasi Komisi(Rp)")]), S(r[c("ROI")]), pf(r[c("Total Pembeli")]), pf(r[c("Pembeli Baru")])]);
+  if (!R.length) return null;
+  const m = file.match(/AMSAffiliatePerformance_(\d{4})(\d{2})(\d{2})/); if (!m) throw new Error("Nama file performa affiliate Shopee harus asli (AMSAffiliatePerformance_YYYYMMDDhhmm) agar periodenya diketahui.");
+  const sampai = addD(`${m[1]}-${m[2]}-${m[3]}`, -2), dari = addD(sampai, -6);
+  const g = R.reduce((a, x) => a + (x[2] as number), 0);
+  return { kind: "file", jenis: "aff-shopee", label: "Performa affiliate Shopee", scope: "store", platform: "Shopee", dari, sampai, n: R.length, info: `${R.length} kreator · omzet ${rp(g)} · periode dianggap ${dari} s/d ${sampai}`,
+    data: { h: ["username", "nama", "omzet", "terjual", "pesanan", "klik", "komisi", "roi", "pembeli", "pembeli_baru"], rows: R } };
+}
+
+/* Performa kreator TikTok (Affiliate Center → Performa → Kreator → Export) */
+function tiktokAff(rows: Sheet, file: string): FileData | null {
+  const hi = hdr(rows, (H) => H[0] === "Creator name" && H.includes("GMV dari kreator")); if (hi < 0) return null;
+  const H = rows[hi].map(S), c = (k: string) => H.indexOf(k);
+  const R = rows.slice(hi + 1).filter((r) => S(r?.[0]) && /\d/.test(S(r[c("GMV dari kreator")])) && S(r[c("GMV dari kreator")]).length < 30).map((r) => [S(r[0]), num(r[c("GMV dari kreator")]), num(r[c("GMV dari LIVE kreator")]), num(r[c("GMV dari video afiliasi")]),
+    num(r[c("Pengembalian dana")]), num(r[c("Pesanan teratribusi")]), num(r[c("Produk yang terjual dari kreator")]), num(r[c("Produk yang dikembalikan dananya")]), num(r[c("Sampel terkirim")]), num(r[c("Impresi produk")]), num(r[c("Tayangan video")]), num(r[c("Perkiraan komisi")])]);
+  if (!R.length) return null;
+  const rg = fileYmd(file, /Creator_List_(\d{4})(\d{2})(\d{2})-(\d{4})(\d{2})(\d{2})/); if (!rg) throw new Error("Nama file performa kreator TikTok harus asli (…Creator_List_YYYYMMDD-YYYYMMDD) agar periodenya diketahui.");
+  const g = R.reduce((a, x) => a + (x[1] as number), 0), rf = R.reduce((a, x) => a + (x[4] as number), 0);
+  return { kind: "file", jenis: "aff-tiktok", label: "Performa kreator affiliate TikTok", scope: "store", platform: "TikTok", dari: rg[0], sampai: rg[1], n: R.length, info: `${R.length} kreator · GMV ${rp(g)} · pengembalian ${rp(rf)}`,
+    data: { h: ["kreator", "gmv", "gmv_live", "gmv_video", "refund", "pesanan", "terjual", "terjual_refund", "sampel", "impresi", "tayangan", "komisi"], rows: R } };
+}
+
+/* Pesanan affiliate TikTok (Affiliate Center → Pesanan afiliasi → Unduh Pesanan) */
+function tiktokAffOrders(rows: Sheet): FileData | null {
+  const hi = hdr(rows, (H) => H[0] === "ID Pesanan" && H.includes("Nama pengguna kreator") && H.includes("Waktu Dibuat")); if (hi < 0) return null;
+  const H = rows[hi].map(S), c = (k: string) => H.indexOf(k);
+  const R = rows.slice(hi + 1).filter((r) => S(r?.[0])).map((r) => [S(r[0]), ymd(r[c("Waktu Dibuat")]), S(r[c("Nama pengguna kreator")]), S(r[c("SKU penjual")]).slice(0, 60), num(r[c("Payment Amount")]), num(r[c("Kuantitas")]),
+    S(r[c("Status Pesanan")]), S(r[c("Pengembalian barang atau dana penuh")]), S(r[c("Jenis Konten")]), num(r[c("Perkiraan pembayaran komisi standar")])]);
+  if (!R.length) return null;
+  const rg = rangeOf(R.map((x) => x[1] as string))!, g = R.reduce((a, x) => a + (x[4] as number), 0), rt = R.filter((x) => /^ya/i.test(String(x[7]))).length;
+  return { kind: "file", jenis: "aff-pesanan-tiktok", label: "Pesanan affiliate TikTok", scope: "store", platform: "TikTok", dari: rg[0], sampai: rg[1], n: R.length, info: `${R.length} baris pesanan · ${rp(g)} · ${rt} retur/refund penuh`,
+    data: { h: ["id", "tanggal", "kreator", "sku", "nilai", "qty", "status", "refund_penuh", "konten", "komisi"], rows: R } };
+}
+
+/* Validasi tagihan affiliate Shopee (Validation Bill → View Reports): diringkas per affiliate */
+function shopeeValidasi(rows: Sheet): FileData | null {
+  const hi = hdr(rows, (H) => H[0] === "Kode Pesanan" && H.includes("Status Terverifikasi") && H.includes("Username Affiliate")); if (hi < 0) return null;
+  const H = rows[hi].map(S), c = (k: string) => H.indexOf(k);
+  const M = new Map<string, { o: Set<string>; n: number; r: number; k: number; x: number }>(); const ds: string[] = [];
+  for (const r of rows.slice(hi + 1)) {
+    const u = S(r?.[c("Username Affiliate")]); if (!u) continue; const d = ymd(r[c("Waktu Pesanan")]); if (d) ds.push(d);
+    const x = M.get(u) ?? { o: new Set(), n: 0, r: 0, k: 0, x: 0 }; x.o.add(S(r[c("Kode Pesanan")])); x.n += pf(r[c("Nilai Pembelian(Rp)")]); x.r += pf(r[c("Jumlah Pengembalian(Rp)")]);
+    x.k += pf(r[c("Estimasi Komisi Affiliate per Produk(Rp)")]); x.x += pf(r[c("Pengeluaran(Rp)")]); M.set(u, x);
+  }
+  if (!M.size) return null;
+  const R = [...M].map(([u, x]) => [u, x.o.size, Math.round(x.n), Math.round(x.r), Math.round(x.k), Math.round(x.x)]);
+  const rg = rangeOf(ds)!, tot = R.reduce((a, x) => a + (x[5] as number), 0);
+  return { kind: "file", jenis: "validasi-shopee", label: "Validasi tagihan affiliate Shopee", scope: "store", platform: "Shopee", dari: rg[0], sampai: rg[1], n: R.length, info: `${R.length} affiliate · ${R.reduce((a, x) => a + (x[1] as number), 0)} pesanan · biaya ${rp(tot)}`,
+    data: { h: ["username", "pesanan", "nilai", "pengembalian", "komisi", "biaya"], rows: R } };
+}
+
+/* Penghasilan Shopee (Penghasilan Saya → Sudah Dilepas → Export) */
+function shopeeIncome(sheets: Record<string, Sheet>): FileData | null {
+  const sm = sheets["Summary"], pr = sheets["Penghasilan"]; if (!sm || !pr) return null;
+  const dari = ymd(sm.find((r) => S(r?.[0]) === "Dari")?.[1]), sampai = ymd(sm.find((r) => S(r?.[0]) === "ke")?.[1]);
+  const hi = hdr(pr, (H) => H.includes("No. Pesanan") && H.includes("Total Penghasilan")); if (hi < 0 || !dari || !sampai) return null;
+  const H = pr[hi].map(S), c = (k: string) => H.indexOf(k);
+  const R = pr.slice(hi + 1).filter((r) => S(r?.[1]) === "Order").map((r) => [S(r[c("No. Pesanan")]), ymd(r[c("Waktu Pesanan Dibuat")]), ymd(r[c("Tanggal Dana Dilepaskan")]), num(r[c("Total Penghasilan")]), num(r[c("Harga Produk")]), num(r[c("Jumlah Pengembalian Dana ke Pembeli")])]);
+  const akun = S(sm.find((r) => S(r?.[0]) === "Username (Penjual)")?.[1]) || undefined;
+  const t = R.reduce((a, x) => a + (x[3] as number), 0);
+  return { kind: "file", jenis: "penghasilan-shopee", label: "Penghasilan Shopee (sudah dilepas)", scope: "store", platform: "Shopee", akun, dari, sampai, n: R.length, info: `${R.length} pesanan · dana cair ${rp(t)}`,
+    data: { h: ["pesanan", "dibuat", "dilepas", "penghasilan", "harga_produk", "refund"], rows: R } };
+}
+
+/* Penghasilan TikTok (Keuangan → Transaksi → Selesai → Unduh) */
+function tiktokIncome(sheets: Record<string, Sheet>): FileData | null {
+  const dp = sheets["Detail pesanan"], lp = sheets["Laporan"]; if (!dp || !lp) return null;
+  const pr2 = lp.find((r) => (r ?? []).some((v) => S(v) === "Periode")) ?? [], pm = S(pr2.slice(pr2.findIndex((v) => S(v) === "Periode") + 1).find((v) => S(v))).match(/(\d{4}\/\d{2}\/\d{2})-(\d{4}\/\d{2}\/\d{2})/);
+  const hi = hdr(dp, (H) => H[0] === "ID Pesanan/Penyesuaian" && H.includes("Jumlah penyelesaian pembayaran")); if (hi < 0) return null;
+  const H = dp[hi].map(S), c = (k: string) => H.indexOf(k);
+  const R = dp.slice(hi + 1).filter((r) => S(r?.[0])).map((r) => [S(r[0]), S(r[c("Jenis transaksi")]), ymd(r[c("Waktu pemesanan")]), num(r[c("Jumlah penyelesaian pembayaran")]), num(r[c("Total Pendapatan")]), num(r[c("Total Biaya")])]);
+  const rg = pm ? [ymd(pm[1])!, ymd(pm[2])!] : rangeOf(R.map((x) => x[2] as string)); if (!rg) return null;
+  const t = R.reduce((a, x) => a + (x[3] as number), 0);
+  return { kind: "file", jenis: "penghasilan-tiktok", label: "Penghasilan TikTok (transaksi selesai)", scope: "store", platform: "TikTok", dari: rg[0], sampai: rg[1], n: R.length, info: `${R.length} transaksi · dana cair ${rp(t)}`,
+    data: { h: ["id", "jenis", "dipesan", "penyelesaian", "pendapatan", "biaya"], rows: R } };
+}
+
 export function detect(sheets: Record<string, Sheet>, file: string): Parsed {
-  const r = shopeeStats(sheets, file);
+  const r = shopeeStats(sheets, file) ?? shopeeProduk(sheets, file) ?? shopeeIncome(sheets) ?? tiktokIncome(sheets);
   if (r) return r;
   const list = Object.values(sheets);
+  for (const rows of list) { const x = shopeeLive(rows) ?? tiktokLive(rows) ?? tiktokProduk(rows) ?? shopeeAff(rows, file) ?? tiktokAff(rows, file) ?? tiktokAffOrders(rows) ?? shopeeValidasi(rows); if (x) return x; }
   let L: LR[] = [];
   for (const rows of list) L = L.concat(liveDraft(rows), liveHost(rows));
   if (L.length) return { kind: "live", label: "Laporan livestream", rows: mergeLive(L) };
@@ -182,5 +366,5 @@ export function detect(sheets: Record<string, Sheet>, file: string): Parsed {
     const x = tiktokStats(rows) ?? shopeeAds(rows) ?? tiktokAds(rows) ?? orders(rows);
     if (x) return x;
   }
-  throw new Error("Jenis file tidak dikenali. Yang didukung: statistik toko Shopee, Key metrics TikTok, ekspor pesanan Shopee/TikTok, iklan Shopee (CSV), iklan TikTok (Campaign overview), dan laporan livestream.");
+  throw new Error("Jenis file tidak dikenali. Pastikan file diunduh dari menu yang ada di panduan dan tidak diubah isinya.");
 }
