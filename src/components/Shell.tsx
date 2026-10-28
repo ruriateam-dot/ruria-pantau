@@ -69,8 +69,8 @@ export default function Shell({ user, staff, clients, active, dashHref, children
         <div className="sh">Menu</div>
         {link("/dashboard/upload", "Upload data", path === "/dashboard/upload", undefined, <Ic k="up" />)}
         {link("/dashboard/jadwal", "Jadwal live", path === "/dashboard/jadwal", undefined, <Ic k="cal" />)}
-        {link("/dashboard/tim", staff ? "Kelola tim" : "Akun saya", path === "/dashboard/tim", undefined, <Ic k="tim" />)}
-        {staff && link("/dashboard/klien", "Kelola klien", path === "/dashboard/klien", undefined, <Ic k="klien" />)}
+        {user.peran === "Superadmin" && link("/dashboard/tim", "Kelola tim", path === "/dashboard/tim", undefined, <Ic k="tim" />)}
+        {user.peran === "Superadmin" && link("/dashboard/klien", "Kelola klien", path === "/dashboard/klien", undefined, <Ic k="klien" />)}
         {user.peran === "Superadmin" && link("/dashboard/log", "Log aktivitas", path === "/dashboard/log", undefined, <Ic k="log" />)}
       </nav>
       <div className="sfoot">
@@ -91,7 +91,7 @@ export default function Shell({ user, staff, clients, active, dashHref, children
       {bl(dashHref, "Dashboard", "dash", path === "/dashboard")}
       {bl("/dashboard/upload", "Upload", "up", path === "/dashboard/upload")}
       {bl("/dashboard/jadwal", "Jadwal", "cal", path === "/dashboard/jadwal")}
-      {bl("/dashboard/tim", staff ? "Tim" : "Akun", "tim", path === "/dashboard/tim")}
+      {user.peran === "Superadmin" && bl("/dashboard/tim", "Tim", "tim", path === "/dashboard/tim")}
       <button type="button" aria-label="Buka menu lengkap" aria-expanded={open} onClick={() => setOpen(true)}><Ic k="menu" /><span>Menu</span></button>
     </nav>
   </div>;

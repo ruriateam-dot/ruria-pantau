@@ -432,3 +432,9 @@ h2.sec{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--m
 #aff-root aside.drawer{background:var(--solid)!important;backdrop-filter:none}
 /* Log aktivitas affiliate cukup di menu Log aktivitas utama */
 #aff-root [data-tab="log"],#aff-root #tab-log{display:none!important}
+/* Checklist upload */
+.ucl th.ckc{text-align:center}.ucl th.ckc span{display:block;font-size:9px;letter-spacing:0;text-transform:none;opacity:.8}
+.ckc{text-align:center;padding:5px 4px}.ckc b{display:block;font-size:15px;line-height:1.1}.ckc span{font-size:10px;color:var(--muted)}
+.ckc.ok b{color:var(--good)}.ckc.no{background:color-mix(in srgb,var(--bad) 9%,transparent)}.ckc.no b{color:var(--bad)}.ckc.na{color:var(--line)}
+.ucl th.ckc .fn{font-weight:500;color:var(--fg);opacity:.75;word-break:break-all;max-width:150px;margin:2px auto 0}
+.ckc em{display:block;font-style:normal;font-size:9.5px;color:var(--bad);word-break:break-all;max-width:150px;margin:2px auto 0;line-height:1.2}

@@ -17,7 +17,8 @@ export default async function ForecastView({ clientId, sp, base, staff, share }:
   if (!sel.length) sel = [now, addMonth(now, 1), addMonth(now, 2)];
   // bulan harus berurutan
   const months: string[] = []; for (let m = sel[0]; m <= sel[sel.length - 1]; m = addMonth(m, 1)) months.push(m);
-  const safety = (await q<{ s: number | null }>("select stok_pengaman s from clients where id = ?", [clientId]))[0]?.s ?? 28;
+  const cfg = (await q<{ s: number | null; a: number }>("select stok_pengaman s, stok_selalu_ada a from clients where id = ?", [clientId]))[0];
+  const safety = cfg?.s ?? 28, alwaysStock = !!cfg?.a;
   const F = await forecast(clientId, months, safety);
   const link = (m: string) => {
     let a = months[0], b = months[months.length - 1];
@@ -32,7 +33,7 @@ export default async function ForecastView({ clientId, sp, base, staff, share }:
   const tot = F.M.reduce((a, m) => a + m.fc, 0), lo = F.M.reduce((a, m) => a + m.lo, 0), hi = F.M.reduce((a, m) => a + m.hi, 0);
   const lyT = F.M.every((m) => m.ly !== null) ? F.M.reduce((a, m) => a + (m.ly ?? 0), 0) : null;
   const terancam = F.M.reduce((a, m) => a + m.terancam, 0);
-  const hasStock = !!F.stokTgl;
+  const hasStock = !!F.stokTgl && !alwaysStock;
   const P = F.P.filter((p) => p.units >= 0.5 || (p.stok ?? 0) > 0);
   const withStock = P.filter((p) => p.stok !== null);
   const restockP = withStock.filter((p) => p.restock > 0);
@@ -62,7 +63,7 @@ export default async function ForecastView({ clientId, sp, base, staff, share }:
       <span className="muted small">Bulan</span>
       <div className="mchips">{opts.map((m) => { const on = months.includes(m), h = link(m); return h ? <a key={m} href={h} className={on ? "on" : ""}>{blnLabel(m)}</a> : <span key={m} className="on">{blnLabel(m)}</span>; })}</div>
       <span className="muted small">Klik bulan di ujung untuk menambah/mengurangi; klik bulan di tengah untuk memilih satu bulan saja.</span>
-      {!share && <SafetyDays clientId={clientId} value={safety} canEdit={staff} />}
+      {!share && !alwaysStock && <SafetyDays clientId={clientId} value={safety} canEdit={staff} />}
     </div>
     <h2 className="sec">Forecast GMV · {title}</h2>
     <p className="muted small" style={{ marginTop: -6 }}>Data penjualan masuk s.d. {tgl(F.last)} {F.last.slice(0, 4)}{F.M.some((m) => m.partial) ? " · bulan berjalan = aktual + perkiraan sisa hari" : ""}</p>
@@ -94,7 +95,7 @@ export default async function ForecastView({ clientId, sp, base, staff, share }:
         {F.noSeason.length > 0 && <p className="muted small">* Data tahun lalu belum cukup, jadi perkiraan memakai laju terakhir tanpa pola musiman.</p>}
       </div>
     </div>
-    {!share && <div className="card internal"><h3>Kebutuhan stok · {title}</h3>
+    {!share && !alwaysStock && <div className="card internal"><h3>Kebutuhan stok · {title}</h3>
       {!hasStock ? <p className="muted">Belum ada data stok. Upload file stok Shopee di menu Upload data: Produk Saya → Ubah Massal → Info penjualan (berisi kolom Stok per gudang). Setelah itu kebutuhan restock, tanggal habis, dan GMV terancam muncul di sini.</p> : <>
         <p className="muted small">Stok per {tgl(F.stokTgl!)} {F.stokTgl!.slice(0, 4)} · stok pengaman {safety} hari di akhir {blnLabel(F.months[F.months.length - 1])} · {withStock.length.toLocaleString("id")} SKU terjual yang ada di file stok</p>
         <div className="prio">{PRIO.slice(0, 4).map((k) => <div key={k} className={"pr " + pcls(k === "Habis" ? "Habis" : k)}><b>{nf(cnt(k))}</b><span>{k === "Habis" ? `Habis di ${title}` : k}</span></div>)}</div>

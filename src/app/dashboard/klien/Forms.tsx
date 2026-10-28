@@ -6,7 +6,7 @@ type R = { ok: boolean; msg: string } | null;
 const MOD: [string, string][] = [["toko", "Analisa Toko"], ["iklan", "Analisa Iklan"], ["live", "Livestream"], ["affiliate", "Affiliate"]];
 const Msg = ({ r }: { r: R }) => r ? <p className={r.ok ? "ok" : "err"} role="status">{r.msg}</p> : null;
 
-export function ClientForm({ c }: { c?: { id: string; nama: string; modul: string[]; target_roas: number | null } }) {
+export function ClientForm({ c }: { c?: { id: string; nama: string; modul: string[]; target_roas: number | null; stok_selalu_ada?: number } }) {
   const [r, a, p] = useActionState(saveClient, null);
   return <form action={a} className="kform">
     <input type="hidden" name="id" value={c?.id ?? ""} />
@@ -15,6 +15,7 @@ export function ClientForm({ c }: { c?: { id: string; nama: string; modul: strin
       <label>Target ROAS<input name="target" inputMode="decimal" defaultValue={c?.target_roas ?? ""} placeholder="mis. 10" /></label>
     </div>
     <div className="chk">{MOD.map(([k, l]) => <label key={k}><input type="checkbox" name="modul" value={k} defaultChecked={c ? c.modul.includes(k) : k !== "affiliate"} /> {l}</label>)}</div>
+    <label className="chk"><input type="checkbox" name="stok_selalu_ada" value="1" defaultChecked={!!c?.stok_selalu_ada} /> Stok dianggap selalu ada (tidak perlu upload stok; kebutuhan stok di Forecast tidak dihitung)</label>
     <Msg r={r} /><button disabled={p}>{c ? "Simpan klien" : "Tambah klien"}</button>
   </form>;
 }

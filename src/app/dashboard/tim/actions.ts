@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { randomBytes } from "crypto";
 import { exec, q } from "@/lib/db";
-import { requireAdmin, requireUser, hash, verify, type User } from "@/lib/auth";
+import { requireSuper as requireAdmin, requireUser, hash, verify, type User } from "@/lib/auth";
 import { passwordLink, sendInvite } from "@/lib/mail";
 import { logAct } from "@/lib/log";
 

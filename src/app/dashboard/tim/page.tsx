@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import { logAct } from "@/lib/log";
 import { headers } from "next/headers";
@@ -9,6 +10,7 @@ export const dynamic = "force-dynamic";
 
 export default async function Tim() {
   const me = await requireUser();
+  if (me.peran !== "superadmin") redirect("/dashboard");
   const staff = isStaff(me);
   const clients = staff ? await q<{ id: string; nama: string }>("select id, nama from clients order by nama") : [];
   const users = staff ? await q<{ id: number; email: string; nama: string; peran: string }>("select id, email, nama, peran from users order by field(peran, 'superadmin', 'admin', 'klien'), nama") : [];

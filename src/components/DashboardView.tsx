@@ -14,6 +14,7 @@ import MetricBoard, { type Metric } from "@/components/MetricBoard";
 import LiveSessions from "@/components/LiveSessions";
 import ProdukDiag from "@/components/ProdukDiag";
 import JadwalUpload from "@/components/JadwalUpload";
+import UploadChecklist from "@/components/UploadChecklist";
 import ForecastView from "@/components/ForecastView";
 import StatusView from "@/components/StatusView";
 import SaldoIklan, { type SaldoRow } from "@/components/SaldoIklan";
@@ -111,7 +112,7 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
   );
   const lag = lastData ? dayDiff(lastData, addDays(todayWIB(), -1)) : 0;
   const warn = tab !== "sum" && tab !== "affiliate" && lastData && lag > 3 ? <p className="note warnnote">Data {tab === "iklan" ? "iklan" : tab === "live" ? "live" : "penjualan"} klien ini baru sampai <b>{tgl(lastData)} {lastData.slice(0, 4)}</b> (tertinggal {lag} hari). Periode dihitung sampai tanggal itu supaya data yang belum diupload tidak terbaca sebagai penurunan.</p> : null;
-  const main = <main className="wrap dv">{isAdmin && <AutoImport />}{isAdmin && !share && tab === "sum" && <JadwalUpload />}{warn}{body}</main>;
+  const main = <main className="wrap dv">{isAdmin && <AutoImport />}{isAdmin && !share && tab === "sum" && <><JadwalUpload /><UploadChecklist clientIds={clients.map((x) => x.id)} /></>}{warn}{body}</main>;
   if (share || !profile) return <><LoadingBar />{head}{main}</>;
   return <AppShell user={profile} active={tab === "sum" ? undefined : c?.id} keep={{ m: tab, per: sp.per }}>{head}{main}</AppShell>;
 }
