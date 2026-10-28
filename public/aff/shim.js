@@ -1,8 +1,8 @@
 /* Penyimpanan bersama untuk ruang kerja affiliate (catatan follow-up, sampel, log), lewat /api/aff */
-window.__affInit = function (client, user) {
+window.__affInit = function (client, user, token) {
   var gen = (window.__affGen = (window.__affGen || 0) + 1);
   var subs = new Set(), t;
-  var qs = function (o) { return new URLSearchParams(Object.assign({ c: client }, o)).toString(); };
+  var qs = function (o) { return new URLSearchParams(Object.assign(token ? { c: client, t: token } : { c: client }, o)).toString(); };
   var api = function (o) { return fetch("/api/aff?" + qs(o), { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }); };
   var refresh = function () { clearTimeout(t); t = setTimeout(function () { subs.forEach(function (s) { s.run(); }); }, 150); };
   var post = function (b) {

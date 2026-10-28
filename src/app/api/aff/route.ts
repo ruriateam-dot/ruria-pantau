@@ -1,12 +1,18 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { randomBytes } from "crypto";
-import { getUser, allowedClients } from "@/lib/auth";
+import { getUser, allowedClients, isStaff } from "@/lib/auth";
 import { q, exec } from "@/lib/db";
 import { logAct } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
 const bad = (m: string, s = 400) => NextResponse.json({ error: m }, { status: s });
 
+/* Link klien (tanpa login): hanya boleh membaca klien yang ada di link */
+async function shareOk(c: string | null, t: string | null) {
+  if (!c || !t || !/^[a-f0-9]{40}$/.test(t)) return false;
+  const r = await q<{ client_id: string }>("select client_id from share_links where token = ? and aktif = 1", [t]);
+  return !!r[0] && r[0].client_id.split(",").includes(c);
+}
 async function guard(c: string | null) {
   const u = await getUser();
   if (!u) return { err: bad("Sesi login habis", 401) };
@@ -17,7 +23,7 @@ const okPath = (s: unknown): s is string => typeof s === "string" && s.length > 
 
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams, c = sp.get("c");
-  const g = await guard(c); if (g.err) return g.err;
+  if (!(await shareOk(c, sp.get("t")))) { const g = await guard(c); if (g.err) return g.err; }
   const file = sp.get("file");
   if (file) {
     const r = await q<{ isi: string }>("select isi from aff_files where client_id = ? and nama = ?", [c, file]);
@@ -38,6 +44,8 @@ export async function POST(req: NextRequest) {
   const b = await req.json().catch(() => null) as { c?: string; op?: string; coll?: string; id?: string; data?: unknown } | null;
   if (!b) return bad("Data tidak valid");
   const g = await guard(b.c ?? null); if (g.err) return g.err;
+  // Tim klien hanya bisa melihat; perubahan hanya oleh tim Ruria (log aktivitas tetap boleh tercatat)
+  if (!isStaff(g.u) && !/^jf_log/.test(b.coll ?? "")) return bad("Akun klien hanya bisa melihat data affiliate", 403);
   if (!okPath(b.coll)) return bad("Koleksi tidak valid");
   const body = JSON.stringify(b.data ?? {});
   const d = b.data as Record<string, unknown> | undefined;

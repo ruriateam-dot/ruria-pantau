@@ -30,7 +30,7 @@ const TABS: [string, string][] = [["sum", "Dashboard"], ["toko", "Analisa Toko"]
 /* Dipakai oleh /dashboard (login) dan /lihat/[token] (klien tanpa login, hanya lihat) */
 export default async function DashboardView({ sp, profile, clients: all, base, share, shareLabel, token }: { sp: SPv; profile: User | null; clients: Cl[]; base: string; share?: boolean; shareLabel?: string; token?: string }) {
   // Tampilan klien tanpa login: tanpa tab Semua Klien & Affiliate
-  const clients = share ? all.map((x) => ({ ...x, modul: x.modul.filter((m) => m !== "affiliate") })) : all;
+  const clients = all;
   const isAdmin = isStaff(profile);
   const c = clients.find((x) => x.id === sp.c) ?? clients[0];
   let tab = sp.m ?? (sp.c || share ? "toko" : "sum");
@@ -79,7 +79,7 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
     }
     else if (tab === "affiliate") {
       const has = (await q<{ n: number }>("select count(*) n from aff_files where client_id = ?", [c.id]))[0].n > 0;
-      body = has ? <Affiliate key={c.id} client={c.id} nama={c.nama} user={"u" + profile!.id} />
+      body = has ? <Affiliate key={c.id} client={c.id} nama={c.nama} user={profile ? "u" + profile.id : "klien"} readOnly={!!share || !isAdmin} token={share ? token : undefined} />
         : <div className="card"><h2>Affiliate · {c.nama}</h2><p className="muted">Ruang kerja affiliate untuk klien ini belum disiapkan. Kirim ke Claude ekspor data affiliate (TikTok: Affiliate → Kreator / Performa; Shopee: Affiliate Marketing Solution → Laporan kreator) untuk periode yang ingin dipantau, nanti disiapkan seperti ruang kerja Just Fluff.</p></div>;
     }
     else if (tab === "status") {
