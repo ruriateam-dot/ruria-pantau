@@ -430,3 +430,5 @@ h2.sec{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--m
 #aff-root.ro [data-tab="input"],#aff-root.ro .picbox,#aff-root.ro #fu-save,#aff-root.ro #fu-sampel,#aff-root.ro #fu-today{display:none!important}
 #aff-root.ro .drawer input,#aff-root.ro .drawer textarea,#aff-root.ro .drawer select{pointer-events:none;opacity:.75}
 #aff-root aside.drawer{background:var(--solid)!important;backdrop-filter:none}
+/* Log aktivitas affiliate cukup di menu Log aktivitas utama */
+#aff-root [data-tab="log"],#aff-root #tab-log{display:none!important}
