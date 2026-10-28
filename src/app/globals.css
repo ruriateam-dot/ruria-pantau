@@ -415,3 +415,5 @@ h2.sec{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--m
 .prio{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:10px 0 14px}.pr{border-radius:12px;padding:10px 12px;display:grid}.pr b{font-size:22px}.pr span{font-size:12px}
 .pr.bad{background:color-mix(in srgb,var(--bad) 13%,transparent);color:var(--bad)}.pr.warn{background:color-mix(in srgb,var(--warn) 15%,transparent);color:var(--warn)}.pr.mute{background:var(--bg);color:var(--muted)}.pr.good{background:color-mix(in srgb,var(--good) 13%,transparent);color:var(--good)}
 @media (max-width:700px){.prio{grid-template-columns:1fr 1fr}.safety{margin-left:0}}
+/* HP: menu samping keluar dari grid, konten selebar layar */
+@media (max-width:900px){.app,.app.mini{grid-template-columns:minmax(0,1fr)}.app .main{grid-column:1}}
