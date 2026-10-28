@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
-import { autoStatus, autoMark, importSeed, importProdukPart, importAff, importExtra } from "@/app/dashboard/impor/actions";
+import { autoStatus, autoMark, importSeed, importProdukPart, importAff, importExtra, importHistPart } from "@/app/dashboard/impor/actions";
 
-export async function runImport(onStep: (msg: string) => void, what: { seed: boolean; aff: boolean; extra?: boolean } = { seed: true, aff: true, extra: true }): Promise<{ ok: boolean; msg: string }> {
+export async function runImport(onStep: (msg: string) => void, what: { seed: boolean; aff: boolean; extra?: boolean; hist?: boolean } = { seed: true, aff: true, extra: true, hist: true }): Promise<{ ok: boolean; msg: string }> {
   if (what.seed) { const r = await runSeed(onStep); if (!r.ok) return r; await autoMark("seed"); }
   if (what.aff) {
     onStep("Memasukkan data affiliate…");
@@ -15,6 +15,16 @@ export async function runImport(onStep: (msg: string) => void, what: { seed: boo
     const f = await importExtra();
     if (f !== "Selesai") return { ok: false, msg: f };
     await autoMark("extra");
+  }
+  if (what.hist) {
+    let parts = 1;
+    for (let i = 0; i < parts; i++) {
+      onStep(`Memasukkan riwayat penjualan 2025… bagian ${i + 1}${parts > 1 ? ` dari ${parts}` : ""}`);
+      const r = await importHistPart(i);
+      parts = r.parts;
+      if (!r.ok) return { ok: false, msg: r.msg };
+    }
+    await autoMark("hist");
   }
   return { ok: true, msg: "Data terbaru sudah masuk. Muat ulang halaman untuk melihatnya." };
 }
@@ -40,7 +50,7 @@ export default function AutoImport() {
     (async () => {
       try {
         const s = await autoStatus();
-        if ((!s.seed && !s.aff && !s.extra) || !alive) return;
+        if ((!s.seed && !s.aff && !s.extra && !s.hist) || !alive) return;
         setState({ status: "run", msg: "Memeriksa data terbaru…" });
         const r = await runImport((m) => alive && setState({ status: "run", msg: m }), s);
         if (alive) setState({ status: r.ok ? "ok" : "err", msg: r.msg });

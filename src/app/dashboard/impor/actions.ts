@@ -13,6 +13,7 @@ import otHasil from "@/data/aff/ot/sampel_hasil.json";
 import otSampel from "@/data/aff/ot/sampel_mei_okt.json";
 import otBrand from "@/data/aff/ot/brand.json";
 import extra from "@/data/extra.json";
+import hist from "@/data/hist2025.json";
 
 type Seed = {
   clients?: { id: string; nama: string; modul: string[]; target_roas: number | null }[];
@@ -28,6 +29,8 @@ const DATA_VERSION = "2026-10-24e";
 // Versi terpisah per jenis data, supaya pembaruan satu bagian tidak menimpa data upload tim
 const AFF_VERSION = "aff-2026-10-26g";
 const EXTRA_VERSION = "extra-2026-10-26a";
+// Riwayat 2025 (CV Cahaya & PMG) dari arsip: hanya menambah baris yang belum ada, tidak menimpa data upload tim
+const HIST_VERSION = "hist-2025-2026-10-28a";
 const chunk = <T,>(a: T[], n: number) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
 
 const NO = "Hanya admin yang bisa mengimpor data. Muat ulang halaman lalu login lagi.";
@@ -80,17 +83,17 @@ export async function importProdukPart(part: number): Promise<{ ok: boolean; msg
 }
 
 /* Pembaruan otomatis per versi data */
-export async function autoStatus(): Promise<{ seed: boolean; aff: boolean; extra: boolean }> {
+export async function autoStatus(): Promise<{ seed: boolean; aff: boolean; extra: boolean; hist: boolean }> {
   const u = await requireAdmin();
-  if (!u) return { seed: false, aff: false, extra: false };
-  const V = [DATA_VERSION, AFF_VERSION, EXTRA_VERSION].map((v) => "data-otomatis:" + v);
+  if (!u) return { seed: false, aff: false, extra: false, hist: false };
+  const V = [DATA_VERSION, AFF_VERSION, EXTRA_VERSION, HIST_VERSION].map((v) => "data-otomatis:" + v);
   const done = (await q<{ jenis: string }>("select distinct jenis from uploads where jenis in (?)", [V])).map((x) => x.jenis);
-  return { seed: !done.includes(V[0]), aff: !done.includes(V[1]), extra: !done.includes(V[2]) };
+  return { seed: !done.includes(V[0]), aff: !done.includes(V[1]), extra: !done.includes(V[2]), hist: !done.includes(V[3]) };
 }
-export async function autoMark(which: "seed" | "aff" | "extra"): Promise<void> {
+export async function autoMark(which: "seed" | "aff" | "extra" | "hist"): Promise<void> {
   const u = await requireAdmin();
   if (!u) return;
-  await exec("insert into uploads (client_id, jenis, nama_file, oleh) values (null, ?, 'pembaruan data dari Claude', ?)", ["data-otomatis:" + (which === "seed" ? DATA_VERSION : which === "aff" ? AFF_VERSION : EXTRA_VERSION), u.id]);
+  await exec("insert into uploads (client_id, jenis, nama_file, oleh) values (null, ?, 'pembaruan data dari Claude', ?)", ["data-otomatis:" + (which === "seed" ? DATA_VERSION : which === "aff" ? AFF_VERSION : which === "hist" ? HIST_VERSION : EXTRA_VERSION), u.id]);
 }
 
 /* Metrik tambahan Seller Centre: statistik toko, performa produk, laporan iklan */
@@ -119,4 +122,21 @@ export async function importAff(): Promise<string> {
       await exec("insert into aff_files (client_id, nama, isi) values (?, ?, ?) on duplicate key update isi = values(isi)", [c, nama, JSON.stringify(isi)]);
   } catch (e) { return "Gagal di tahap affiliate: " + (e as Error).message; }
   return "Selesai";
+}
+
+/* Riwayat penjualan 2025 dari arsip. Insert ignore: baris yang sudah ada (misalnya hasil upload tim) tidak diubah. */
+type HS = { sales: [string, string, number, number, number | null, string][]; produk: string[]; rows: [string, string, number, string, number, number, number, string, string | null][] };
+export async function importHistPart(part: number): Promise<{ ok: boolean; msg: string; parts: number }> {
+  const H = hist as unknown as HS;
+  const parts = Math.ceil(H.rows.length / PART) + 1;
+  const u = await requireAdmin();
+  if (!u) return { ok: false, msg: NO, parts };
+  try {
+    if (part === 0) await bulk("insert ignore into daily_sales (store_id, tanggal, gmv, pesanan, pengunjung, sumber, diupload_oleh)", H.sales.map((r) => [...r, u.id]));
+    else await bulk("insert ignore into product_sales (store_id, tanggal, produk, varian, qty, gmv, pesanan, sku, grup, diupload_oleh)",
+      H.rows.slice((part - 1) * PART, part * PART).map(([s, t, pi, v, qt, g, o, sku, grup]) => [s, t, H.produk[pi], v ?? "", qt, g, o, sku ?? "", grup || null, u.id]));
+  } catch (e) {
+    return { ok: false, parts, msg: `Gagal memasukkan riwayat 2025 (bagian ${part + 1}): ${(e as Error).message}` };
+  }
+  return { ok: true, parts, msg: "" };
 }
