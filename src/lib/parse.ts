@@ -2,10 +2,25 @@
 export type Sheet = unknown[][];
 export type SP = { dari: string; sampai: string; data: Record<string, unknown> };
 export type FileData = { kind: "file"; jenis: string; label: string; scope: "store" | "client"; platform?: "Shopee" | "TikTok"; akun?: string; dari: string; sampai: string; n: number; info: string; data: unknown; pp?: unknown[] };
+/* Pesanan per nomor: [id, tanggal, status, status asli, alasan batal, status retur, gmv, qty, metode bayar, provinsi, kota, batas kirim, dikirim, selesai] */
+export type OrdRow = [string, string, string, string, string, string, number, number, string, string, string, string | null, string | null, string | null];
+/* Produk di pesanan batal/retur: [id, produk, varian, sku, qty, gmv] */
+export type OrdItem = [string, string, string, string, number, number];
+export function ordStatus(raw: string, ret: string, tt: boolean) {
+  const s = raw.toLowerCase(), r = ret.toLowerCase();
+  if (/batal|cancel/.test(s)) return "batal";
+  if (r && /pengembalian|refund|return|disetujui|divalidasi|retur/.test(r) && !/ditolak|dibatalkan/.test(r)) return "retur";
+  if (/belum bayar|belum dibayar|unpaid|menunggu pembayaran/.test(s)) return "belum_bayar";
+  if (/perlu dikirim|akan dikirim|to ship|siap dikirim|awaiting/.test(s)) return "perlu_kirim";
+  if (/dikirim|shipped|in transit|dalam pengiriman/.test(s) && !/diterima|terkirim/.test(s)) return "dikirim";
+  if (/pesanan diterima|terkirim|delivered/.test(s)) return tt ? "diterima" : "diterima";
+  if (/selesai|completed/.test(s)) return "selesai";
+  return "lainnya";
+}
 export type Parsed =
   | FileData
   | { kind: "sales"; label: string; sumber: string; akun?: string; rows: [string, number, number, number | null][]; sp?: SP }
-  | { kind: "produk"; label: string; rows: [string, string, string, string, number, number, number][] }
+  | { kind: "produk"; label: string; rows: [string, string, string, string, number, number, number][]; ord?: OrdRow[]; oi?: OrdItem[] }
   | { kind: "ads"; label: string; akun?: string; dari: string; sampai: string; rows: [string, string, string, number, number, number][]; meta?: [string, number | null, number | null, number | null][] }
   | { kind: "live"; label: string; rows: [string, number, number, number, number, string, number | null, string][] };
 
@@ -97,9 +112,27 @@ function orders(rows: Sheet): Parsed | null {
     : { id: H.indexOf("No. Pesanan"), st: H.indexOf("Status Pesanan"), st2: -1, t: H.indexOf("Waktu Pesanan Dibuat"), p: H.indexOf("Nama Produk"), v: H.indexOf("Nama Variasi"), q: H.indexOf("Jumlah"), g: H.indexOf("Harga Setelah Diskon"), k: H.indexOf("Nomor Referensi SKU"), k2: H.indexOf("SKU Induk") };
   if (I.t < 0 || I.p < 0 || I.g < 0) throw new Error("Kolom waktu pesanan, nama produk, atau harga tidak ditemukan di file pesanan.");
   const M = new Map<string, { d: string; p: string; v: string; k: string; q: number; g: number; o: Set<string> }>();
+  const c = (k: string) => H.indexOf(k);
+  const J = tt
+    ? { ret: c("Cancelation/Return Type"), al: c("Cancel Reason"), m: c("Payment Method"), pv: c("Province"), kt: c("Regency and City"), bk: -1, kr: c("Shipped Time"), sl: c("Delivered Time"), rq: c("Sku Quantity of return") }
+    : { ret: c("Status Pembatalan/ Pengembalian"), al: c("Alasan Pembatalan"), m: c("Metode Pembayaran"), pv: c("Provinsi"), kt: c("Kota/Kabupaten"), bk: c("Pesanan Harus Dikirimkan Sebelum (Menghindari keterlambatan)"), kr: c("Waktu Pengiriman Diatur"), sl: c("Waktu Pesanan Selesai"), rq: c("Returned quantity") };
+  const O = new Map<string, OrdRow>(); const OI: OrdItem[] = [];
+  const g0 = (r: unknown[], i: number) => (i >= 0 ? S(r[i]) : "");
   for (const r of rows.slice(hi + 1)) {
     if (!r) continue;
     const st = S(r[I.st]) + " " + (I.st2 >= 0 ? S(r[I.st2]) : "");
+    const oid = S(r[I.id]);
+    if (oid) {
+      const d0 = toDT(r[I.t])?.[0]; const q0 = num(r[I.q]); const gg = tt ? num(r[I.g]) : num(r[I.g]) * q0;
+      if (d0) {
+        const raw = (S(r[I.st]) + (I.st2 >= 0 && S(r[I.st2]) ? " / " + S(r[I.st2]) : "")).slice(0, 100), ret = g0(r, J.ret).slice(0, 60);
+        const stt = ordStatus(raw, ret || (J.rq >= 0 && num(r[J.rq]) > 0 ? "retur" : ""), tt);
+        const o = O.get(oid);
+        if (o) { o[6] += gg; o[7] += q0; }
+        else O.set(oid, [oid, d0, stt, raw, g0(r, J.al).slice(0, 200), ret, gg, q0, g0(r, J.m).slice(0, 40), g0(r, J.pv).slice(0, 50), g0(r, J.kt).slice(0, 60), J.bk >= 0 ? toDT(r[J.bk])?.[0] ?? null : null, J.kr >= 0 ? toDT(r[J.kr])?.[0] ?? null : null, J.sl >= 0 ? toDT(r[J.sl])?.[0] ?? null : null]);
+        if (stt === "batal" || stt === "retur") OI.push([oid, S(r[I.p]).slice(0, 300), (S(r[I.v]) || "-").slice(0, 80), (S(r[I.k]) || "").slice(0, 120), q0, Math.round(gg)]);
+      }
+    }
     if (/batal|cancel/i.test(st)) continue;
     const d = toDT(r[I.t])?.[0]; const p = S(r[I.p]); if (!d || !p) continue;
     const v = (S(r[I.v]) || "-").slice(0, 80), q = num(r[I.q]);
@@ -110,7 +143,8 @@ function orders(rows: Sheet): Parsed | null {
     x.q += q; x.g += g; x.o.add(S(r[I.id])); if (!x.k && k) x.k = k.slice(0, 120); M.set(key, x);
   }
   const out = [...M.values()].map((x) => [x.d, x.p, x.v, x.k, x.q, Math.round(x.g), x.o.size] as [string, string, string, string, number, number, number]);
-  return out.length ? { kind: "produk", label: `Ekspor pesanan ${tt ? "TikTok" : "Shopee"} (penjualan per produk)`, rows: out } : null;
+  const ord = [...O.values()].map((o) => { o[6] = Math.round(o[6]); return o; });
+  return out.length || ord.length ? { kind: "produk", label: `Ekspor pesanan ${tt ? "TikTok" : "Shopee"} (penjualan per produk + status pesanan)`, rows: out, ord, oi: OI } : null;
 }
 
 /* ---------- Iklan Shopee (Data Keseluruhan Iklan, CSV) ---------- */
@@ -329,16 +363,39 @@ function shopeeValidasi(rows: Sheet): FileData | null {
 }
 
 /* Penghasilan Shopee (Penghasilan Saya → Sudah Dilepas → Export) */
+/* Potongan per pesanan: [id, tgl dilepas, subtotal, refund, voucher, admin, proses, layanan, ongkir, ams, pajak, lain, dilepas] */
+export type FeeRow = [string, string | null, number, number, number, number, number, number, number, number, number, number, number];
+/* "lain" = selisih supaya subtotal + semua potongan = dana dilepas */
+const balance = (r: FeeRow): FeeRow => { const sum = r.slice(2, 11).reduce((a: number, b) => a + (b as number), 0); r[11] = Math.round(r[12] - sum); return r; };
+const FEE_KEYS = ["refund", "voucher", "admin", "proses", "layanan", "ongkir", "ams", "pajak", "lain"] as const;
+function feeBucket(h: string): (typeof FEE_KEYS)[number] | null {
+  const x = h.toLowerCase();
+  if (/pengembalian dana|refund/.test(x) && !/ongkir|biaya kirim/.test(x)) return "refund";
+  if (/voucher|cashback|diskon produk dari shopee/.test(x)) return "voucher";
+  if (/administrasi|komisi platform|biaya layanan mall|commission fee/.test(x)) return "admin";
+  if (/proses pesanan|biaya pembayaran|biaya transaksi|handling fee|installment/.test(x)) return "proses";
+  if (/komisi ams|afiliasi|affiliate/.test(x)) return "ams";
+  if (/pph|pajak|ppn/.test(x) && !/termasuk ppn/.test(x)) return "pajak";
+  if (/xtra|promo|layanan|kampanye|program|live|pre-order/.test(x)) return "layanan";
+  if (/ongkir|ongkos kirim|biaya kirim|return to seller|jasa kirim|logistik/.test(x)) return "ongkir";
+  if (/premi|fbs|isi saldo|biaya lain|lainnya/.test(x)) return "lain";
+  return null;
+}
 function shopeeIncome(sheets: Record<string, Sheet>): FileData | null {
   const sm = sheets["Summary"], pr = sheets["Penghasilan"]; if (!sm || !pr) return null;
   const dari = ymd(sm.find((r) => S(r?.[0]) === "Dari")?.[1]), sampai = ymd(sm.find((r) => S(r?.[0]) === "ke")?.[1]);
   const hi = hdr(pr, (H) => H.includes("No. Pesanan") && H.includes("Total Penghasilan")); if (hi < 0 || !dari || !sampai) return null;
   const H = pr[hi].map(S), c = (k: string) => H.indexOf(k);
   const R = pr.slice(hi + 1).filter((r) => S(r?.[1]) === "Order").map((r) => [S(r[c("No. Pesanan")]), ymd(r[c("Waktu Pesanan Dibuat")]), ymd(r[c("Tanggal Dana Dilepaskan")]), num(r[c("Total Penghasilan")]), num(r[c("Harga Produk")]), num(r[c("Jumlah Pengembalian Dana ke Pembeli")])]);
+  // kolom biaya: setelah "Harga Produk" sampai sebelum "Username (Pembeli)"
+  const i0 = c("Harga Produk"), i1 = c("Username (Pembeli)"); const FC: [number, (typeof FEE_KEYS)[number]][] = [];
+  for (let j = i0 + 1; j < (i1 > 0 ? i1 : H.length); j++) { const b = /ongkir dibayar pembeli|gratis ongkir dari shopee|potongan ongkos kirim/i.test(H[j]) ? "ongkir" : feeBucket(H[j]); if (b) FC.push([j, b]); }
+  const fees: FeeRow[] = pr.slice(hi + 1).filter((r) => S(r?.[1]) === "Order").map((r) => { const f = Object.fromEntries(FEE_KEYS.map((k) => [k, 0])) as Record<string, number>; for (const [j, b] of FC) f[b] += num(r[j]);
+    return [S(r[c("No. Pesanan")]), ymd(r[c("Tanggal Dana Dilepaskan")]), num(r[i0]), ...FEE_KEYS.map((k) => Math.round(f[k])), num(r[c("Total Penghasilan")])] as FeeRow; }).map(balance);
   const akun = S(sm.find((r) => S(r?.[0]) === "Username (Penjual)")?.[1]) || undefined;
   const t = R.reduce((a, x) => a + (x[3] as number), 0);
   return { kind: "file", jenis: "penghasilan-shopee", label: "Penghasilan Shopee (sudah dilepas)", scope: "store", platform: "Shopee", akun, dari, sampai, n: R.length, info: `${R.length} pesanan · dana cair ${rp(t)}`,
-    data: { h: ["pesanan", "dibuat", "dilepas", "penghasilan", "harga_produk", "refund"], rows: R } };
+    data: { h: ["pesanan", "dibuat", "dilepas", "penghasilan", "harga_produk", "refund"], rows: R, fees } };
 }
 
 /* Penghasilan TikTok (Keuangan → Transaksi → Selesai → Unduh) */
@@ -348,10 +405,16 @@ function tiktokIncome(sheets: Record<string, Sheet>): FileData | null {
   const hi = hdr(dp, (H) => H[0] === "ID Pesanan/Penyesuaian" && H.includes("Jumlah penyelesaian pembayaran")); if (hi < 0) return null;
   const H = dp[hi].map(S), c = (k: string) => H.indexOf(k);
   const R = dp.slice(hi + 1).filter((r) => S(r?.[0])).map((r) => [S(r[0]), S(r[c("Jenis transaksi")]), ymd(r[c("Waktu pemesanan")]), num(r[c("Jumlah penyelesaian pembayaran")]), num(r[c("Total Pendapatan")]), num(r[c("Total Biaya")])]);
+  // kolom biaya TikTok: setelah "Total Biaya" (rincian), dikelompokkan dari namanya; refund dari "Total pengembalian dana setelah diskon"
+  const iTB = c("Total Biaya"), FC: [number, (typeof FEE_KEYS)[number]][] = [];
+  for (let j = iTB + 1; j < H.length; j++) { if (/^total|penyesuaian|^jumlah|catatan|mata uang/i.test(H[j])) continue; const b = feeBucket(H[j]); if (b && b !== "refund") FC.push([j, b]); }
+  const iRf = c("Total pengembalian dana setelah diskon"), iSub = c("Subtotal setelah diskon penjual"), iPay = c("Waktu pembayaran pesanan");
+  const fees: FeeRow[] = dp.slice(hi + 1).filter((r) => S(r?.[0]) && /pesanan|order/i.test(S(r[c("Jenis transaksi")]))).map((r) => { const f = Object.fromEntries(FEE_KEYS.map((k) => [k, 0])) as Record<string, number>; for (const [j, b] of FC) f[b] += num(r[j]); if (iRf >= 0) f.refund += num(r[iRf]);
+    return [S(r[0]), iPay >= 0 ? ymd(r[iPay]) : null, iSub >= 0 ? num(r[iSub]) : 0, ...FEE_KEYS.map((k) => Math.round(f[k])), num(r[c("Jumlah penyelesaian pembayaran")])] as FeeRow; }).map(balance);
   const rg = pm ? [ymd(pm[1])!, ymd(pm[2])!] : rangeOf(R.map((x) => x[2] as string)); if (!rg) return null;
   const t = R.reduce((a, x) => a + (x[3] as number), 0);
   return { kind: "file", jenis: "penghasilan-tiktok", label: "Penghasilan TikTok (transaksi selesai)", scope: "store", platform: "TikTok", dari: rg[0], sampai: rg[1], n: R.length, info: `${R.length} transaksi · dana cair ${rp(t)}`,
-    data: { h: ["id", "jenis", "dipesan", "penyelesaian", "pendapatan", "biaya"], rows: R } };
+    data: { h: ["id", "jenis", "dipesan", "penyelesaian", "pendapatan", "biaya"], rows: R, fees } };
 }
 
 /* Stok dari Shopee: Produk Saya → Ubah Massal → Info penjualan (kolom "Stok:<gudang>") */

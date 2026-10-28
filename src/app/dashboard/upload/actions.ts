@@ -77,6 +77,11 @@ export async function saveUpload(clientId: string, storeId: string, file: string
         await log(clientId, "stok", file, p.dari, p.sampai, p.n, uid);
         return { ok: true, msg: `Tersimpan: ${p.info}. Dipakai untuk kebutuhan stok semua toko ${clientId}.` };
       }
+      if (/^penghasilan/.test(p.jenis)) {
+        const F = ((p.data as { fees?: (string | number | null)[][] }).fees ?? []);
+        for (const c of chunk(F, 1000)) await exec("insert into order_fees (store_id, order_id, dilepas, subtotal, refund, voucher, admin, proses, layanan, ongkir, ams, pajak, lain, dana) values ? on duplicate key update dilepas = values(dilepas), subtotal = values(subtotal), refund = values(refund), voucher = values(voucher), admin = values(admin), proses = values(proses), layanan = values(layanan), ongkir = values(ongkir), ams = values(ams), pajak = values(pajak), lain = values(lain), dana = values(dana)",
+          [c.map((r) => [st!.id, String(r[0]).slice(0, 40), ...r.slice(1)])]);
+      }
       await exec("insert into seller_files (store_id, jenis, dari, sampai, n, data, diupload_oleh) values (?, ?, ?, ?, ?, ?, ?) on duplicate key update n = values(n), data = values(data), diupload_oleh = values(diupload_oleh)",
         [st!.id, p.jenis, p.dari, p.sampai, p.n, JSON.stringify(p.data), uid]);
       if (p.jenis === "produk-shopee" && p.pp) await exec("insert into product_period (store_id, dari, sampai, data) values (?, ?, ?, ?) on duplicate key update data = values(data)", [st!.id, p.dari, p.sampai, JSON.stringify(p.pp)]);
@@ -146,4 +151,22 @@ export async function recentUploads() {
     `select up.waktu, c.nama klien, up.jenis, up.nama_file, up.dari, up.sampai, us.nama oleh from uploads up
      left join clients c on c.id = up.client_id left join users us on us.id = up.oleh
      where up.client_id in (?) and up.jenis not like 'data-otomatis:%' order by up.id desc limit 20`, [ok]);
+}
+
+/* Status pesanan per nomor pesanan (dikirim bertahap dari halaman upload setelah rekap produk tersimpan) */
+export async function saveOrders(clientId: string, storeId: string, ord: (string | number | null)[][], oi: (string | number)[][]): Promise<Res> {
+  const a = await access(clientId, storeId);
+  if (a.err) return { ok: false, msg: a.err };
+  try {
+    for (const c of chunk(ord, 1000)) await exec("insert into orders (store_id, order_id, tanggal, status, status_asli, alasan, retur, gmv, qty, metode, provinsi, kota, batas_kirim, dikirim, selesai) values ? on duplicate key update tanggal = values(tanggal), status = values(status), status_asli = values(status_asli), alasan = values(alasan), retur = values(retur), gmv = values(gmv), qty = values(qty), metode = values(metode), provinsi = values(provinsi), kota = values(kota), batas_kirim = values(batas_kirim), dikirim = values(dikirim), selesai = values(selesai)",
+      [c.map((r) => [storeId, String(r[0]).slice(0, 40), ...r.slice(1)])]);
+    if (oi.length) {
+      const ids = [...new Set(oi.map((r) => String(r[0])))];
+      for (const c of chunk(ids, 1000)) await exec("delete from order_items where store_id = ? and order_id in (?)", [storeId, c]);
+      const M = new Map<string, (string | number)[]>();
+      for (const r of oi) { const k = `${r[0]}|${r[1]}|${r[2]}`; const x = M.get(k); if (x) { (x[4] as number) += +r[4]; (x[5] as number) += +r[5]; } else M.set(k, [...r]); }
+      for (const c of chunk([...M.values()], 1000)) await exec("insert into order_items (store_id, order_id, produk, varian, sku, qty, gmv) values ?", [c.map((r) => [storeId, String(r[0]).slice(0, 40), r[1], r[2], r[3], r[4], r[5]])]);
+    }
+  } catch (e) { return { ok: false, msg: "Gagal menyimpan status pesanan: " + (e as Error).message }; }
+  return { ok: true, msg: "" };
 }

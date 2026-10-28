@@ -32,6 +32,8 @@ const AFF_VERSION = "aff-2026-10-26g";
 const EXTRA_VERSION = "extra-2026-10-26a";
 // Riwayat 2025 (CV Cahaya & PMG) dari arsip: hanya menambah baris yang belum ada, tidak menimpa data upload tim
 const HIST_VERSION = "hist-2025-2026-10-28c";
+// Status pesanan per nomor pesanan dari arsip file pesanan (Jan 2025–Okt 2026), dibaca dari data-seed/orders.json.gz saat dijalankan
+const ORD_VERSION = "orders-2026-10-28a";
 const chunk = <T,>(a: T[], n: number) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
 
 const NO = "Hanya admin yang bisa mengimpor data. Muat ulang halaman lalu login lagi.";
@@ -84,17 +86,17 @@ export async function importProdukPart(part: number): Promise<{ ok: boolean; msg
 }
 
 /* Pembaruan otomatis per versi data */
-export async function autoStatus(): Promise<{ seed: boolean; aff: boolean; extra: boolean; hist: boolean }> {
+export async function autoStatus(): Promise<{ seed: boolean; aff: boolean; extra: boolean; hist: boolean; ord: boolean }> {
   const u = await requireAdmin();
-  if (!u) return { seed: false, aff: false, extra: false, hist: false };
-  const V = [DATA_VERSION, AFF_VERSION, EXTRA_VERSION, HIST_VERSION].map((v) => "data-otomatis:" + v);
+  if (!u) return { seed: false, aff: false, extra: false, hist: false, ord: false };
+  const V = [DATA_VERSION, AFF_VERSION, EXTRA_VERSION, HIST_VERSION, ORD_VERSION].map((v) => "data-otomatis:" + v);
   const done = (await q<{ jenis: string }>("select distinct jenis from uploads where jenis in (?)", [V])).map((x) => x.jenis);
-  return { seed: !done.includes(V[0]), aff: !done.includes(V[1]), extra: !done.includes(V[2]), hist: !done.includes(V[3]) };
+  return { seed: !done.includes(V[0]), aff: !done.includes(V[1]), extra: !done.includes(V[2]), hist: !done.includes(V[3]), ord: !done.includes(V[4]) };
 }
-export async function autoMark(which: "seed" | "aff" | "extra" | "hist"): Promise<void> {
+export async function autoMark(which: "seed" | "aff" | "extra" | "hist" | "ord"): Promise<void> {
   const u = await requireAdmin();
   if (!u) return;
-  await exec("insert into uploads (client_id, jenis, nama_file, oleh) values (null, ?, 'pembaruan data dari Claude', ?)", ["data-otomatis:" + (which === "seed" ? DATA_VERSION : which === "aff" ? AFF_VERSION : which === "hist" ? HIST_VERSION : EXTRA_VERSION), u.id]);
+  await exec("insert into uploads (client_id, jenis, nama_file, oleh) values (null, ?, 'pembaruan data dari Claude', ?)", ["data-otomatis:" + (which === "seed" ? DATA_VERSION : which === "aff" ? AFF_VERSION : which === "hist" ? HIST_VERSION : which === "ord" ? ORD_VERSION : EXTRA_VERSION), u.id]);
 }
 
 /* Metrik tambahan Seller Centre: statistik toko, performa produk, laporan iklan */
@@ -146,4 +148,35 @@ export async function importHistPart(part: number): Promise<{ ok: boolean; msg: 
     return { ok: false, parts, msg: `Gagal memasukkan riwayat 2025 (bagian ${part + 1}): ${(e as Error).message}` };
   }
   return { ok: true, parts, msg: "" };
+}
+
+/* Status pesanan dari arsip. Insert ignore: pesanan yang sudah diupload tim (status lebih baru) tidak ditimpa. */
+type OS = { stores: { s: string; o: (string | number | null)[][]; i: (string | number)[][] }[]; fees: { s: string; f: (string | number | null)[][] }[] };
+const g2 = globalThis as unknown as { _ordSeed?: OS };
+async function ordSeed(): Promise<OS> {
+  if (!g2._ordSeed) {
+    const { readFile } = await import("fs/promises"); const { gunzipSync } = await import("zlib"); const path = await import("path");
+    g2._ordSeed = JSON.parse(gunzipSync(await readFile(path.join(process.cwd(), "data-seed", "orders.json.gz"))).toString()) as OS;
+  }
+  return g2._ordSeed;
+}
+const OP = 4000;
+export async function importOrdersPart(part: number): Promise<{ ok: boolean; msg: string; parts: number }> {
+  const u = await requireAdmin();
+  if (!u) return { ok: false, msg: NO, parts: 1 };
+  let D: OS;
+  try { D = await ordSeed(); } catch (e) { return { ok: false, msg: "File arsip status pesanan tidak terbaca: " + (e as Error).message, parts: 1 }; }
+  const C: { s: string; o: (string | number | null)[][]; i: (string | number)[][] }[] = [];
+  for (const st of D.stores) for (let k = 0; k < st.o.length; k += OP) { const o = st.o.slice(k, k + OP); const ids = new Set(o.map((x) => x[0])); C.push({ s: st.s, o, i: st.i.filter((x) => ids.has(x[0])) }); }
+  const parts = C.length + 1;
+  try {
+    const known = new Set((await q<{ id: string }>("select id from stores")).map((x) => x.id));
+    if (part < C.length) {
+      const c = C[part]; if (!known.has(c.s)) return { ok: true, msg: "", parts };
+      await bulk("insert ignore into orders (store_id, order_id, tanggal, status, status_asli, alasan, retur, gmv, qty, metode, provinsi, kota, batas_kirim, dikirim, selesai)", c.o.map((r) => [c.s, String(r[0]).slice(0, 40), ...r.slice(1)]));
+      if (c.i.length) await bulk("insert ignore into order_items (store_id, order_id, produk, varian, sku, qty, gmv)", c.i.map((r) => [c.s, String(r[0]).slice(0, 40), r[1], r[2], r[3], r[4], r[5]]));
+    } else for (const f of D.fees) if (known.has(f.s))
+      await bulk("insert ignore into order_fees (store_id, order_id, dilepas, subtotal, refund, voucher, admin, proses, layanan, ongkir, ams, pajak, lain, dana)", f.f.map((r) => [f.s, String(r[0]).slice(0, 40), ...r.slice(1)]));
+  } catch (e) { return { ok: false, parts, msg: `Gagal memasukkan status pesanan (bagian ${part + 1}): ${(e as Error).message}` }; }
+  return { ok: true, msg: "", parts };
 }

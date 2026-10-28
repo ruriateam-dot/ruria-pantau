@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { detect, type Parsed, type Sheet } from "@/lib/parse";
-import { saveUpload } from "./actions";
+import { saveUpload , saveOrders } from "./actions";
 
 type C = { id: string; nama: string };
 type St = { id: string; client_id: string; brand: string; platform: string };
@@ -79,10 +79,21 @@ export default function Uploader({ clients, stores }: { clients: C[]; stores: St
         const N = 2000, parts = Math.ceil(it.p.rows.length / N);
         for (let k = 0; k < parts; k++) {
           upd(i, { msg: `Menyimpan… bagian ${k + 1} dari ${parts}` });
-          r = await saveUpload(c, s, it.name, { ...it.p, rows: it.p.rows.slice(k * N, (k + 1) * N) }, k, parts, rng);
+          r = await saveUpload(c, s, it.name, { kind: "produk", label: it.p.label, rows: it.p.rows.slice(k * N, (k + 1) * N) }, k, parts, rng);
           if (!r.ok) break;
         }
-        if (r?.ok) r = { ok: true, msg: "Tersimpan: " + summary(it.p) };
+        if (!parts) r = { ok: true, msg: "" };
+        const ord = it.p.ord ?? [], oi = it.p.oi ?? [];
+        if (r?.ok && ord.length) {
+          const M = 3000, pp = Math.ceil(ord.length / M);
+          for (let k = 0; k < pp; k++) {
+            upd(i, { msg: `Menyimpan status pesanan… bagian ${k + 1} dari ${pp}` });
+            const ids = new Set(ord.slice(k * M, (k + 1) * M).map((o) => o[0]));
+            r = await saveOrders(c, s, ord.slice(k * M, (k + 1) * M), oi.filter((x) => ids.has(x[0])));
+            if (!r.ok) break;
+          }
+        }
+        if (r?.ok) r = { ok: true, msg: "Tersimpan: " + summary(it.p) + (ord.length ? ` · ${ord.length.toLocaleString("id")} pesanan dengan status` : "") };
       } else r = await saveUpload(c, s, it.name, it.p);
       upd(i, { status: r!.ok ? "ok" : "err", msg: r!.msg });
     }

@@ -13,10 +13,10 @@ export function jadwalHariIni(now = new Date()) {
   ];
   if (JADWAL_PESANAN.includes(d)) {
     const i = JADWAL_PESANAN.indexOf(d), dari = d === 1 ? null : new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), JADWAL_PESANAN[i - 1]));
-    L.push({ j: `Pesanan · ${dari ? `${tg(dari)}–${tg(kmrn)}` : `bulan ${bl}`}`, isi: ["Semua Pesanan Shopee (Order.all) & TikTok (CSV, filter tanggal)", "Affiliate OT: Pesanan Affiliate TikTok"] });
+    L.push({ j: `Pesanan · ${dari ? `${tg(dari)}–${tg(kmrn)}` : `bulan ${bl}`}`, isi: ["Semua Pesanan Shopee (Order.all) & TikTok (CSV, filter tanggal)", "Penghasilan Shopee (Keuangan → Penghasilan Saya) & TikTok (Keuangan → Transaksi), periode yang sama", "Affiliate OT: Pesanan Affiliate TikTok"] });
   }
   if (t.getUTCDay() === 1) L.push({ j: `Mingguan · ${tg(add(t, -8))}–${tg(add(t, -2))}`, isi: ["Affiliate OT: Performa Affiliate Shopee & TikTok (pilih 7 hari terakhir)"] });
-  if (d === 1) L.push({ j: `Bulanan · ${bl}`, isi: ["Statistik toko, produk, iklan, live, pesanan (bulan penuh); Affiliate OT: pesanan affiliate", "Penghasilan Shopee & TikTok"] });
+  if (d === 1) L.push({ j: `Bulanan · ${bl}`, isi: ["Statistik toko, produk, iklan, live, pesanan & penghasilan (bulan penuh); Affiliate OT: pesanan affiliate"] });
   if (d === 3) L.push({ j: `Bulanan affiliate · ${bl}`, isi: ["Affiliate OT: Performa Affiliate Shopee & TikTok bulan penuh"] });
   if (d >= 10 && d <= 20) L.push({ j: "Validasi tagihan", isi: ["Affiliate OT: cek Shopee Affiliate → Validation Bill; jika bulan terbaru sudah terbit, View Reports lalu upload"] });
   return { judul: `${H[t.getUTCDay()]}, ${d} ${B[t.getUTCMonth()]} ${t.getUTCFullYear()}`, L };

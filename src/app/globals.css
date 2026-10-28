@@ -417,3 +417,12 @@ h2.sec{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--m
 @media (max-width:700px){.prio{grid-template-columns:1fr 1fr}.safety{margin-left:0}}
 /* HP: menu samping keluar dari grid, konten selebar layar */
 @media (max-width:900px){.app,.app.mini{grid-template-columns:minmax(0,1fr)}.app .main{grid-column:1}}
+/* Status pesanan */
+.sflow{display:flex;height:38px;border-radius:12px;overflow:hidden;margin:8px 0 10px}.sflow i{display:grid;place-items:center;color:#fff;font-size:12px;font-weight:700;font-style:normal}
+.sleg{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}.sleg>div{background:var(--bg);border-radius:10px;padding:8px 10px;display:grid}.sleg i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:6px}.sleg b{font-size:16px}
+.wf{display:grid;gap:7px;margin:10px 0}.wr{display:grid;grid-template-columns:minmax(140px,280px) 1fr 100px 56px;gap:10px;align-items:center;font-size:13px}.wr>div{position:relative;height:14px;background:var(--bg);border-radius:5px}.wr i{position:absolute;top:0;bottom:0;border-radius:5px}.wr>b,.wr>span:last-child{text-align:right}
+@media (max-width:700px){.wr{grid-template-columns:1fr 80px 46px}.wr>div{display:none}}
+/* Daftar temuan (Pesanan bermasalah) */
+.ppi{display:flex;gap:12px;padding:12px 0;border-top:1px solid var(--line)}.ppi:first-of-type{border-top:0}
+.ppic{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-weight:800;flex:none}
+.ppi.bad .ppic{background:color-mix(in srgb,var(--bad) 15%,transparent);color:var(--bad)}.ppi.warn .ppic{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}.ppi.good .ppic{background:color-mix(in srgb,var(--good) 15%,transparent);color:var(--good)}
