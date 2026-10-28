@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
-import { autoStatus, autoMark, importSeed, importProdukPart, importAff, importExtra, importHistPart, importOrdersPart } from "@/app/dashboard/impor/actions";
+import { autoStatus, autoMark, importSeed, importProdukPart, importAff, importExtra, importHistPart, importOrdersPart, runFix } from "@/app/dashboard/impor/actions";
 
-export async function runImport(onStep: (msg: string) => void, what: { seed: boolean; aff: boolean; extra?: boolean; hist?: boolean; ord?: boolean } = { seed: true, aff: true, extra: true, hist: true, ord: true }): Promise<{ ok: boolean; msg: string }> {
+export async function runImport(onStep: (msg: string) => void, what: { seed: boolean; aff: boolean; extra?: boolean; hist?: boolean; ord?: boolean; fix?: boolean } = { seed: true, aff: true, extra: true, hist: true, ord: true, fix: true }): Promise<{ ok: boolean; msg: string }> {
   if (what.seed) { const r = await runSeed(onStep); if (!r.ok) return r; await autoMark("seed"); }
   if (what.aff) {
     onStep("Memasukkan data affiliate…");
@@ -25,6 +25,12 @@ export async function runImport(onStep: (msg: string) => void, what: { seed: boo
       if (!r.ok) return { ok: false, msg: r.msg };
     }
     await autoMark("hist");
+  }
+  if (what.fix) {
+    onStep("Memperbaiki data produk Mitra 383 TikTok…");
+    const f = await runFix();
+    if (f !== "Selesai") return { ok: false, msg: f };
+    await autoMark("fix");
   }
   if (what.ord) {
     let parts = 1;
@@ -60,7 +66,7 @@ export default function AutoImport() {
     (async () => {
       try {
         const s = await autoStatus();
-        if ((!s.seed && !s.aff && !s.extra && !s.hist && !s.ord) || !alive) return;
+        if ((!s.seed && !s.aff && !s.extra && !s.hist && !s.ord && !s.fix) || !alive) return;
         setState({ status: "run", msg: "Memeriksa data terbaru…" });
         const r = await runImport((m) => alive && setState({ status: "run", msg: m }), s);
         if (alive) setState({ status: r.ok ? "ok" : "err", msg: r.msg });
