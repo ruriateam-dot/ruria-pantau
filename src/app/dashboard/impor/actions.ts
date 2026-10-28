@@ -31,7 +31,7 @@ const DATA_VERSION = "2026-10-24e";
 const AFF_VERSION = "aff-2026-10-26g";
 const EXTRA_VERSION = "extra-2026-10-26a";
 // Riwayat 2025 (CV Cahaya & PMG) dari arsip: hanya menambah baris yang belum ada, tidak menimpa data upload tim
-const HIST_VERSION = "hist-2025-2026-10-28b";
+const HIST_VERSION = "hist-2025-2026-10-28c";
 const chunk = <T,>(a: T[], n: number) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
 
 const NO = "Hanya admin yang bisa mengimpor data. Muat ulang halaman lalu login lagi.";
@@ -134,9 +134,9 @@ export async function importHistPart(part: number): Promise<{ ok: boolean; msg: 
   if (!u) return { ok: false, msg: NO, parts };
   try {
     if (part === 0) {
-      // Stok CV Cahaya per 18 Okt & HPP dari file HPP Cabydut (perkiraan ditandai), hanya kalau belum ada
-      const F = fcseed as unknown as { client: string; tanggal: string; stok: [string, string, string, number, number][]; hpp: [string, number, number][] };
-      await bulk("insert ignore into stock_snapshot (client_id, tanggal, sku, produk, varian, stok, harga)", F.stok.map((x) => [F.client, F.tanggal, String(x[0]).slice(0, 120), x[1], x[2], Math.round(x[3]), x[4] || null]));
+      // Stok CV Cahaya per 18 & 28 Okt & HPP dari file HPP Cabydut (perkiraan ditandai), hanya kalau belum ada
+      const F = fcseed as unknown as { client: string; snap: { tanggal: string; stok: [string, string, string, number, number][] }[]; hpp: [string, number, number][] };
+      for (const sn of F.snap) await bulk("insert ignore into stock_snapshot (client_id, tanggal, sku, produk, varian, stok, harga)", sn.stok.map((x) => [F.client, sn.tanggal, String(x[0]).slice(0, 120), x[1], x[2], Math.round(x[3]), x[4] || null]));
       await bulk("insert ignore into hpp (client_id, sku, hpp, perkiraan)", F.hpp.map((x) => [F.client, String(x[0]).slice(0, 120), x[1], x[2]]));
     }
     if (part === 0) await bulk("insert ignore into daily_sales (store_id, tanggal, gmv, pesanan, pengunjung, sumber, diupload_oleh)", H.sales.map((r) => [...r, u.id]));
