@@ -33,7 +33,7 @@ const EXTRA_VERSION = "extra-2026-10-26a";
 // Riwayat 2025 (CV Cahaya & PMG) dari arsip: hanya menambah baris yang belum ada, tidak menimpa data upload tim
 const HIST_VERSION = "hist-2025-2026-10-28c";
 // Status pesanan per nomor pesanan dari arsip file pesanan (Jan 2025–Okt 2026), dibaca dari data-seed/orders.json.gz saat dijalankan
-const ORD_VERSION = "orders-2026-10-28a";
+const ORD_VERSION = "orders-2026-10-28b";
 const chunk = <T,>(a: T[], n: number) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
 
 const NO = "Hanya admin yang bisa mengimpor data. Muat ulang halaman lalu login lagi.";
