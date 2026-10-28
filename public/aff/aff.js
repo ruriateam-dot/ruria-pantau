@@ -373,6 +373,12 @@ function dbFiltered(){
   });
   return out;
 }
+function tlStrip(rows){
+  const c = {fu:0, nol:0, boleh:0, blk:0};
+  for (const r of rows) { const st = sampStat(r); if (needsFU(r)) c.fu++; if (st.has && !st.ord) c.nol++; if (st.n && sampOk(st) && andalan(r)) c.boleh++; if (st.blk) c.blk++; }
+  const it = (k, n, t, d, cls) => `<button type="button" class="tl ${cls}" data-tl="${k}"><b>${nf.format(n)}</b><span>${t}</span><small>${d}</small></button>`;
+  return `<div class="tlwrap"><span class="flabel">Perlu tindak lanjut</span><div class="tlrow">${it('fu', c.fu, 'Jadwal follow-up', 'sudah waktunya dihubungi lagi', 'w')}${it('nol', c.nol, 'Dapat sampel, belum order', 'cek video & tagih konten', 'b')}${it('boleh', c.boleh, 'Andalan, boleh sampel lagi', 'GMV sudah >10× biaya sampel', 'g')}${it('blk', c.blk, 'Diblokir dari sampel', 'belum pernah menghasilkan order', 'm')}</div></div>`;
+}
 function renderDb(){
   const f = dbF(), rows = dbRows(), W = 'db';
   const defs = dbDefs(); if (!defs[f.sort]) { f.sort = 'pr'; f.dir = ''; }
@@ -389,6 +395,7 @@ function renderDb(){
   view.innerHTML = `${bannerHtml()}
   <div class="filters"><span class="flabel">Platform</span>${['','TikTok','Shopee'].map(p => `<button class="btn sm db-pl${(S.dbpl||'')===p?' pri':''}" data-pl="${p}">${p || 'Semua'}</button>`).join('')}
     <span class="legend">${plChip('TikTok')} ${nf.format(TT.length)} kreator · ${plChip('Shopee')} ${nf.format(SH.length)} affiliate</span></div>
+  ${tlStrip(rows)}
   <div class="toolbar">
     <div class="grow"><input type="search" id="${W}-q" placeholder="Cari username, nama atau kontak" value="${esc(f.q)}" aria-label="Cari"></div>
     <button class="btn" id="${W}-xl">Download Excel</button>
@@ -432,6 +439,9 @@ function renderDb(){
     <button class="btn sm" id="${W}-next"${f.page>=pages-1?' disabled':''}>Berikutnya</button></span></div>
   <p class="note">GMV kotor, bersih dan batal/retur: periode Mei–21 Okt. <b>TikTok</b>: GMV kotor dari laporan performa kreator; bersih dan batal/retur dihitung dari porsi order gagal tiap kreator di export pesanan (Mei–Sep). <b>Shopee</b>: GMV bersih = omzet tanpa pesanan batal (validasi komisi Mei–Jul, AMS Agu–Okt); batal hanya bisa dihitung untuk Agu–Okt. <sup>*</sup> = perkiraan: TikTok memakai rata-rata 36% order gagal karena kreator tidak punya data order sendiri; Shopee berarti batal Mei–Jul tidak tercatat. Efektivitas sampel dihitung dari GMV bersih. <span class="chip ag">Agency/Platform</span> = kumpulan banyak kreator, data tidak bisa dirinci.</p>`;
   view.querySelectorAll('button.db-pl').forEach(b => b.onclick = () => { S.dbpl = b.dataset.pl; saveFilters(); render(); });
+  view.querySelectorAll('button.tl').forEach(b => b.onclick = () => { Object.assign(f, {q:'', pr:'', tipe:'', st:'', resp:'', kontak:'', akt:'', samp:'', due:false, jual:'semua', p5:true, page:0});
+    const k = b.dataset.tl; if (k === 'fu') f.due = true; else if (k === 'nol') f.samp = 'nol'; else if (k === 'boleh') { f.samp = 'boleh'; f.akt = 'andalan'; } else f.samp = 'blk';
+    saveFilters(); render(); });
   const bind = (id, key, ev='change', get = el => el.value) => { const el = document.getElementById(W+'-'+id); el.addEventListener(ev, () => { f[key] = get(el); f.page = 0; saveFilters(); rerenderSoon(); }); };
   bind('q','q','input'); bind('pr','pr'); bind('tipe','tipe'); bind('st','st'); bind('resp','resp'); bind('kontak','kontak'); bind('samp','samp'); bind('jual','jual'); bind('due','due','change', el => el.checked); bind('p5','p5','change', el => el.checked); bind('akt','akt');
   const setSort = key => { if (f.sort === key) f.dir = (dir === 'asc' ? 'desc' : 'asc'); else { f.sort = key; f.dir = ''; } f.page = 0; saveFilters(); render(); };

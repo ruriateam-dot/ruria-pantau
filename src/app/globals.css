@@ -390,3 +390,11 @@ th,td{border-bottom-color:var(--line)}
 #aff-root header.top{background:color-mix(in srgb,var(--solid) 75%,transparent);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
 #aff-root .toast{color:#fff}
 #aff-root :is(.drawer,.sheet,.modal,.dlg,.pop,dialog){background:var(--solid)}
+/* Perlu perhatian */
+.ppl{display:grid;gap:2px}.ppi{display:flex;gap:12px;padding:12px 0;border-top:1px solid var(--line)}.ppi:first-child{border-top:0}
+.ppic{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-weight:800;flex:none}
+.ppi.bad .ppic{background:color-mix(in srgb,var(--bad) 15%,transparent);color:var(--bad)}.ppi.warn .ppic{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}.ppi.good .ppic{background:color-mix(in srgb,var(--good) 15%,transparent);color:var(--good)}
+.ppa{margin-top:6px;font-size:13px;background:var(--bg);border-radius:10px;padding:7px 10px}.ppa span{font-weight:700;color:var(--accent-ink)}
+/* Link klien: sembunyikan catatan internal tim */
+.dv.share .internal,.dv.share .warnnote,.dv.share .insc.nx{display:none}
+.dv.share .insg{grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))}

@@ -3,6 +3,7 @@ import { timingSafeEqual } from "crypto";
 import { sendMail, esc } from "@/lib/mail";
 import { jadwalHariIni } from "@/components/JadwalUpload";
 import { exec, q } from "@/lib/db";
+import { tokoTertinggal } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 const PANDUAN = "https://claude.ai/artifact/KcLiA3FgzVkWbrb6GYuwM2";
@@ -18,9 +19,14 @@ async function run(req: NextRequest) {
   if (!req.nextUrl.searchParams.has("ulang") && jamWIB !== Number(process.env.PENGINGAT_JAM || 9)) return NextResponse.json({ ok: true, info: `bukan jam kirim (sekarang jam ${jamWIB} WIB)` });
   const tag = "pengingat:" + new Date(Date.now() + 7 * 36e5).toISOString().slice(0, 10);
   if (!req.nextUrl.searchParams.has("ulang") && (await q("select 1 from uploads where jenis = ? limit 1", [tag])).length) return NextResponse.json({ ok: true, info: "sudah terkirim hari ini" });
-  const text = `Halo Anin, Vava,\n\nIni jadwal upload hari ini (${judul}) ke report.ruria.id:\n\n` + L.map((x) => `${x.j.toUpperCase()}\n` + x.isi.map((s) => `- ${s}`).join("\n")).join("\n\n") + `\n\nPanduan lengkap: ${PANDUAN}\nAbaikan bagian yang sudah kamu upload.\n\nTerima kasih,\nAhmad — Ruria`;
+  const yday = new Date(Date.now() + 7 * 36e5 - 864e5).toISOString().slice(0, 10);
+  let TT: Awaited<ReturnType<typeof tokoTertinggal>> = [];
+  try { TT = await tokoTertinggal(yday); } catch {}
+  const ttText = TT.length ? `\n\nTOKO YANG DATANYA BELUM MASUK SAMPAI KEMARIN (${TT.length})\n` + TT.map((t) => `- ${t.toko} (${t.klien}): ${t.kurang.join(", ")}`).join("\n") : "\n\nSemua toko sudah lengkap sampai kemarin.";
+  const ttHtml = TT.length ? `<h3 style="margin:16px 0 6px;font-size:14px;color:#c2412d">Belum masuk sampai kemarin · ${TT.length} toko</h3><ul style="margin:0;padding-left:18px">${TT.map((t) => `<li><b>${esc(t.toko)}</b> <span style="color:#6f645e">(${esc(t.klien)})</span>: ${esc(t.kurang.join(", "))}</li>`).join("")}</ul>` : `<p style="color:#1b8a4a"><b>Semua toko sudah lengkap sampai kemarin.</b></p>`;
+  const text = `Halo Anin, Vava,\n\nIni jadwal upload hari ini (${judul}) ke report.ruria.id:\n\n` + L.map((x) => `${x.j.toUpperCase()}\n` + x.isi.map((s) => `- ${s}`).join("\n")).join("\n\n") + ttText + `\n\nPanduan lengkap: ${PANDUAN}\nAbaikan bagian yang sudah kamu upload.\n\nTerima kasih,\nAhmad — Ruria`;
   const html = `<div style="font-family:system-ui,sans-serif;max-width:560px;line-height:1.5;color:#1c1a18"><p>Halo Anin, Vava,</p><p>Ini jadwal upload hari ini (<b>${esc(judul)}</b>) ke <a href="https://report.ruria.id">report.ruria.id</a>:</p>` +
-    L.map((x) => `<h3 style="margin:16px 0 6px;font-size:14px;color:#D16D3D">${esc(x.j)}</h3><ul style="margin:0;padding-left:18px">${x.isi.map((s) => `<li>${esc(s)}</li>`).join("")}</ul>`).join("") +
+    L.map((x) => `<h3 style="margin:16px 0 6px;font-size:14px;color:#D16D3D">${esc(x.j)}</h3><ul style="margin:0;padding-left:18px">${x.isi.map((s) => `<li>${esc(s)}</li>`).join("")}</ul>`).join("") + ttHtml +
     `<p style="margin-top:18px"><a href="${PANDUAN}">Panduan lengkap</a> · Abaikan bagian yang sudah kamu upload.</p><p>Terima kasih,<br>Ahmad — Ruria</p></div>`;
   const err = await sendMail(to, `[Ruria] Jadwal upload hari ini — ${judul}`, text, html);
   if (err) return NextResponse.json({ ok: false, error: err }, { status: 500 });

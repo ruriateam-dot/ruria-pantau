@@ -25,14 +25,14 @@ export default function Affiliate({ client, user, nama }: { client: string; user
       setNote(b.catatan ?? "");
       const ww = window as unknown as { AFF_HPP?: Record<string, number>; AFF_HPP_DEFAULT?: number };
       ww.AFF_HPP = b.hpp ? Object.fromEntries(Object.entries(b.hpp).map(([k, v]) => [k.toUpperCase().trim(), v])) : undefined; ww.AFF_HPP_DEFAULT = b.hpp_default;
-      const js = fix(await fetch("/aff/aff.js?v=10").then((r) => r.text()));
+      const js = fix(await fetch("/aff/aff.js?v=11").then((r) => r.text()));
       const u = URL.createObjectURL(new Blob([js], { type: "text/javascript" })); urls.push(u);
       if (!off) await add(u);
     })().catch(() => { el.insertAdjacentHTML("afterbegin", "<p>Ruang kerja affiliate gagal dimuat. Muat ulang halaman.</p>"); });
     return () => { off = true; w().__affGen++; document.querySelectorAll("script[data-aff]").forEach((s) => { if (s.getAttribute("src")?.startsWith("blob:")) s.remove(); }); urls.forEach((u) => URL.revokeObjectURL(u)); };
   }, [client, user, nama]);
   return <>
-    <link rel="stylesheet" href="/aff/aff.css?v=1" />
+    <link rel="stylesheet" href="/aff/aff.css?v=2" />
     {note && <p className="note">{note}</p>}
     <div id="aff-root" ref={ref} />
   </>;

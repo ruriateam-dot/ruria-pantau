@@ -123,3 +123,21 @@ export async function adsMeta(storeIds: string[], from: string, to: string) {
   return q<{ store_id: string; dari: string; sampai: string; kampanye: string; dilihat: number | null; klik: number | null; keranjang: number | null }>(
     "select store_id, date_format(dari, '%Y-%m-%d') dari, date_format(sampai, '%Y-%m-%d') sampai, kampanye, dilihat, klik, keranjang from ads_meta where store_id in (?) and dari <= ? and sampai >= ?", [storeIds, to, from]);
 }
+
+/* Toko yang datanya belum masuk sampai kemarin (untuk email pengingat). Live dihitung per brand. */
+export async function tokoTertinggal(yday: string) {
+  const T = await q<{ klien: string; modul: string; brand: string; platform: string; jual: string | null; iklan: string | null; live: string | null }>(
+    `select c.nama klien, c.modul, s.brand, s.platform,
+      (select date_format(max(d.tanggal), '%Y-%m-%d') from daily_sales d where d.store_id = s.id) jual,
+      (select date_format(max(a.sampai), '%Y-%m-%d') from ads a where a.store_id = s.id) iklan,
+      (select date_format(max(l.tanggal), '%Y-%m-%d') from live_sessions l where l.client_id = s.client_id and l.brand = s.brand) live
+     from stores s join clients c on c.id = s.client_id where s.platform <> 'CPAS' order by c.nama, s.brand, s.platform`);
+  const out: { toko: string; klien: string; kurang: string[] }[] = [];
+  for (const t of T) {
+    const k: string[] = [];
+    const cek = (on: boolean, d: string | null, nm: string) => { if (on && (!d || d < yday)) k.push(`${nm} ${d ? `sejak ${d.slice(8, 10)}/${d.slice(5, 7)}` : "belum ada"}`); };
+    cek(t.modul.includes("toko"), t.jual, "penjualan"); cek(t.modul.includes("iklan") && !!t.iklan, t.iklan, "iklan"); cek(t.modul.includes("live") && !!t.live, t.live, "live");
+    if (k.length) out.push({ toko: `${t.brand} · ${t.platform}`, klien: t.klien, kurang: k });
+  }
+  return out;
+}
