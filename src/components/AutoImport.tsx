@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
-import { autoStatus, autoMark, importSeed, importProdukPart, importAff, importExtra, importHistPart, importOrdersPart, runFix } from "@/app/dashboard/impor/actions";
+import { autoStatus, autoMark, importSeed, importProdukPart, importAff, importExtra, importHistPart, importOrdersPart, runFix, uplPending, runUpl } from "@/app/dashboard/impor/actions";
 
-export async function runImport(onStep: (msg: string) => void, what: { seed: boolean; aff: boolean; extra?: boolean; hist?: boolean; ord?: boolean; fix?: boolean } = { seed: true, aff: true, extra: true, hist: true, ord: true, fix: true }): Promise<{ ok: boolean; msg: string }> {
+export async function runImport(onStep: (msg: string) => void, what: { seed: boolean; aff: boolean; extra?: boolean; hist?: boolean; ord?: boolean; fix?: boolean; upl?: string[] } = { seed: true, aff: true, extra: true, hist: true, ord: true, fix: true }): Promise<{ ok: boolean; msg: string }> {
   if (what.seed) { const r = await runSeed(onStep); if (!r.ok) return r; await autoMark("seed"); }
   if (what.aff) {
     onStep("Memasukkan data affiliate…");
@@ -25,6 +25,11 @@ export async function runImport(onStep: (msg: string) => void, what: { seed: boo
       if (!r.ok) return { ok: false, msg: r.msg };
     }
     await autoMark("hist");
+  }
+  for (const id of what.upl ?? []) {
+    onStep("Memasukkan file yang dikirim ke Claude…");
+    const f = await runUpl(id);
+    if (f !== "Selesai") return { ok: false, msg: f };
   }
   if (what.fix) {
     onStep("Memperbaiki data produk Mitra 383 TikTok…");
@@ -65,8 +70,8 @@ export default function AutoImport() {
     let alive = true;
     (async () => {
       try {
-        const s = await autoStatus();
-        if ((!s.seed && !s.aff && !s.extra && !s.hist && !s.ord && !s.fix) || !alive) return;
+        const s = { ...(await autoStatus()), upl: await uplPending() };
+        if ((!s.seed && !s.aff && !s.extra && !s.hist && !s.ord && !s.fix && !s.upl.length) || !alive) return;
         setState({ status: "run", msg: "Memeriksa data terbaru…" });
         const r = await runImport((m) => alive && setState({ status: "run", msg: m }), s);
         if (alive) setState({ status: r.ok ? "ok" : "err", msg: r.msg });

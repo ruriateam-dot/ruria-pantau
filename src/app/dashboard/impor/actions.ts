@@ -15,6 +15,7 @@ import otBrand from "@/data/aff/ot/brand.json";
 import extra from "@/data/extra.json";
 import hist from "@/data/hist2025.json";
 import fcseed from "@/data/fcseed.json";
+import upl from "@/data/upl.json";
 
 type Seed = {
   clients?: { id: string; nama: string; modul: string[]; target_roas: number | null }[];
@@ -196,5 +197,28 @@ export async function runFix(): Promise<string> {
       where a.store_id = 'pmg-mitra-383-tiktok'`);
     await exec("delete from orders where store_id = 'pmg-mitra-383-tiktok' and order_id in (select order_id from (select order_id from orders where store_id = 'cahaya-pepisun-tiktok') x)");
   } catch (e) { return "Gagal memperbaiki data Mitra 383 TikTok: " + (e as Error).message; }
+  return "Selesai";
+}
+
+/* File yang dikirim ke Claude lalu dimasukkan lewat pembaruan otomatis (sama seperti upload tim). Tiap entri dijalankan sekali. */
+type UP = { id: string; store: string; client: string; kind: "ads"; file: string; dari: string; sampai: string; rows: [string, string, string, number, number, number][] };
+export async function uplPending(): Promise<string[]> {
+  const u = await requireAdmin(); if (!u) return [];
+  const L = upl as unknown as UP[]; if (!L.length) return [];
+  const done = new Set((await q<{ jenis: string }>("select jenis from uploads where jenis in (?)", [L.map((x) => "data-otomatis:upl:" + x.id)])).map((x) => x.jenis));
+  return L.filter((x) => !done.has("data-otomatis:upl:" + x.id)).map((x) => x.id);
+}
+export async function runUpl(id: string): Promise<string> {
+  const u = await requireAdmin(); if (!u) return NO;
+  const x = (upl as unknown as UP[]).find((e) => e.id === id); if (!x) return "Selesai";
+  try {
+    if (!(await q("select id from stores where id = ?", [x.store])).length) return "Selesai";
+    if (x.kind === "ads") {
+      // file mencakup seluruh periode: baris lama yang beririsan (termasuk rekap bulanan) diganti
+      await exec("delete from ads where store_id = ? and dari <= ? and sampai >= ?", [x.store, x.sampai, x.dari]);
+      await bulk("insert into ads (store_id, dari, sampai, kampanye, biaya, gmv, pesanan, diupload_oleh)", x.rows.map((r) => [x.store, ...r, u.id]));
+    }
+    await exec("insert into uploads (client_id, jenis, nama_file, dari, sampai, baris, oleh) values (?, ?, ?, ?, ?, ?, ?)", [x.client, "data-otomatis:upl:" + x.id, x.file, x.dari, x.sampai, x.rows.length, u.id]);
+  } catch (e) { return `Gagal memasukkan ${x.file}: ${(e as Error).message}`; }
   return "Selesai";
 }
