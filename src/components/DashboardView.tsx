@@ -14,6 +14,7 @@ import MetricBoard, { type Metric } from "@/components/MetricBoard";
 import LiveSessions from "@/components/LiveSessions";
 import ProdukDiag from "@/components/ProdukDiag";
 import JadwalUpload from "@/components/JadwalUpload";
+import ForecastView from "@/components/ForecastView";
 import SaldoIklan, { type SaldoRow } from "@/components/SaldoIklan";
 import { shortName } from "@/lib/nama";
 import { Kpi, Insight, Bars, LineChart, Share, Spark } from "@/components/ui";
@@ -23,7 +24,7 @@ import { resolvePeriod, buckets, fmt, pct, jm, tgl, addDays, dayDiff, todayWIB, 
 type SPv = Record<string, string | undefined>;
 type Cl = { id: string; nama: string; modul: string[]; target_roas: number | null };
 
-const TABS: [string, string][] = [["sum", "Dashboard"], ["toko", "Analisa Toko"], ["iklan", "Analisa Iklan"], ["live", "Livestream"], ["affiliate", "Affiliate"]];
+const TABS: [string, string][] = [["sum", "Dashboard"], ["toko", "Analisa Toko"], ["iklan", "Analisa Iklan"], ["live", "Livestream"], ["affiliate", "Affiliate"], ["forecast", "Forecast"]];
 
 /* Dipakai oleh /dashboard (login) dan /lihat/[token] (klien tanpa login, hanya lihat) */
 export default async function DashboardView({ sp, profile, clients: all, base, share, shareLabel, token }: { sp: SPv; profile: User | null; clients: Cl[]; base: string; share?: boolean; shareLabel?: string; token?: string }) {
@@ -33,7 +34,8 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
   const c = clients.find((x) => x.id === sp.c) ?? clients[0];
   let tab = sp.m ?? (sp.c || share ? "toko" : "sum");
   if (share && tab === "sum") tab = "toko";
-  if (c && tab !== "sum" && !c.modul.includes(tab)) tab = c.modul[0];
+  const has = (k: string) => !!c && (k === "forecast" ? c.modul.includes("toko") : c.modul.includes(k));
+  if (c && tab !== "sum" && !has(tab)) tab = c.modul[0];
   // Periode relatif dihitung mundur dari tanggal data terakhir klien (per jenis data)
   const F0 = c && tab !== "sum" ? (await freshness([c.id]))[0] : undefined;
   const lastData = tab === "iklan" ? F0?.iklan : tab === "live" ? F0?.live : F0?.penjualan;
@@ -79,6 +81,9 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
       body = has ? <Affiliate key={c.id} client={c.id} nama={c.nama} user={"u" + profile!.id} />
         : <div className="card"><h2>Affiliate · {c.nama}</h2><p className="muted">Ruang kerja affiliate untuk klien ini belum disiapkan. Kirim ke Claude ekspor data affiliate (TikTok: Affiliate → Kreator / Performa; Shopee: Affiliate Marketing Solution → Laporan kreator) untuk periode yang ingin dipantau, nanti disiapkan seperti ruang kerja Just Fluff.</p></div>;
     }
+    else if (tab === "forecast") {
+      body = <ForecastView clientId={c.id} sp={sp} base={base} staff={isAdmin && !share} share={!!share} />;
+    }
     else if (tab === "live") {
       const jad = await q<Jd>("select date_format(l.tanggal, '%Y-%m-%d') tanggal, l.mulai, l.selesai, h.nama host from live_schedule l join hosts h on h.id = l.host_id where l.client_id = ? and l.tanggal between ? and ?", [c.id, R.from, R.to]);
       // Catatan: ekspor statistik toko Shopee hanya memuat 5 sesi live teratas per bulan, jadi tidak dipakai untuk total live
@@ -89,14 +94,14 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
   const tabName = TABS.find(([k]) => k === tab)?.[1] ?? tab;
   await logAct(profile, "lihat", tab === "sum" ? null : c?.id ?? null, `${tabName} · ${R.label}${sp.b ? ` · ${sp.b}` : ""}${sp.p ? ` · ${sp.p}` : ""}`, share ? `Link klien${shareLabel ? ` (${shareLabel})` : ""}` : undefined);
   const title = `${tab === "sum" ? "Dashboard semua klien" : c?.nama ?? ""} · ${tabName} · ${R.label}`;
-  const tabs = <Tabs active={tab} items={TABS.filter(([k]) => k !== "sum" && c?.modul.includes(k)).map(([k, l]) => ({ k, l, href: base + qs({ m: k }) }))} />;
+  const tabs = <Tabs active={tab} items={TABS.filter(([k]) => k !== "sum" && has(k)).map(([k, l]) => ({ k, l, href: base + qs({ m: k }) }))} />;
   const head = (
     <header className="dh">
       <div className="wrap top ctitle">
         {share ? <><span className="brandc"><RuriaWord height={20} /></span><b>Report</b><span className="muted">{c?.nama} · tampilan klien, hanya lihat</span></>
           : <h1>{tab === "sum" ? "Dashboard" : c?.nama}</h1>}
       </div>
-      <div className="wrap fbar"><Filters base={base} clients={share ? clients : []} hideClient={!share || clients.length < 2} brands={tab === "sum" ? [] : brands} platforms={tab === "sum" ? [] : platforms} label={R.label} />{tab !== "affiliate" && <ExportBar title={title} client={tab === "sum" ? null : c?.id ?? null} token={token} />}</div>
+      {tab !== "forecast" && <div className="wrap fbar"><Filters base={base} clients={share ? clients : []} hideClient={!share || clients.length < 2} brands={tab === "sum" ? [] : brands} platforms={tab === "sum" ? [] : platforms} label={R.label} />{tab !== "affiliate" && <ExportBar title={title} client={tab === "sum" ? null : c?.id ?? null} token={token} />}</div>}
       {tab !== "sum" && tabs}
     </header>
   );

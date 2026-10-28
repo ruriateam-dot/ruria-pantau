@@ -70,6 +70,13 @@ export async function saveUpload(clientId: string, storeId: string, file: string
       if (p.akun && /^penghasilan/.test(p.jenis)) {
         if (st!.akun && st!.akun.toLowerCase() !== p.akun.toLowerCase()) return { ok: false, msg: `File ini milik akun "${p.akun}", sedangkan toko ${st!.brand} ${st!.platform} tercatat sebagai akun "${st!.akun}". Periksa lagi pilihan toko.` };
       }
+      if (p.jenis === "stok") {
+        const D = p.data as [string, string, string, number, number][];
+        for (let i = 0; i < D.length; i += 1000) await exec("insert into stock_snapshot (client_id, tanggal, sku, produk, varian, stok, harga) values ? on duplicate key update produk = values(produk), varian = values(varian), stok = values(stok), harga = values(harga)",
+          [D.slice(i, i + 1000).map((x) => [clientId, p.dari, x[0].slice(0, 120), x[1], x[2], Math.round(x[3]), x[4] || null])]);
+        await log(clientId, "stok", file, p.dari, p.sampai, p.n, uid);
+        return { ok: true, msg: `Tersimpan: ${p.info}. Dipakai untuk kebutuhan stok semua toko ${clientId}.` };
+      }
       await exec("insert into seller_files (store_id, jenis, dari, sampai, n, data, diupload_oleh) values (?, ?, ?, ?, ?, ?, ?) on duplicate key update n = values(n), data = values(data), diupload_oleh = values(diupload_oleh)",
         [st!.id, p.jenis, p.dari, p.sampai, p.n, JSON.stringify(p.data), uid]);
       if (p.jenis === "produk-shopee" && p.pp) await exec("insert into product_period (store_id, dari, sampai, data) values (?, ?, ?, ?) on duplicate key update data = values(data)", [st!.id, p.dari, p.sampai, JSON.stringify(p.pp)]);

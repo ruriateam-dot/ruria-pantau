@@ -354,10 +354,35 @@ function tiktokIncome(sheets: Record<string, Sheet>): FileData | null {
     data: { h: ["id", "jenis", "dipesan", "penyelesaian", "pendapatan", "biaya"], rows: R } };
 }
 
+/* Stok dari Shopee: Produk Saya → Ubah Massal → Info penjualan (kolom "Stok:<gudang>") */
+function shopeeStok(rows: Sheet, file: string): FileData | null {
+  const h = rows.findIndex((r) => r.some((c) => S(c) === "SKU") && r.some((c) => /^Stok/i.test(S(c))) && r.some((c) => S(c) === "Nama Produk"));
+  if (h < 0) return null;
+  const H = rows[h].map(S), iS = H.indexOf("SKU"), iI = H.indexOf("SKU Induk"), iP = H.indexOf("Nama Produk"), iV = H.indexOf("Nama Variasi"), iH = H.indexOf("Harga");
+  const iK = H.map((x, i) => (/^Stok/i.test(x) ? i : -1)).filter((i) => i >= 0);
+  const M = new Map<string, [string, string, string, number, number]>();
+  for (const r of rows.slice(h + 1)) {
+    const sku = S(r[iS]) || S(r[iI]); const nama = S(r[iP]);
+    if (!sku || !nama || S(r[iK[0]]) === "" || isNaN(Number(S(r[iK[0]]).replace(/[.,]/g, "")))) continue;
+    const st = iK.reduce((a, i) => a + num(r[i]), 0);
+    const x = M.get(sku); if (x) { x[3] += st; continue; }
+    M.set(sku, [sku, nama.slice(0, 300), S(r[iV]).slice(0, 200), st, iH >= 0 ? num(r[iH]) : 0]);
+  }
+  if (!M.size) return null;
+  const m = file.match(/(20\d{2})[-_]?(\d{2})[-_]?(\d{2})/);
+  const wib = new Date(Date.now() + 7 * 36e5).toISOString().slice(0, 10);
+  const tgl = m ? `${m[1]}-${m[2]}-${m[3]}` : wib;
+  const data = [...M.values()], tot = data.reduce((a, x) => a + x[3], 0);
+  const gud = iK.map((i) => H[i].replace(/^Stok:?\s*/i, "")).join(" + ");
+  return { kind: "file", jenis: "stok", label: "Stok produk Shopee (Ubah Massal)", scope: "client", platform: "Shopee", dari: tgl, sampai: tgl, n: data.length,
+    info: `${data.length.toLocaleString("id")} SKU · ${tot.toLocaleString("id")} unit · gudang ${gud} · stok per ${tgl}`, data };
+}
+
 export function detect(sheets: Record<string, Sheet>, file: string): Parsed {
   const r = shopeeStats(sheets, file) ?? shopeeProduk(sheets, file) ?? shopeeIncome(sheets) ?? tiktokIncome(sheets);
   if (r) return r;
   const list = Object.values(sheets);
+  for (const rows of list) { const k = shopeeStok(rows, file); if (k) return k; }
   for (const rows of list) { const x = shopeeLive(rows) ?? tiktokLive(rows) ?? tiktokProduk(rows) ?? shopeeAff(rows, file) ?? tiktokAff(rows, file) ?? tiktokAffOrders(rows) ?? shopeeValidasi(rows); if (x) return x; }
   let L: LR[] = [];
   for (const rows of list) L = L.concat(liveDraft(rows), liveHost(rows));

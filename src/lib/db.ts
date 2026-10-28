@@ -52,6 +52,10 @@ async function ready() {
       await pool().query("create table if not exists store_period (store_id varchar(80) not null, dari date not null, sampai date not null, data longtext not null, primary key (store_id, dari, sampai))");
       await pool().query("create table if not exists product_period (store_id varchar(80) not null, dari date not null, sampai date not null, data longtext not null, primary key (store_id, dari, sampai))");
       await pool().query("create table if not exists ads_meta (store_id varchar(80) not null, dari date not null, sampai date not null, kampanye varchar(255) not null, dilihat bigint null, klik bigint null, keranjang bigint null, primary key (store_id, dari, sampai, kampanye))");
+      // Forecast & kebutuhan stok: stok per SKU per tanggal (per klien, gudang dipakai bersama), HPP per SKU, stok pengaman per klien
+      await pool().query("create table if not exists stock_snapshot (client_id varchar(40) not null, tanggal date not null, sku varchar(120) not null, produk varchar(300) null, varian varchar(200) null, stok int not null default 0, harga decimal(14,2) null, primary key (client_id, tanggal, sku))");
+      await pool().query("create table if not exists hpp (client_id varchar(40) not null, sku varchar(120) not null, hpp decimal(14,2) not null, perkiraan tinyint not null default 0, diupdate timestamp not null default current_timestamp on update current_timestamp, primary key (client_id, sku))");
+      try { await pool().query("alter table clients add column stok_pengaman int null"); } catch { /* sudah ada */ }
       // Nama klien = nama perusahaan (hanya mengganti nama bawaan lama, nama yang sudah diubah manual dibiarkan)
       for (const [id, lama, baru] of [["ot", "Organic Treasure", "PT Bara Infinity Group"], ["jf", "Just Fluff", "PT Justfluff Nusantara Indo"], ["voie", "VOIE", "PT Natural Sense Asia"],
         ["dren", "Dren", "CV Mitra Berkat Indokreasi"], ["pmg", "PMG", "Putera Mahkota Group"]])
