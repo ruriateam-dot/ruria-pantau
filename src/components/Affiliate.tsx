@@ -2,14 +2,14 @@
 import { useEffect, useRef, useState } from "react";
 import markup from "@/data/aff/markup.json";
 
-type Brand = { nama: string; catatan?: string; ganti?: [string, string][]; hpp?: Record<string, number>; hpp_default?: number; roi_min?: number };
+type Brand = { nama: string; catatan?: string | [string, string, string][]; ganti?: [string, string][]; hpp?: Record<string, number>; hpp_default?: number; roi_min?: number };
 type Win = { __affInit?: (c: string, u: string, t?: string) => void; __affGen: number; AFF_SRC: (f: string) => string };
 const w = () => window as unknown as Win;
 
 /* Ruang kerja affiliate. Modul yang sama dipakai semua klien; nama brand & teks khusus disesuaikan per klien. */
 export default function Affiliate({ client, user, nama, readOnly = false, token }: { client: string; user: string; nama: string; readOnly?: boolean; token?: string }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [note, setNote] = useState("");
+  const [note, setNote] = useState<Brand["catatan"]>("");
   useEffect(() => {
     const el = ref.current!;
     let off = false; const urls: string[] = [];
@@ -38,8 +38,8 @@ export default function Affiliate({ client, user, nama, readOnly = false, token 
   }, [client, user, nama, readOnly, token]);
   return <>
     <link rel="stylesheet" href="/aff/aff.css?v=13" />
-    {note && <p className="note">{note}</p>}
     {readOnly && <p className="note">Tampilan baca saja: data affiliate dan database kreator bisa dilihat, perubahan hanya dilakukan oleh tim Ruria.</p>}
     <div id="aff-root" ref={ref} className={readOnly ? "ro" : undefined} />
+    {note && (typeof note === "string" ? <p className="muted small fnote">{note}</p> : <div className="fnote muted small"><b>Sumber data</b><table><tbody>{note.map(([a, b, c]) => <tr key={a}><td>{a}</td><td>{b}{c && <span> · {c}</span>}</td></tr>)}</tbody></table></div>)}
   </>;
 }

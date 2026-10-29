@@ -465,3 +465,5 @@ td.n.up,td.n.dn{font-weight:600}td.n.up{background:color-mix(in srgb,var(--good)
 /* Tombol sekunder di seluruh situs: jelas bisa diklik */
 button.ghost{border:1.5px solid var(--accent);color:var(--accent-ink);background:var(--panel)}
 button.ghost:hover{background:color-mix(in srgb,var(--accent) 10%,var(--panel))}
+
+.fnote{margin:24px 0 8px;padding-top:10px;border-top:1px solid var(--line,#eee);font-size:12px}.fnote table{border-collapse:collapse}.fnote td{padding:2px 12px 2px 0;white-space:normal;vertical-align:top}.fnote td:first-child{font-weight:600;white-space:nowrap}
