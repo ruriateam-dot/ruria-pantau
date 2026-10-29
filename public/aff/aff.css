@@ -234,3 +234,10 @@
 #aff-root main .wrap,#aff-root .wrap{padding-left:0;padding-right:0;max-width:none}
 #aff-root #picbox{display:none}
 #aff-root label.picbox{display:none}
+/* Tabel database: teks boleh turun baris supaya tidak memanjang ke kanan; judul kolom di tengah */
+#aff-root th,#aff-root th.num{white-space:normal;text-align:center;vertical-align:middle;min-width:70px;line-height:1.25}
+#aff-root th button.sorth{justify-content:center}
+#aff-root .u{white-space:normal;word-break:break-word;min-width:120px;max-width:170px}
+#aff-root .u small{white-space:normal;overflow:visible}
+#aff-root td.t{white-space:normal;min-width:100px;max-width:130px}
+#aff-root .aksi{min-width:180px;max-width:230px}
