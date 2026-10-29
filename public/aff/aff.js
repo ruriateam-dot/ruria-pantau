@@ -47,7 +47,7 @@ const kontakHtml = (k, r, tp) => { const n = waNum(k); if (!n) return `<small cl
 const hasPhone = row => { const k = fuOf(row)?.kontak; if (!k) return false; return (String(k).match(/\+?\d[\d\s.\-()]{7,}\d/g) || []).some(m => { const d = m.replace(/\D/g, ''); return d.length >= 9 && d.length <= 15; }); };
 const RO = () => !!document.getElementById('aff-root')?.classList.contains('ro');
 const kerjaTxt = r => { const f = fuOf(r); const p = [dispStatus(r)]; if (f?.respon) p.push(f.respon); if (f?.tglLast) p.push('dihubungi ' + fdate(f.tglLast)); return p.join(' · '); };
-const aksiTd = r => RO() ? `<td class="aksi">${esc(kerjaTxt(r))}</td>` : `${aksiTd(r)}`;
+const aksiTd = r => RO() ? `<td class="aksi">${esc(kerjaTxt(r))}</td>` : `<td class="aksi">${esc(r.aksi)}</td>`;
 const aksiLbl = () => RO() ? 'Status kerja Ruria' : 'Saran aksi';
 const dispStatus = row => (row.pr >= 4 && statusOf(row) === 'Belum dihubungi') ? NOCONTACT : statusOf(row);
 const STAT_ALL = () => [...STAT, NOCONTACT];
