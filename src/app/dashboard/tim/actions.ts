@@ -2,7 +2,8 @@
 import { revalidatePath } from "next/cache";
 import { randomBytes } from "crypto";
 import { exec, q } from "@/lib/db";
-import { requireSuper as requireAdmin, requireUser, hash, verify, type User } from "@/lib/auth";
+import { requireSuper as requireAdmin, requireUser, hash, verify, COOKIE, type User } from "@/lib/auth";
+import { cookies } from "next/headers";
 import { passwordLink, sendInvite } from "@/lib/mail";
 import { logAct } from "@/lib/log";
 
@@ -96,8 +97,11 @@ export async function changeOwn(_p: string | null, f: FormData): Promise<string 
   if (!(await verify(old, r[0].password_hash))) return "Password lama salah.";
   if (pw.length < 10) return "Password baru minimal 10 karakter.";
   await exec("update users set password_hash = ? where id = ?", [await hash(pw), me.id]);
+  // Keluarkan semua sesi lain (perangkat lain), sesi di perangkat ini tetap
+  const cur = (await cookies()).get(COOKIE)?.value ?? "";
+  await exec("delete from sessions where user_id = ? and token <> ?", [me.id, cur]);
   await logAct(me, "ganti password sendiri", null, "");
-  return done("Password Anda sudah diganti.");
+  return done("Password Anda sudah diganti. Login di perangkat lain otomatis keluar.");
 }
 
 /* Link lihat-saja untuk klien (tanpa login) */
