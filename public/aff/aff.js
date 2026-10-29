@@ -82,7 +82,7 @@ function setTab(t, push=true){
   if (t === 'agency') t = 'shopee';
   if (t === 'tiktok' || t === 'shopee') { S.dbpl = t === 'tiktok' ? 'TikTok' : 'Shopee'; t = 'db'; }
   if (t === 'rekap' || t === 'efektif') t = 'ringkasan';
-  if (!['ringkasan','db','tiktok','shopee','input','log'].includes(t)) t = 'ringkasan';
+  if (!['ringkasan','kerja','db','tiktok','shopee','input','log'].includes(t)) t = 'ringkasan';
   S.tab = t;
   document.querySelectorAll('nav.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === t ? 'true':'false'));
   if (push) { try { history.replaceState(null,'','#'+t); } catch(e){} }
