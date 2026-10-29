@@ -5,7 +5,8 @@ export const metadata: Metadata = { title: "Ruria Report", description: "Dashboa
 export const viewport: Viewport = { width: "device-width", initialScale: 1 };
 
 // Terapkan pilihan tema sebelum halaman tampil (hindari kedip)
-const themeScript = `try{var t=localStorage.getItem("rp-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;
+/* Tema default terang untuk semua. Gelap/otomatis hanya bisa dipilih superadmin (tersimpan di perangkatnya). */
+const themeScript = `try{var t=localStorage.getItem("rp-theme"),d=document.documentElement;d.dataset.theme=t==="dark"||(t==="auto"&&matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light"}catch(e){document.documentElement.dataset.theme="light"}`;
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (

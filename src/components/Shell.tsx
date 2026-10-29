@@ -8,14 +8,17 @@ import { RuriaWord, RuriaMark } from "./Logo";
 type Item = { id: string; nama: string; href: string };
 type Props = { user: { nama: string; peran: string }; staff: boolean; clients: Item[]; active?: string; dashHref: string; children: React.ReactNode };
 
-function Theme() {
-  const [t, setT] = useState("auto");
-  useEffect(() => { try { setT(localStorage.getItem("rp-theme") || "auto"); } catch {} }, []);
-  const pick = (v: string) => {
-    setT(v);
-    try { if (v === "auto") localStorage.removeItem("rp-theme"); else localStorage.setItem("rp-theme", v); } catch {}
-    if (v === "auto") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = v;
-  };
+/* Pilihan tema hanya untuk superadmin; akun lain selalu terang */
+function Theme({ show }: { show: boolean }) {
+  const [t, setT] = useState("light");
+  const apply = (v: string) => { const d = document.documentElement; d.dataset.theme = v === "dark" || (v === "auto" && matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light"; };
+  useEffect(() => {
+    let v = "light"; try { v = localStorage.getItem("rp-theme") || "light"; } catch {}
+    if (!show && v !== "light") { v = "light"; try { localStorage.setItem("rp-theme", "light"); } catch {} }
+    setT(v); apply(v);
+  }, [show]);
+  const pick = (v: string) => { setT(v); try { localStorage.setItem("rp-theme", v); } catch {} apply(v); };
+  if (!show) return null;
   return <div className="seg" role="radiogroup" aria-label="Tema tampilan">
     {[["light", "Terang"], ["dark", "Gelap"], ["auto", "Otomatis"]].map(([k, l]) =>
       <button key={k} type="button" role="radio" aria-checked={t === k} className={t === k ? "on" : ""} onClick={() => pick(k)}>{l}</button>)}
@@ -74,7 +77,7 @@ export default function Shell({ user, staff, clients, active, dashHref, children
         {user.peran === "Superadmin" && link("/dashboard/log", "Log aktivitas", path === "/dashboard/log", undefined, <Ic k="log" />)}
       </nav>
       <div className="sfoot">
-        <Theme />
+        <Theme show={user.peran === "Superadmin"} />
         <div className="suser"><b>{user.nama}</b><span className="muted small">{user.peran}</span></div>
         <form action={logout}><button type="submit" className="ghost wide">Keluar</button></form>
       </div>
