@@ -263,3 +263,8 @@
 #aff-root .pcs .pc.p3{background:var(--p3);color:var(--p3-ink)}
 #aff-root .pcs .pc.p4{background:var(--p4);color:var(--p4-ink)}
 #aff-root .pcs .pc.p5{background:var(--sunk);color:var(--muted)}
+/* Perbaikan: aturan umum situs membuat semua sel tabel tidak turun baris; di affiliate teks boleh turun baris, angka tetap satu baris */
+#aff-root td{white-space:normal}
+#aff-root td.num{white-space:nowrap}
+#aff-root td.num.wrapn{white-space:normal}
+#aff-root td.aksi{white-space:normal;word-break:normal;overflow-wrap:anywhere}
