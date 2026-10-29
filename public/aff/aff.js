@@ -196,6 +196,8 @@ function renderSummary(){
 
 /* ---------- list (TikTok / Shopee) ---------- */
 const SORT_TXT = {num:['Terbesar dulu','Terkecil dulu'], txt:['Z–A','A–Z'], pr:['P5 dulu','P1 dulu'], last:['Paling lama dulu','Paling baru dulu'], list:['Urutan terbalik','Urutan daftar']};
+const SORT_MAIN = ['pr','okt','gb','sroi','last','u'];
+const sortOpts = (defs, cur) => SORT_MAIN.concat(defs[cur] && !SORT_MAIN.includes(cur) ? [cur] : []).filter(k => defs[k]).map(k => opt(k, k === 'sroi' ? 'Efektivitas sampel' : defs[k].lbl, cur)).join('');
 function sortDefs(which){
   const isTT = which === 'tiktok', months = isTT ? TT_M : SH_M, pre = isTT ? 'GMV ' : 'Omzet ';
   const d = {
@@ -287,7 +289,7 @@ function renderList(which){
   </div>
   <div class="filters">
     <span class="flabel">Urutkan</span>
-    <select id="${which}-sort" aria-label="Urutkan menurut">${Object.entries(defs).map(([k,d]) => opt(k, d.lbl, f.sort)).join('')}</select>
+    <select id="${which}-sort" aria-label="Urutkan menurut">${sortOpts(defs, f.sort)}</select>
     <button class="btn sm" id="${which}-dir" aria-label="Balik urutan">${dir === 'asc' ? '▲ ' + SORT_TXT[sd.t][1] : '▼ ' + SORT_TXT[sd.t][0]}</button>
     <span class="count">${nf.format(list.length)} dari ${nf.format(rows.length)} ${isTT?'kreator':'affiliate'} · klik judul kolom untuk mengurutkan, klik baris untuk mencatat</span>
   </div>
@@ -427,7 +429,7 @@ function renderDb(){
   </div>
   <div class="filters">
     <span class="flabel">Urutkan</span>
-    <select id="${W}-sort" aria-label="Urutkan menurut">${Object.entries(defs).map(([k,d]) => opt(k, d.lbl, f.sort)).join('')}</select>
+    <select id="${W}-sort" aria-label="Urutkan menurut">${sortOpts(defs, f.sort)}</select>
     <button class="btn sm" id="${W}-dir" aria-label="Balik urutan">${dir === 'asc' ? '▲ ' + SORT_TXT[sd.t][1] : '▼ ' + SORT_TXT[sd.t][0]}</button>
     <span class="count">${nf.format(list.length)} dari ${nf.format(rows.length)} akun · GMV kotor ${rpShort(tot('gk'))} · bersih ${rpShort(tot('gb'))} · batal/retur ${rpShort(tot('gx'))}</span>
   </div>
