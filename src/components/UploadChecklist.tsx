@@ -7,6 +7,9 @@ import { todayWIB, addDays, tgl } from "@/lib/period";
    stok: mingguan (klien yang stoknya dihitung) · affiliate OT: mingguan */
 const JADWAL = [1, 6, 11, 16, 21, 26, 30];
 type Cell = { ok: boolean | null; last: string | null; need: string; gaps: [string, string][] };
+/* Iklan Shopee Jan–Mar 2026 sudah tidak bisa diunduh dari Shopee: tidak diminta & tidak ditandai kurang */
+const SHOPEE_ADS_ARSIP = "2026-04-01";
+const maxD = (a: string | null, b: string) => (a && a > b ? a : b);
 const START = "2026-01-01", BLN = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
 const mEnd = (d: string) => { const [y, m] = d.split("-").map(Number); return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10); };
 /* Rentang hari yang kosong antara start dan end. monthOnly: hanya bulan yang kosong seluruhnya (iklan & live boleh tidak jalan beberapa hari) */
@@ -89,7 +92,7 @@ async function inner(clientIds: string[]) {
         stat: cell(jual.get(s.id), y, toko, "stat|" + s.id, first(s.id)),
         // file produk TikTok (product_list) baru diminta sejak Okt 2026
         produk: cell(tt ? ff(s.id, /^produk-tiktok$/) : mx(ff(s.id, /^produk-shopee$/), pp.get(s.id)), y, toko, "prod|" + s.id, tt ? "2026-10-01" : first(s.id)),
-        iklan: cell(iklan.get(s.id), y, ik, "ads|" + s.id, first(s.id), 1, true),
+        iklan: cell(iklan.get(s.id), y, ik, "ads|" + s.id, s.platform === "Shopee" ? maxD(first(s.id), SHOPEE_ADS_ARSIP) : first(s.id), 1, true),
         pesanan: cell(ord.get(s.id), ordNeed, toko, "ord|" + s.id, first(s.id), 5),
         hasil: cell(ff(s.id, /^penghasilan/), ordNeed, toko, "inc|" + s.id, "2026-10-01"),
         live: cell(live.get(c.id), addDays(y, -1), lv && i === 0, "live|" + c.id, [...(sets.get("live|" + c.id) ?? [])].sort()[0] ?? addDays(today, -183).slice(0, 8) + "01", 1, true),
