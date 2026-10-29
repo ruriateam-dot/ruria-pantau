@@ -126,8 +126,7 @@ export async function saveUpload(clientId: string, storeId: string, file: string
         if (oldB > 0 && newB < oldB * 0.5) return { ok: false, msg: `Upload ditahan: biaya iklan di file ini (${rp(newB)}) jauh lebih kecil dari data yang sudah tersimpan untuk ${p.dari} s/d ${p.sampai} (${rp(oldB)}). Kemungkinan file tidak lengkap. Cek kembali periode file, atau hubungi superadmin bila memang ingin menimpa.` };
         await exec("delete from ads where store_id = ? and dari >= ? and sampai <= ?", [st!.id, p.dari, p.sampai]);
       }
-      p = { ...p, rows };
-      await exec("insert into ads (store_id, dari, sampai, kampanye, biaya, gmv, pesanan, diupload_oleh) values ?", [p.rows.map((r) => [st!.id, ...r, uid])]);
+      await exec("insert into ads (store_id, dari, sampai, kampanye, biaya, gmv, pesanan, diupload_oleh) values ?", [rows.map((r) => [st!.id, ...r, uid])]);
       if (p.meta?.length) await exec("insert into ads_meta (store_id, dari, sampai, kampanye, dilihat, klik, keranjang) values ? on duplicate key update dilihat = values(dilihat), klik = values(klik), keranjang = values(keranjang)", [p.meta.map((m) => [st!.id, p.dari, p.sampai, ...m])]);
       await log(clientId, "iklan", file, p.dari, p.sampai, p.rows.length, uid);
       const b = p.rows.reduce((s, r) => s + r[3], 0), g = p.rows.reduce((s, r) => s + r[4], 0);

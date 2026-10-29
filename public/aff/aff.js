@@ -1324,8 +1324,13 @@ const syncDot = document.getElementById('syncdot'), syncTxt = document.getElemen
       hist = rows.map((r) => ({ platform: r.platform, ym: (r.tgl || '2026-' + String(r.bulan_no).padStart(2, '0')).slice(0, 7), username: r.username, user_n: String(r.username).trim().replace(/^@+/, '').toLowerCase(),
         produk: r.produk, sku: r.sku, pack: r.pack || 1, id: r.id_pesanan, tgl: r.tgl, ekspedisi: r.ekspedisi, ongkir: r.ongkir, est: r.ongkir_perkiraan || null, status: r.status_upload, cat: r.catatan, sumber: r.sumber, src: 'log' }));
       drawRekap(); kickSummary(); kickLists(); try { if (S.tab === 'weekly') rerenderSoon(); } catch (e) {}
+      fillProduk();
     }).catch(() => { histErr = true; drawRekap(); kickSummary(); kickLists(); });
 
+  // Saran nama produk (isian bebas): dari produk yang pernah diinput untuk klien ini
+  const fillProduk = () => { const dl = document.getElementById('produk-list'); if (!dl) return; const seen = new Map();
+    allRows().forEach((r) => { const p = String(r.produk || '').trim(); if (p && p !== 'LAINNYA') seen.set(p.toLowerCase(), p); });
+    dl.innerHTML = [...seen.values()].sort().map((p) => `<option value="${String(p).replace(/"/g, '&quot;')}"></option>`).join(''); };
   const allRows = () => {
     const base = hist || [];
     const seen = new Set(base.filter((r) => r.id).map((r) => r.platform + '|' + r.id + '|' + r.user_n));

@@ -35,7 +35,6 @@ const AKS = [
   "P5: GMV bersih 0, tidak perlu dihubungi",
   "P5: akun platform/jaringan, evaluasi di tab Agency/Jaringan",
 ];
-const MIN_HARI = 90; // data mentah minimal mencakup 90 hari terakhir agar prioritas platform itu dihitung ulang
 
 const ymd = (d: Date) => d.toISOString().slice(0, 10);
 const addD = (s: string, n: number) => { const d = new Date(s + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return ymd(d); };
