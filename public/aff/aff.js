@@ -896,7 +896,7 @@ function renderWeekly(){
       ['Kontak baru diisi', cnt(logs, e => e.type === 'kontak')], ['Kreator di-follow-up', ditarget], ['Total aktivitas', logs.length], [],
       ['Status baru', 'Jumlah'], ...stRows, [], ['Produk', 'Sampel', 'Biaya'], ...prodRows.map(([k, o]) => [k, o.n, Math.round(o.b)]), [],
       ['Hari', 'Sampel TikTok', 'Sampel Shopee', 'Kontak diisi', 'Follow-up/status', 'Semua aktivitas'], ...daily], [30,16,14,14,16,16]);
-    add('Sampel', [['Tanggal','Platform','Username','Produk','SKU','HPP','Ongkir','Biaya','ID pesanan','Ekspedisi','Status posting'], ...samp.map(r => [r.tgl.slice(0,10), r.platform, r.username, r.produk||'', r.sku||'', Math.round(r.hpp||0), Number(r.ongkir)||0, Math.round(biaya(r)), r.id||'', r.ekspedisi||'', r.status||''])], [12,10,22,18,20,10,10,10,22,12,16]);
+    add('Sampel', [['Tanggal','Platform','Toko','Username','Produk','SKU','HPP','Ongkir','Biaya','ID pesanan','Ekspedisi','Status posting'], ...samp.map(r => [r.tgl.slice(0,10), r.platform, r.toko||'', r.username, r.produk||'', r.sku||'', Math.round(r.hpp||0), Number(r.ongkir)||0, Math.round(biaya(r)), r.id||'', r.ekspedisi||'', r.status||''])], [12,10,14,22,18,20,10,10,10,22,12,16]);
     add('Per petugas', [['Petugas', ...types.map(t => LOGTYPE[t]), 'Total'], ...Object.entries(perPic).map(([n, c]) => [n, ...types.map(t => c[t]||0), Object.values(c).reduce((a,b)=>a+b,0)])], [26,10,10,12,12,12,12,12,10]);
     add('Aktivitas', [['Waktu (WIB)','Petugas','Jenis','Platform','Kreator','Detail'], ...logs.map(e => [tm(e.at), whoOf(e), LOGTYPE[e.type]||e.type, e.platform||'', e.target||'', e.detail||''])], [20,22,16,10,24,70]);
     const dl = await claude.use('downloads'); if (!dl) { toast('Download tidak tersedia di tampilan ini.'); return; }
@@ -1095,7 +1095,7 @@ function wireMeet(Z){
     add('TikTok per bulan', mtab(D.M.tt), [30,14,14,14,14,14,14,16]);
     add('Shopee per bulan', mtab(D.M.sh), [30,14,14,14,14,14,14,16]);
     add('Per hari', [['Hari', 'Sampel TikTok', 'Sampel Shopee', 'Kontak diisi', 'Follow-up/status', 'Semua aktivitas'], ...R.daily], [12,14,14,12,16,16]);
-    add('Sampel', [['Tanggal','Platform','Username','Produk','SKU','HPP','Ongkir','Biaya','ID pesanan','Ekspedisi','Status posting'], ...R.samp.map(r => [r.tgl.slice(0,10), r.platform, r.username, r.produk||'', r.sku||'', Math.round(r.hpp||0), Number(r.ongkir)||0, Math.round(R.biaya(r)), r.id||'', r.ekspedisi||'', r.status||''])], [12,10,22,18,20,10,10,10,22,12,16]);
+    add('Sampel', [['Tanggal','Platform','Toko','Username','Produk','SKU','HPP','Ongkir','Biaya','ID pesanan','Ekspedisi','Status posting'], ...R.samp.map(r => [r.tgl.slice(0,10), r.platform, r.toko||'', r.username, r.produk||'', r.sku||'', Math.round(r.hpp||0), Number(r.ongkir)||0, Math.round(R.biaya(r)), r.id||'', r.ekspedisi||'', r.status||''])], [12,10,14,22,18,20,10,10,10,22,12,16]);
     add('Aktivitas', [['Waktu (WIB)','Petugas','Jenis','Platform','Kreator','Detail'], ...R.logs.map(e => [new Date(e.at).toLocaleString('id-ID', {timeZone:'Asia/Jakarta'}), whoOf(e), LOGTYPE[e.type]||e.type, e.platform||'', e.target||'', e.detail||''])], [20,22,16,10,24,70]);
     await save(fn('xlsx'), new Blob([XLSX.write(wb, {bookType:'xlsx', type:'array'})]));
   };
@@ -1349,7 +1349,7 @@ const syncDot = document.getElementById('syncdot'), syncTxt = document.getElemen
     const seen = new Set(base.filter((r) => r.id).map((r) => r.platform + '|' + r.id + '|' + r.user_n));
     const web = webDocs.map((d) => {
       const r = d.data();
-      return { platform: r.platform, ym: String(r.tgl_acc || r.created_at || '').slice(0, 7), username: r.username, user_n: String(r.username || '').trim().replace(/^@+/, '').toLowerCase(),
+      return { toko: r.toko || '', platform: r.platform, ym: String(r.tgl_acc || r.created_at || '').slice(0, 7), username: r.username, user_n: String(r.username || '').trim().replace(/^@+/, '').toLowerCase(),
         produk: fam(r.sku) && fam(r.sku) !== 'Lainnya' ? fam(r.sku) : fam(r.produk), sku: r.sku, pack: packOf(r.sku), id: r.id_pesanan, tgl: r.tgl_acc, ekspedisi: r.ekspedisi, ongkir: r.ongkir, status: r.status_upload, src: 'web' };
     }).filter((r) => !(r.id && seen.has(r.platform + '|' + r.id + '|' + r.user_n)));
     return base.concat(web);

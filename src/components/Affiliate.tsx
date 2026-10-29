@@ -26,7 +26,7 @@ export default function Affiliate({ client, user, nama, readOnly = false, token 
       const ww = window as unknown as { AFF_HPP?: Record<string, number>; AFF_HPP_DEFAULT?: number; AFF_ROI_MIN?: number };
       (window as unknown as { AFF_NAMA?: string }).AFF_NAMA = b.nama;
       ww.AFF_HPP = b.hpp ? Object.fromEntries(Object.entries(b.hpp).map(([k, v]) => [k.toUpperCase().trim(), v])) : undefined; ww.AFF_HPP_DEFAULT = b.hpp_default; ww.AFF_ROI_MIN = b.roi_min ?? (client === "jf" ? 10 : 5);
-      const js = fix(await fetch("/aff/aff.js?v=24").then((r) => r.text()));
+      const js = fix(await fetch("/aff/aff.js?v=25").then((r) => r.text()));
       const u = URL.createObjectURL(new Blob([js], { type: "text/javascript" })); urls.push(u);
       if (!off) await add(u);
       if (readOnly) {
