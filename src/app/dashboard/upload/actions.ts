@@ -49,6 +49,9 @@ async function liveFromPlatform(clientId: string, brand: string, p: Extract<Pars
   }
 }
 
+/* Iklan Shopee sebelum tanggal ini sudah tidak bisa diunduh ulang dari Shopee: hanya boleh ditambah, tidak ditimpa */
+const SHOPEE_ADS_ARSIP = "2026-04-01";
+
 /* Simpan satu file. Untuk data produk yang besar, dipanggil bertahap (part). */
 export async function saveUpload(clientId: string, storeId: string, file: string, p: Parsed, part = 0, parts = 1, rng?: [string, string]): Promise<Res> {
   try {
@@ -100,7 +103,21 @@ export async function saveUpload(clientId: string, storeId: string, file: string
     }
 
     if (p.kind === "ads") {
-      await exec("delete from ads where store_id = ? and dari >= ? and sampai <= ?", [st!.id, p.dari, p.sampai]);
+      // Pengaman: data lama yang sudah tidak bisa diunduh ulang tidak boleh tertimpa file kosong / tidak lengkap
+      const old = await q<{ dari: string; sampai: string; kampanye: string; biaya: number }>("select date_format(dari, '%Y-%m-%d') dari, date_format(sampai, '%Y-%m-%d') sampai, kampanye, biaya from ads where store_id = ? and dari >= ? and sampai <= ?", [st!.id, p.dari, p.sampai]);
+      const oldB = old.reduce((a, x) => a + +x.biaya, 0), newB = p.rows.reduce((a, r) => a + r[3], 0);
+      const arsip = st!.platform === "Shopee" && p.dari < SHOPEE_ADS_ARSIP;
+      let rows = p.rows;
+      if (arsip && old.length) {
+        // Periode arsip Shopee: hanya menambah kampanye/tanggal yang belum ada, data lama tidak dihapus
+        const ada = new Set(old.map((x) => `${x.dari}|${x.sampai}|${x.kampanye}`));
+        rows = p.rows.filter((r) => !ada.has(`${r[0]}|${r[1]}|${r[2]}`));
+        if (!rows.length) return { ok: true, msg: `Tidak ada data baru: iklan Shopee sebelum ${SHOPEE_ADS_ARSIP} sudah tersimpan dan tidak ditimpa (data lama sudah tidak bisa diunduh ulang dari Shopee).` };
+      } else {
+        if (oldB > 0 && newB < oldB * 0.5) return { ok: false, msg: `Upload ditahan: biaya iklan di file ini (${rp(newB)}) jauh lebih kecil dari data yang sudah tersimpan untuk ${p.dari} s/d ${p.sampai} (${rp(oldB)}). Kemungkinan file tidak lengkap. Cek kembali periode file, atau hubungi superadmin bila memang ingin menimpa.` };
+        await exec("delete from ads where store_id = ? and dari >= ? and sampai <= ?", [st!.id, p.dari, p.sampai]);
+      }
+      p = { ...p, rows };
       await exec("insert into ads (store_id, dari, sampai, kampanye, biaya, gmv, pesanan, diupload_oleh) values ?", [p.rows.map((r) => [st!.id, ...r, uid])]);
       if (p.meta?.length) await exec("insert into ads_meta (store_id, dari, sampai, kampanye, dilihat, klik, keranjang) values ? on duplicate key update dilihat = values(dilihat), klik = values(klik), keranjang = values(keranjang)", [p.meta.map((m) => [st!.id, p.dari, p.sampai, ...m])]);
       await log(clientId, "iklan", file, p.dari, p.sampai, p.rows.length, uid);
