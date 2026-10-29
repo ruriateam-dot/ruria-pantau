@@ -275,6 +275,8 @@ function TokoTab({ R, stores, sales, last, prod, live, ads, plat, scN, scP }: { 
 const tipeIklan = (k: string, pf: string) => /gmv max/i.test(k) ? "GMV Max" : /otomatis/i.test(k) ? "Iklan Otomatis" : /total bulan/i.test(k) ? "Total iklan (bulanan)" : /^iklan toko|toko$/i.test(k) ? "Iklan Toko" : pf === "TikTok" ? "Iklan TikTok" : "Iklan Produk";
 /* Bagian biaya/GMV sebuah baris iklan yang jatuh di rentang [a,b] (laporan bulanan dibagi rata per hari) */
 const porsi = (x: Ad, a: string, b: string) => { const f = x.dari > a ? x.dari : a, t = x.sampai < b ? x.sampai : b; if (f > t) return 0; return (dayDiff(f, t) + 1) / (dayDiff(x.dari, x.sampai) + 1); };
+/* Tab iklan: angka desimal 2 digit */
+const fmt2 = (n: number) => n >= 1e9 ? `Rp${(n / 1e9).toFixed(2).replace(".", ",")} M` : n >= 1e6 ? `Rp${(n / 1e6).toFixed(2).replace(".", ",")} jt` : `Rp${(n / 1e3).toFixed(2).replace(".", ",")} rb`;
 type AMeta = { store_id: string; dari: string; sampai: string; kampanye: string; dilihat: number | null; klik: number | null; keranjang: number | null };
 function IklanTab({ R, stores, ads, sales, meta = [] }: { R: Range; stores: Store[]; ads: Ad[]; sales: Sale[]; meta?: AMeta[] }) {
   const nk = (s2: string) => s2.replace(/\s+/g, " ").trim().slice(0, 255);
@@ -315,9 +317,9 @@ function IklanTab({ R, stores, ads, sales, meta = [] }: { R: Range; stores: Stor
   const L = (t: string, xs: CRow[], f: (r: CRow) => string, cls: string, hint: string) => <div className="act"><h3><span className={"pill " + cls}>{xs.length}</span> {t}</h3><p className="muted small" style={{ margin: "-4px 0 8px" }}>{hint}</p>{xs.length ? <ul>{xs.slice(0, 5).map((r) => <li key={r.k} title={r.nama}><b>{shortName(r.nama)}</b> <span className="muted small">{r.toko} · {f(r)}</span></li>)}{xs.length > 5 && <li className="muted small">+{xs.length - 5} lainnya (filter status di tabel)</li>}</ul> : <p className="muted small">Tidak ada.</p>}</div>;
   return (<>
     <p className="note">Data iklan: {ket}.</p>
-    <Insight src="Data asli" sum={[`Biaya iklan ${fmt(S)}${om ? ` (${(S / om * 100).toFixed(1)}% dari omzet toko)` : ""}, ROAS ${roas.toFixed(1)}${cmp ? ` (${roas >= roasP ? "naik" : "turun"} dari ${roasP.toFixed(1)} ${R.sub})` : ""}.`, ...(per.length > 1 ? [`Biaya terbesar: ${per[0].st.brand} · ${per[0].st.platform} (${fmt(per[0].s)}, ROAS ${per[0].r.toFixed(1)}).`] : [])]}
-      ana={[...(boros.length ? [`${boros.length} kampanye boros menyerap ${fmt(sumB)} (${(sumB / S * 100).toFixed(0)}% biaya) dengan ROAS di bawah ${(roas * 0.6).toFixed(1)}.`] : []), ...(nol.length ? [`${nol.length} kampanye keluar biaya tanpa pesanan (${fmt(nol.reduce((a, r) => a + r.s, 0))}).`] : []), ...(scale.length ? [`${scale.length} kampanye efisien (ROAS ≥ ${(roas * 1.3).toFixed(1)}) masih berbiaya kecil.`] : [])]}
-      next={[...(boros.length ? [`Pangkas atau turunkan bid ${boros.length} kampanye boros, hemat sampai ${fmt(sumB * 0.5)}.`] : []), ...(nol.length ? [`Matikan atau ganti produk di ${nol.length} kampanye tanpa penjualan.`] : []), ...(scale.length ? [`Naikkan budget ${Math.min(5, scale.length)} kampanye "bisa di-scale" 20–30%, evaluasi 3 hari.`] : [])]} />
+    <Insight src="Data asli" sum={[`Biaya iklan ${fmt2(S)}${om ? ` (${(S / om * 100).toFixed(2).replace(".", ",")}% dari omzet toko)` : ""}, ROAS ${roas.toFixed(2).replace(".", ",")}${cmp ? ` (${roas >= roasP ? "naik" : "turun"} dari ${roasP.toFixed(2).replace(".", ",")} ${R.sub})` : ""}.`, ...(per.length > 1 ? [`Biaya terbesar: ${per[0].st.brand} · ${per[0].st.platform} (${fmt2(per[0].s)}, ROAS ${per[0].r.toFixed(2).replace(".", ",")}).`] : [])]}
+      ana={[...(boros.length ? [`${boros.length} kampanye boros menyerap ${fmt2(sumB)} (${(sumB / S * 100).toFixed(0)}% biaya) dengan ROAS di bawah ${(roas * 0.6).toFixed(2).replace(".", ",")}.`] : []), ...(nol.length ? [`${nol.length} kampanye keluar biaya tanpa pesanan (${fmt2(nol.reduce((a, r) => a + r.s, 0))}).`] : []), ...(scale.length ? [`${scale.length} kampanye efisien (ROAS ≥ ${(roas * 1.3).toFixed(2).replace(".", ",")}) masih berbiaya kecil.`] : [])]}
+      next={[...(boros.length ? [`Pangkas atau turunkan bid ${boros.length} kampanye boros, hemat sampai ${fmt2(sumB * 0.5)}.`] : []), ...(nol.length ? [`Matikan atau ganti produk di ${nol.length} kampanye tanpa penjualan.`] : []), ...(scale.length ? [`Naikkan budget ${Math.min(5, scale.length)} kampanye "bisa di-scale" 20–30%, evaluasi 3 hari.`] : [])]} />
     {(() => { const B0 = buckets(R.from, R.to), PB0 = dayDiff(R.from, R.to) >= 13 ? buckets(R.pf, R.pt) : null;
       const ser = (bs: { f: string; t: string }[]) => bs.map((k) => { const r = all.reduce((a, x) => { const w = porsi(x, k.f, k.t); a.s += x.biaya * w; a.g += x.gmv * w; a.o += x.pesanan * w; return a; }, { s: 0, g: 0, o: 0 });
         const om2 = sales.filter((x) => ids.has(x.store_id) && x.tanggal >= k.f && x.tanggal <= k.t).reduce((a, x) => a + x.gmv, 0); return { ...r, om: om2 }; });
@@ -337,17 +339,17 @@ function IklanTab({ R, stores, ads, sales, meta = [] }: { R: Range; stores: Stor
             { g: "Jangkauan (Shopee)", k: "kr", l: "Tambah ke keranjang", f: "n", v: kr, p: cmp && krP ? krP : null, s: c.map(() => NaN), note: nt }] as Metric[]; })()),
         { g: "Efisiensi", k: "bo", l: "Biaya iklan / omzet", f: "pct", v: om ? (S / om) * 100 : NaN, p: cmp && omP ? (Sp / omP) * 100 : null, inv: true, s: c.map((x) => (x.om ? (x.s / x.om) * 100 : 0)), ps: pv?.map((x) => (x.om ? (x.s / x.om) * 100 : 0)) },
       ];
-      return <MetricBoard metrics={M} labels={B0.map((b) => b.l)} sub={R.sub} init={["s", "r"]} />; })()}
+      return <MetricBoard metrics={M} labels={B0.map((b) => b.l)} sub={R.sub} init={["s", "r"]} dec={2} />; })()}
     {G > om && om > 0 && <p className="muted small" style={{ marginTop: -6 }}>GMV atribusi iklan bisa lebih besar dari omzet toko: platform menghitung pesanan dalam beberapa hari setelah klik (satu pesanan bisa tercatat di lebih dari satu kampanye) dan belum mengurangi pembatalan sebelum pesanan dikirim.</p>}
     {monthly && <p className="muted small">Laporan bulanan Shopee dibagi rata per hari, jadi angka hariannya perkiraan.</p>}
     {per.length > 0 && <div className="card"><h2>Per toko</h2><div className="tbl"><table><thead><tr><th>Toko</th><th className="n">Biaya</th><th className="n">GMV iklan</th><th className="n">Pesanan</th><th className="n">ROAS</th><th className="n">Δ ROAS</th><th className="n">Biaya / omzet</th></tr></thead>
-      <tbody>{per.map((x) => <tr key={x.st.id}><td>{x.st.brand} · {x.st.platform}</td><td className="n">{fmt(x.s)}</td><td className="n">{fmt(x.g)}</td><td className="n">{x.o.toLocaleString("id")}</td><td className="n">{x.r.toFixed(1)}</td>
-        <td className={"n " + (x.rp == null || !cmp ? "" : x.r >= x.rp ? "up" : "dn")}>{x.rp == null || !cmp ? "–" : `${x.r - x.rp >= 0 ? "+" : ""}${(x.r - x.rp).toFixed(1)}`}</td><td className="n">{x.bo != null ? x.bo.toFixed(1) + "%" : "–"}</td></tr>)}</tbody></table></div></div>}
+      <tbody>{per.map((x) => <tr key={x.st.id}><td>{x.st.brand} · {x.st.platform}</td><td className="n">{fmt2(x.s)}</td><td className="n">{fmt2(x.g)}</td><td className="n">{x.o.toLocaleString("id")}</td><td className="n">{x.r.toFixed(2).replace(".", ",")}</td>
+        <td className={"n " + (x.rp == null || !cmp ? "" : x.r >= x.rp ? "up" : "dn")}>{x.rp == null || !cmp ? "–" : `${x.r - x.rp >= 0 ? "+" : ""}${(x.r - x.rp).toFixed(2).replace(".", ",")}`}</td><td className="n">{x.bo != null ? x.bo.toFixed(2).replace(".", ",") + "%" : "–"}</td></tr>)}</tbody></table></div></div>}
     {(boros.length + scale.length + nol.length) > 0 && <div className="card"><h2>Perlu tindakan</h2><div className="acts">
-      {L("Boros", boros, (r) => `${fmt(r.s)} · ROAS ${r.r.toFixed(1)}`, "bad", `Biaya ≥3% total, ROAS < ${(roas * 0.6).toFixed(1)}`)}
-      {L("Bisa di-scale", scale, (r) => `${fmt(r.s)} · ROAS ${r.r.toFixed(1)}`, "good", `ROAS ≥ ${(roas * 1.3).toFixed(1)}, biaya masih kecil`)}
-      {L("Tanpa penjualan", nol, (r) => `${fmt(r.s)} · 0 pesanan`, "bad", "Biaya ≥ Rp100 rb, 0 pesanan")}
-    </div><p className="muted small">Patokan memakai ROAS rata-rata periode ini ({roas.toFixed(1)}), sampai KPI tiap klien diisi.</p></div>}
+      {L("Boros", boros, (r) => `${fmt2(r.s)} · ROAS ${r.r.toFixed(2).replace(".", ",")}`, "bad", `Biaya ≥3% total, ROAS < ${(roas * 0.6).toFixed(2).replace(".", ",")}`)}
+      {L("Bisa di-scale", scale, (r) => `${fmt2(r.s)} · ROAS ${r.r.toFixed(2).replace(".", ",")}`, "good", `ROAS ≥ ${(roas * 1.3).toFixed(2).replace(".", ",")}, biaya masih kecil`)}
+      {L("Tanpa penjualan", nol, (r) => `${fmt2(r.s)} · 0 pesanan`, "bad", "Biaya ≥ Rp100 rb, 0 pesanan")}
+    </div><p className="muted small">Patokan memakai ROAS rata-rata periode ini ({roas.toFixed(2).replace(".", ",")}), sampai KPI tiap klien diisi.</p></div>}
     <div className="card"><h2>Daftar iklan</h2><IklanTable rows={rows} /></div>
   </>);
 }
