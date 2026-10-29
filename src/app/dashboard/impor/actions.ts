@@ -201,7 +201,7 @@ export async function runFix(): Promise<string> {
 }
 
 /* File yang dikirim ke Claude lalu dimasukkan lewat pembaruan otomatis (sama seperti upload tim). Tiap entri dijalankan sekali. */
-type UP = { id: string; store: string; client: string; kind: "ads"; file: string; dari: string; sampai: string; rows: [string, string, string, number, number, number][] };
+type UP = { id: string; store: string; client: string; kind: "ads" | "hapus-iklan"; file: string; dari: string; sampai: string; rows: [string, string, string, number, number, number][] };
 export async function uplPending(): Promise<string[]> {
   const u = await requireAdmin(); if (!u) return [];
   const L = upl as unknown as UP[]; if (!L.length) return [];
@@ -218,6 +218,7 @@ export async function runUpl(id: string): Promise<string> {
       await exec("delete from ads where store_id = ? and dari <= ? and sampai >= ?", [x.store, x.sampai, x.dari]);
       await bulk("insert into ads (store_id, dari, sampai, kampanye, biaya, gmv, pesanan, diupload_oleh)", x.rows.map((r) => [x.store, ...r, u.id]));
     }
+    if (x.kind === "hapus-iklan") await exec("delete from ads where store_id = ? and dari >= ? and sampai <= ?", [x.store, x.dari, x.sampai]);
     await exec("insert into uploads (client_id, jenis, nama_file, dari, sampai, baris, oleh) values (?, ?, ?, ?, ?, ?, ?)", [x.client, "data-otomatis:upl:" + x.id, x.file, x.dari, x.sampai, x.rows.length, u.id]);
   } catch (e) { return `Gagal memasukkan ${x.file}: ${(e as Error).message}`; }
   return "Selesai";
