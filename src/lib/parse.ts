@@ -378,7 +378,7 @@ function shopeeValidasi(rows: Sheet): FileData | null {
   }
   if (!R.length) return null;
   const rg = rangeOf(ds)!;
-  return { kind: "file", jenis: "validasi-shopee", label: "Validasi komisi affiliate Shopee", scope: "store", platform: "Shopee", dari: rg[0], sampai: rg[1], n: R.length, info: `${us.size} affiliate · ${R.length} baris pesanan · biaya ${rp(tot)}`,
+  return { kind: "file", jenis: "validasi-shopee", label: "Validasi tagihan affiliate Shopee", scope: "store", platform: "Shopee", dari: rg[0], sampai: rg[1], n: R.length, info: `${us.size} affiliate · ${R.length} baris pesanan · biaya ${rp(tot)}`,
     data: { h: ["kode", "item", "tanggal", "username", "nama", "nilai", "pengembalian", "status", "kanal", "mcn", "komisi"], rows: R } };
 }
 

@@ -114,8 +114,8 @@ async function inner(clientIds: string[]) {
     ["pesanan", "Pesanan", `s.d. ${tgl(ordNeed)}`, "Order.all…xlsx", "Semua pesanan…csv"],
     ["hasil", "Penghasilan", `s.d. ${tgl(ordNeed)}`, "Income.sudah_dilepas…xlsx", "income_…xlsx"],
     ["stok", "Stok", "mingguan", "mass_update_sales_info…zip", "–"],
-    ["affp", "Affiliate: pesanan", "mingguan", "SellerOnlinePaymentValidationReport…csv", "affiliate_orders…xlsx"],
-    ["affk", "Affiliate: kreator", "mingguan", "AMSAffiliatePerformance…csv", "Transaction_Analysis_Creator_List…xlsx"]];
+    ["affp", "Affiliate: pesanan / validasi tagihan", "mingguan", "SellerOnlinePaymentValidationReport…csv", "affiliate_orders…xlsx"],
+    ["affk", "Affiliate: performa", "mingguan", "AMSAffiliatePerformance…csv", "Transaction_Analysis_Creator_List…xlsx"]];
   const used = COLS.filter(([k]) => R.some((r) => r.c[k].ok !== null));
   const todo = R.reduce((a, r) => a + used.filter(([k]) => r.c[k].ok === false).length, 0), all = R.reduce((a, r) => a + used.filter(([k]) => r.c[k].ok !== null).length, 0);
   const show = (x: Cell, file: string) => x.ok === null ? <td className="ckc na">–</td>
