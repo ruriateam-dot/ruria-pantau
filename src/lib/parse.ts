@@ -91,15 +91,28 @@ function shopeeExtra(sheets: Record<string, Sheet>, file: string): SP | undefine
 }
 
 /* ---------- TikTok: Key metrics / Overview My Business Performance ---------- */
-function tiktokStats(rows: Sheet): Parsed | null {
-  const hi = hdr(rows, (H) => H[0] === "Tanggal" && H.some((c) => c === "GMV" || /^Nilai Bruto Barang Dagangan/.test(c)) && H.includes("Pesanan")
+function tiktokStats(rows: Sheet, file = ""): Parsed | null {
+  const hi = hdr(rows, (H) => /^(Tanggal|Jam|Waktu|Per Jam|Per Hari|Date|Time)$/i.test(H[0]) && H.some((c) => c === "GMV" || /^Nilai Bruto Barang Dagangan/.test(c)) && H.includes("Pesanan")
     && H.some((c) => c === "Pengunjung" || c === "Kunjungan halaman Toko") && !H.some((c) => /durasi|host|person/i.test(c)));
   if (hi < 0) return null;
   const H = rows[hi].map(S);
   const iG = col(H, /^(GMV|Nilai Bruto Barang Dagangan)/), iO = H.indexOf("Pesanan"), iV = H.includes("Pengunjung") ? H.indexOf("Pengunjung") : H.indexOf("Kunjungan halaman Toko");
-  const out: [string, number, number, number | null][] = [];
-  for (const r of rows.slice(hi + 1)) { const d = day(r?.[0]); if (!d) continue; out.push([d, num(r[iG]), num(r[iO]), iV >= 0 ? num(r[iV]) : null]); }
+  // Ekspor "Kemarin"/1 hari berisi baris per jam: dijumlah per tanggal. Bila kolom pertama hanya jam, tanggal diambil dari judul file / nama file.
+  const d0 = fileDay(rows.slice(0, hi), file);
+  const M = new Map<string, [number, number, number | null, number]>();
+  for (const r of rows.slice(hi + 1)) {
+    const d = day(r?.[0]) ?? (hm(r?.[0]) != null || /^\d{1,2}(:\d{2})?\s*[-–]/.test(S(r?.[0])) ? d0 : null); if (!d) continue;
+    const x = M.get(d) ?? [0, 0, iV >= 0 ? 0 : null, 0]; x[0] += num(r[iG]); x[1] += num(r[iO]); if (x[2] != null) x[2] += num(r[iV]); x[3]++; M.set(d, x);
+  }
+  const out = [...M].map(([d, x]) => [d, x[0], x[1], x[2]] as [string, number, number, number | null]);
   return out.length ? { kind: "sales", label: "Statistik toko TikTok (Key metrics)", sumber: "key-metrics", rows: out } : null;
+}
+/* Tanggal laporan 1 hari: dari baris judul (mis. "2026-10-29 ~ 2026-10-29") atau nama file (YYYYMMDD / YYYY-MM-DD) */
+function fileDay(top: Sheet, file: string): string | null {
+  for (const r of top) for (const v of r ?? []) { const m = S(v).match(/(\d{4}[-/]\d{1,2}[-/]\d{1,2})(?:\D+(\d{4}[-/]\d{1,2}[-/]\d{1,2}))?/); if (m && (!m[2] || toDT(m[2])?.[0] === toDT(m[1])?.[0])) return toDT(m[1])?.[0] ?? null; }
+  const f = file.match(/(20\d{2})-?(\d{2})-?(\d{2})(?:\D+(20\d{2})-?(\d{2})-?(\d{2}))?/);
+  if (f && (!f[4] || f.slice(1, 4).join("") === f.slice(4, 7).join(""))) return `${f[1]}-${f[2]}-${f[3]}`;
+  return null;
 }
 
 /* ---------- Ekspor pesanan Shopee / TikTok -> penjualan per produk ---------- */
@@ -169,12 +182,18 @@ function shopeeAds(rows: Sheet): Parsed | null {
 }
 
 /* ---------- Iklan TikTok (Campaign overview per hari) ---------- */
-function tiktokAds(rows: Sheet): Parsed | null {
-  const hi = hdr(rows, (H) => H[0] === "Per Hari" && H.includes("Biaya"));
+function tiktokAds(rows: Sheet, file = ""): Parsed | null {
+  const hi = hdr(rows, (H) => /^(Per Hari|Per Jam|Tanggal|Jam|Waktu)$/i.test(H[0]) && H.includes("Biaya") && H.some((c) => /^Penghasilan bruto/.test(c)));
   if (hi < 0) return null;
   const H = rows[hi].map(S), iC = H.indexOf("Biaya"), iG = col(H, /^Penghasilan bruto/), iO = col(H, /^Pesanan SKU/);
-  const out: [string, string, string, number, number, number][] = [];
-  for (const r of rows.slice(hi + 1)) { const d = day(r?.[0]); if (!d) continue; const c = num(r[iC]), g = num(r[iG]); if (!c && !g) continue; out.push([d, d, "GMV Max", Math.round(c), Math.round(g), Math.round(num(r[iO]))]); }
+  // Ekspor "Kemarin" berisi baris per jam: dijumlah per tanggal
+  const d0 = fileDay(rows.slice(0, hi), file);
+  const M = new Map<string, [number, number, number]>();
+  for (const r of rows.slice(hi + 1)) {
+    const d = day(r?.[0]) ?? (hm(r?.[0]) != null || /^\d{1,2}(:\d{2})?\s*[-–]/.test(S(r?.[0])) ? d0 : null); if (!d) continue;
+    const x = M.get(d) ?? [0, 0, 0]; x[0] += num(r[iC]); x[1] += num(r[iG]); x[2] += num(r[iO]); M.set(d, x);
+  }
+  const out = [...M].filter(([, x]) => x[0] || x[1]).map(([d, x]) => [d, d, "GMV Max", Math.round(x[0]), Math.round(x[1]), Math.round(x[2])] as [string, string, string, number, number, number]);
   if (!out.length) return null;
   const ds = out.map((x) => x[0]).sort();
   return { kind: "ads", label: "Iklan TikTok (GMV Max per hari)", dari: ds[0], sampai: ds[ds.length - 1], rows: out };
@@ -451,7 +470,7 @@ export function detect(sheets: Record<string, Sheet>, file: string): Parsed {
   for (const rows of list) L = L.concat(liveDraft(rows), liveHost(rows));
   if (L.length) return { kind: "live", label: "Laporan livestream", rows: mergeLive(L) };
   for (const rows of list) {
-    const x = tiktokStats(rows) ?? shopeeAds(rows) ?? tiktokAds(rows) ?? orders(rows);
+    const x = tiktokStats(rows, file) ?? shopeeAds(rows) ?? tiktokAds(rows, file) ?? orders(rows);
     if (x) return x;
   }
   throw new Error("Jenis file tidak dikenali. Pastikan file diunduh dari menu yang ada di panduan dan tidak diubah isinya.");
