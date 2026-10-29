@@ -328,3 +328,4 @@
 #aff-root .navplat{display:flex;gap:8px;align-items:center}
 #aff-root .tokosel{border:1px solid var(--line);border-radius:10px;padding:7px 10px;font:600 13px var(--f-body);background:var(--surface,#fff);color:var(--ink)}
 #aff-root .tokosel.act{border-color:#c86f45;color:#a4502a}
+#aff-root .brand h1{display:none}
