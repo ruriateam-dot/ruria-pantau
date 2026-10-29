@@ -1,4 +1,5 @@
 (async()=>{let D;try{D=await (await fetch(window.AFF_SRC("aff-jf.json"))).json()}catch(e){document.getElementById("aff-root").insertAdjacentHTML("afterbegin","<p>Data affiliate gagal dimuat. Muat ulang halaman.</p>");return}
+window.AFF_BRANDS = D.BRANDS || null; if (window.__fillToko) window.__fillToko();
 const TODAY = new Date(); TODAY.setHours(0,0,0,0);
 const RESP = ['Belum ada respon','Tertarik','Tanya detail/komisi','Minta sampel dulu','Minta fee/rate card','Tidak tertarik','Akun/nomor tidak aktif'];
 const STAT = ['Belum dihubungi','Sudah dihubungi','Setuju','Menolak','Tidak respon','Produk dikirim','Sudah posting'];
@@ -1180,6 +1181,10 @@ const syncDot = document.getElementById('syncdot'), syncTxt = document.getElemen
   let db = null;
   const today = new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
   $('tgl_request').value = today; $('tgl_acc').value = today;
+  $('tgl_request').closest('label').insertAdjacentHTML('beforebegin', '<label>Toko <span class="req">*</span><select id="toko" required></select></label>');
+  const escT = (x) => String(x).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const fillToko = () => { const BR = (window.AFF_BRANDS && window.AFF_BRANDS.length) ? window.AFF_BRANDS : [window.AFF_NAMA || 'Toko']; const cur = $('toko').value.split(' · ')[1]; $('toko').innerHTML = (BR.length > 1 ? '<option value="">Pilih toko…</option>' : '') + BR.map(b => `<option${b === cur ? ' selected' : ''}>${escT(platform + ' · ' + b)}</option>`).join(''); };
+  window.__fillToko = fillToko;
 
   const setPlatform = (p) => {
     platform = p;
@@ -1188,7 +1193,9 @@ const syncDot = document.getElementById('syncdot'), syncTxt = document.getElemen
     $('l-kode').hidden = p !== 'Shopee';
     if (p === 'Shopee') { $('ekspedisi').value = $('ekspedisi').value || 'SPX'; $('kategori').value = 'Shopee Video'; }
     else if ($('kategori').value === 'Shopee Video') $('kategori').value = '';
+    fillToko();
   };
+  fillToko();
   $('p-tiktok').addEventListener('click', () => setPlatform('TikTok'));
   $('p-shopee').addEventListener('click', () => setPlatform('Shopee'));
 
@@ -1206,7 +1213,7 @@ const syncDot = document.getElementById('syncdot'), syncTxt = document.getElemen
       chip.className = 'chip ' + (r.synced ? 'ok' : 'wait');
       chip.textContent = r.synced ? 'Sudah di sheet' : 'Menunggu sinkron';
       const meta = document.createElement('div'); meta.className = 'meta';
-      meta.textContent = [r.platform, 'ACC ' + fmtTgl(r.tgl_acc), r.sku, r.id_pesanan ? 'ID ' + r.id_pesanan : 'ID belum diisi', r.synced && r.sheet ? r.sheet + (r.sheet_row ? ' baris ' + r.sheet_row : '') : ''].filter(Boolean).join(' · ');
+      meta.textContent = [r.toko ? r.platform + ' · ' + r.toko : r.platform, 'ACC ' + fmtTgl(r.tgl_acc), r.sku, r.id_pesanan ? 'ID ' + r.id_pesanan : 'ID belum diisi', r.synced && r.sheet ? r.sheet + (r.sheet_row ? ' baris ' + r.sheet_row : '') : ''].filter(Boolean).join(' · ');
       row.append(b, chip, meta);
       const sel = document.createElement('select'); sel.className = 'stsel'; sel.setAttribute('aria-label', 'Status posting ' + r.username);
       ['', 'BELUM POSTING', 'STILL ON GOING', 'ON PENDING', 'SESUAI'].forEach((o) => sel.append(new Option(o || 'Status posting: belum dicek', o)));
@@ -1235,8 +1242,8 @@ const syncDot = document.getElementById('syncdot'), syncTxt = document.getElemen
     e.preventDefault();
     if (!db) { msg('Penyimpanan belum siap. Muat ulang halaman lalu coba lagi.', 'bad'); return; }
     const v = (id) => $(id).value.trim();
-    const missing = ['tgl_request', 'tgl_acc', 'username', 'sku', 'ongkir'].filter((id) => !v(id));
-    if (missing.length) { msg('Lengkapi tanggal, username, SKU dan ongkir dulu.', 'bad'); $(missing[0]).focus(); return; }
+    const missing = ['toko', 'tgl_request', 'tgl_acc', 'username', 'sku', 'ongkir'].filter((id) => !v(id));
+    if (missing.length) { msg('Lengkapi toko, tanggal, username, SKU dan ongkir dulu.', 'bad'); $(missing[0]).focus(); return; }
     const bk = bkey(platform, v('username'));
     let exception = false;
     const stx = window.__sampelStat ? window.__sampelStat(platform, v('username')) : null;
@@ -1251,7 +1258,7 @@ const syncDot = document.getElementById('syncdot'), syncTxt = document.getElemen
     }
     const ongkir = v('ongkir') === '' ? null : Number(v('ongkir'));
     const data = {
-      platform, tgl_request: v('tgl_request'), tgl_acc: v('tgl_acc'),
+      platform, toko: v('toko').split(' · ')[1] || null, tgl_request: v('tgl_request'), tgl_acc: v('tgl_acc'),
       username: v('username').replace(/^@+/, ''), produk: v('produk'), sku: v('sku').toUpperCase().replace(/\s+/g, ''),
       id_pesanan: v('id_pesanan') || null, kode_permintaan: platform === 'Shopee' ? (v('kode') || null) : null,
       ekspedisi: v('ekspedisi') || null, ongkir, kategori: v('kategori') || null, status_upload: v('status_upload') || null,
