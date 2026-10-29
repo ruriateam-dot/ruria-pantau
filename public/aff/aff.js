@@ -272,7 +272,7 @@ function renderList(which){
     <select id="${which}-pr" aria-label="Prioritas" class="${f.pr?'act':''}">${opt('','Semua prioritas',f.pr)}${[1,2,3,4,5].map(p=>opt(p,'P'+p+' · '+PRIO[p],f.pr)).join('')}</select>
     <select id="${which}-kontak" aria-label="Kontak" class="${f.kontak?'act':''}">${opt('','Kontak: semua',f.kontak)}${opt('belum','Belum ada no. HP',f.kontak)}${opt('ada','Sudah ada no. HP',f.kontak)}${opt('lain','Kontak lain (email/DM), tanpa no. HP',f.kontak)}</select>
     <select id="${which}-jual" aria-label="Penjualan bulan terakhir" class="${f.jual?'act':''}">${opt('','Jualan: aktif 3 bulan terakhir',f.jual)}${opt('okt','Ada jualan bulan terakhir',f.jual)}${opt('tidakokt','Belum jualan bulan terakhir',f.jual)}${isTT?'':opt('reak','Reaktivasi: aktif Mei–Jul, berhenti',f.jual)}${opt('nolj','Belum ada penjualan (penerima sampel)',f.jual)}${opt('semua','Semua termasuk reaktivasi',f.jual)}</select>
-    <select id="${which}-samp" aria-label="Sampel" class="${f.samp?'act':''}">${opt('','Sampel: semua',f.samp)}${opt('ya','Pernah dapat sampel',f.samp)}${opt('tidak','Belum pernah dapat sampel',f.samp)}${opt('laku','Sampel menghasilkan order',f.samp)}${opt('nol','Sampel tanpa order',f.samp)}${opt('boleh','Boleh sampel lagi (>10×)',f.samp)}${opt('belum10','Pernah sampel, belum >10×',f.samp)}${opt('blk','Diblokir dari sampel',f.samp)}</select>
+    <select id="${which}-samp" aria-label="Sampel" class="${f.samp?'act':''}">${opt('','Sampel: semua',f.samp)}${opt('ya','Pernah dapat sampel',f.samp)}${opt('tidak','Belum pernah dapat sampel',f.samp)}${opt('laku','Sampel menghasilkan order',f.samp)}${opt('nol','Sampel tanpa order',f.samp)}${opt('boleh','Boleh sampel lagi (>'+ROI_MIN+'×)',f.samp)}${opt('belum10','Pernah sampel, belum >'+ROI_MIN+'×',f.samp)}${opt('blk','Diblokir dari sampel',f.samp)}</select>
     <select id="${which}-tipe" aria-label="Tipe akun" class="${f.tipe?'act':''}">${opt('','Semua tipe',f.tipe)}${tipes.map(t=>opt(t,t,f.tipe)).join('')}</select>
     <select id="${which}-st" aria-label="Status" class="${f.st?'act':''}">${opt('','Semua status',f.st)}${STAT_ALL().map(s=>opt(s,s,f.st)).join('')}</select>
     <select id="${which}-resp" aria-label="Respon" class="${f.resp?'act':''}">${opt('','Semua respon',f.resp)}${opt('(kosong)','Respon belum diisi',f.resp)}${RESP.map(s=>opt(s,s,f.resp)).join('')}</select>
@@ -292,7 +292,7 @@ function renderList(which){
       <td>${prioChip(r.pr)}</td>
       <td class="u">${esc(r.u)}${!isTT && r.nama && r.nama !== r.u ? `<small>${esc(r.nama)}</small>` : ''}${fuOf(r)?.kontak ? `<small class="kt">☎ ${esc(fuOf(r).kontak)}</small>`:''}</td>
       <td class="t">${tipeR(r)}</td>
-      <td class="num">${rpShort(r.okt)}</td><td class="num">${rpShort(r.tot)}</td><td class="num">${blnCell(r)}</td><td class="num">${sampCell(r)}</td><td class="num">${hasilCell(r)}</td>
+      <td class="num">${rpShort(r.okt)}</td><td class="num">${rpShort(r.tot)}</td><td class="num">${blnCell(r)}</td><td class="num wrapn">${sampCell(r)}</td><td class="num wrapn">${hasilCell(r)}</td>
       <td class="aksi">${esc(r.aksi)}</td>
       <td>${statChip(dispStatus(r))}</td>
       <td>${esc(fuOf(r)?.respon || '') || '<span class="muted">–</span>'}</td>
@@ -399,6 +399,7 @@ function renderDb(){
   view.innerHTML = `${bannerHtml()}
   <div class="filters"><span class="flabel">Platform</span>${['','TikTok','Shopee'].map(p => `<button class="btn sm db-pl${(S.dbpl||'')===p?' pri':''}" data-pl="${p}">${p || 'Semua'}</button>`).join('')}
     <span class="legend">${plChip('TikTok')} ${nf.format(TT.length)} kreator · ${plChip('Shopee')} ${nf.format(SH.length)} affiliate</span></div>
+  <div class="pcs">${[1,2,3,4,5].map(p => { const rr = rows.filter(r => r.pr === p); return `<button class="pc p${p}${String(f.pr)===String(p)?' sel':''}" data-p="${p}"><span class="pt">P${p} · ${esc(PRIO[p])}</span><b>${nf.format(rr.length)}</b><span>akun · ${rpShort(rr.reduce((a,r)=>a+(r.gb||0),0))}</span></button>`; }).join('')}</div>
   <div class="toolbar">
     <div class="grow"><input type="search" id="${W}-q" placeholder="Cari username, nama atau kontak" value="${esc(f.q)}" aria-label="Cari"></div>
     <button class="btn" id="${W}-xl">Download Excel</button>
@@ -406,14 +407,16 @@ function renderDb(){
   <div class="filters">
     <span class="flabel">Filter</span>
     <select id="${W}-pr" aria-label="Prioritas" class="${f.pr?'act':''}">${opt('','Semua prioritas',f.pr)}${[1,2,3,4,5].map(p=>opt(p,'P'+p+' · '+PRIO[p],f.pr)).join('')}</select>
-    <select id="${W}-kontak" aria-label="Kontak" class="${f.kontak?'act':''}">${opt('','Kontak: semua',f.kontak)}${opt('belum','Belum ada no. HP',f.kontak)}${opt('ada','Sudah ada no. HP',f.kontak)}${opt('lain','Kontak lain (email/DM), tanpa no. HP',f.kontak)}</select>
     <select id="${W}-jual" aria-label="Penjualan" class="${f.jual?'act':''}">${opt('','Jualan: aktif 3 bulan terakhir',f.jual)}${opt('okt','Ada jualan bulan terakhir',f.jual)}${opt('tidakokt','Belum jualan bulan terakhir',f.jual)}${opt('reak','Reaktivasi Shopee: aktif Mei–Jul, berhenti',f.jual)}${opt('nolj','Belum ada penjualan (penerima sampel)',f.jual)}${opt('semua','Semua termasuk reaktivasi',f.jual)}</select>
-    <select id="${W}-samp" aria-label="Sampel" class="${f.samp?'act':''}">${opt('','Sampel: semua',f.samp)}${opt('ya','Pernah dapat sampel',f.samp)}${opt('tidak','Belum pernah dapat sampel',f.samp)}${opt('laku','Sampel menghasilkan order',f.samp)}${opt('nol','Sampel tanpa order',f.samp)}${opt('boleh','Boleh sampel lagi (>10×)',f.samp)}${opt('belum10','Pernah sampel, belum >10×',f.samp)}${opt('blk','Diblokir dari sampel',f.samp)}</select>
+    <details class="more"${['kontak','samp','akt','tipe','st','resp','due'].some(k => f[k]) ? ' open' : ''}><summary class="btn sm">⚙ Filter lainnya${(n => n ? ' (' + n + ' aktif)' : '')(['kontak','samp','akt','tipe','st','resp','due'].filter(k => f[k]).length)}</summary><div class="morebox">
+    <select id="${W}-kontak" aria-label="Kontak" class="${f.kontak?'act':''}">${opt('','Kontak: semua',f.kontak)}${opt('belum','Belum ada no. HP',f.kontak)}${opt('ada','Sudah ada no. HP',f.kontak)}${opt('lain','Kontak lain (email/DM), tanpa no. HP',f.kontak)}</select>
+    <select id="${W}-samp" aria-label="Sampel" class="${f.samp?'act':''}">${opt('','Sampel: semua',f.samp)}${opt('ya','Pernah dapat sampel',f.samp)}${opt('tidak','Belum pernah dapat sampel',f.samp)}${opt('laku','Sampel menghasilkan order',f.samp)}${opt('nol','Sampel tanpa order',f.samp)}${opt('boleh','Boleh sampel lagi (>'+ROI_MIN+'×)',f.samp)}${opt('belum10','Pernah sampel, belum >'+ROI_MIN+'×',f.samp)}${opt('blk','Diblokir dari sampel',f.samp)}</select>
     <select id="${W}-akt" aria-label="Aktivitas LIVE" class="${f.akt?'act':''}">${opt('','Aktivitas: semua',f.akt||'')}${opt('live','Semua yang LIVE',f.akt||'')}${opt('haluan','Peserta acara Haluan',f.akt||'')}${opt('andalan','Kreator andalan',f.akt||'')}${opt('rutin','LIVE rutin (≥5 sesi, TikTok)',f.akt||'')}${opt('pernah','Pernah LIVE (1–4 sesi, TikTok)',f.akt||'')}${opt('shlive','Shopee Live',f.akt||'')}${opt('video','Video saja (tanpa LIVE)',f.akt||'')}</select>
     <select id="${W}-tipe" aria-label="Tipe akun" class="${f.tipe?'act':''}">${opt('','Semua tipe',f.tipe)}${tipes.map(t=>opt(t,t,f.tipe)).join('')}</select>
     <select id="${W}-st" aria-label="Status" class="${f.st?'act':''}">${opt('','Semua status',f.st)}${STAT_ALL().map(s=>opt(s,s,f.st)).join('')}</select>
     <select id="${W}-resp" aria-label="Respon" class="${f.resp?'act':''}">${opt('','Semua respon',f.resp)}${opt('(kosong)','Respon belum diisi',f.resp)}${RESP.map(s=>opt(s,s,f.resp)).join('')}</select>
     <label class="chk"><input type="checkbox" id="${W}-due"${f.due?' checked':''}> Perlu follow-up</label>
+    </div></details>
     <label class="chk"><input type="checkbox" id="${W}-p5"${f.p5?' checked':''}> Tampilkan P5 (tidak perlu dihubungi)</label>
     ${nAct ? `<button class="btn sm" id="${W}-reset">Hapus ${nAct} filter</button>` : ''}
   </div>
@@ -424,24 +427,24 @@ function renderDb(){
     <span class="count">${nf.format(list.length)} dari ${nf.format(rows.length)} akun · GMV kotor ${rpShort(tot('gk'))} · bersih ${rpShort(tot('gb'))} · batal/retur ${rpShort(tot('gx'))}</span>
   </div>
   <div class="tscroll"><table>
-    <thead><tr>${th('pr','Prio')}<th>Platform</th>${th('u','Username')}<th>Tipe</th>${th('okt','GMV 30 hari terakhir','num')}${th('gk','GMV kotor','num')}${th('gb','GMV bersih','num')}${th('gx','GMV batal/retur','num')}${th('bln','Bulan aktif','num')}${th('sn','Sampel (all time)','num')}${th('sroi','Efektivitas sampel (all time)','num')}<th>Saran aksi</th>${th('st','Status')}${th('resp','Respon')}${th('last','Terakhir dihubungi')}</tr></thead>
+    <thead><tr>${th('pr','Prio')}${th('u','Username')}<th>Tipe</th>${th('okt','GMV 30 hari terakhir','num')}${th('gb','GMV bersih','num')}${th('bln','Bulan aktif','num')}${th('sn','Sampel (all time)','num')}${th('sroi','Efektivitas sampel (all time)','num')}<th>Saran aksi</th>${th('st','Status')}${th('resp','Respon')}${th('last','Terakhir dihubungi')}</tr></thead>
     <tbody>${slice.length ? slice.map((r,i) => `<tr class="click" tabindex="0" data-i="${f.page*PAGE+i}">
-      <td>${prioChip(r.pr)}</td><td>${plChip(r.k==='tt'?'TikTok':'Shopee')}</td>
-      <td class="u">${esc(r.u)}${liveChip(r)}${andalan(r) ? ' <span class="chip p1" title="Kreator andalan: jualan ≥5 dari 6 bulan, GMV bersih ≥Rp3 jt, masih jualan bulan terakhir. Pertahankan dengan komisi khusus/prioritas produk baru">Andalan</span>' : ''}${halOf(r) ? ` <span class="chip" title="Peserta acara Haluan ClickConnect Semarang (${esc(halOf(r))}), dapat 1 sampel">Haluan</span>` : ''}${r.k==='sh' && r.nama && r.nama !== r.u ? `<small>${esc(r.nama)}</small>` : ''}${fuOf(r)?.kontak ? `<br>${kontakHtml(fuOf(r).kontak, r)}`:''}</td>
+      <td>${prioChip(r.pr)}</td>
+      <td class="u"><span class="pdot ${r.k}" title="${r.k==='tt'?'TikTok':'Shopee'}"></span>${esc(r.u)}${liveChip(r)}${andalan(r) ? ' <span class="chip p1" title="Kreator andalan: jualan ≥5 dari 6 bulan, GMV bersih ≥Rp3 jt, masih jualan bulan terakhir. Pertahankan dengan komisi khusus/prioritas produk baru">Andalan</span>' : ''}${halOf(r) ? ` <span class="chip" title="Peserta acara Haluan ClickConnect Semarang (${esc(halOf(r))}), dapat 1 sampel">Haluan</span>` : ''}${r.k==='sh' && r.nama && r.nama !== r.u ? `<small>${esc(r.nama)}</small>` : ''}${fuOf(r)?.kontak ? `<br>${kontakHtml(fuOf(r).kontak, r)}`:''}</td>
       <td class="t">${tipeR(r)}</td>
-      <td class="num">${rpShort(r.okt)}</td><td class="num">${rpShort(r.gk)}${est(r)}</td><td class="num"><b>${rpShort(r.gb)}</b>${est(r)}</td>
-      <td class="num">${rpShort(r.gx)}${est(r)}${r.gk && r.gx ? `<br><small class="${r.gx/r.gk>=.4?'late':'muted'}">${pct(r.gx/r.gk)}</small>` : ''}</td>
-      <td class="num">${blnCell(r)}</td><td class="num">${sampCell(r)}</td><td class="num">${hasilCell(r)}</td>
+      <td class="num">${rpShort(r.okt)}</td><td class="num"><b>${rpShort(r.gb)}</b>${est(r)}<small class="${r.gk && r.gx/r.gk>=.4?'late':'muted'}">kotor ${rpShort(r.gk)} · batal ${r.gk ? pct(r.gx/r.gk) : '0%'}</small></td>
+      <td class="num">${blnCell(r)}</td><td class="num wrapn">${sampCell(r)}</td><td class="num wrapn">${hasilCell(r)}</td>
       <td class="aksi">${esc(r.aksi)}</td>
       <td>${statChip(dispStatus(r))}</td>
       <td>${esc(fuOf(r)?.respon || '') || '<span class="muted">–</span>'}</td>
-      <td>${lastCell(r)}</td></tr>`).join('') : `<tr><td colspan="15" class="muted">Tidak ada yang cocok dengan filter ini.</td></tr>`}</tbody>
+      <td>${lastCell(r)}</td></tr>`).join('') : `<tr><td colspan="12" class="muted">Tidak ada yang cocok dengan filter ini.</td></tr>`}</tbody>
   </table></div>
   <div class="pager"><span>Halaman ${f.page+1} dari ${pages}</span><span class="btns">
     <button class="btn sm" id="${W}-prev"${f.page===0?' disabled':''}>Sebelumnya</button>
     <button class="btn sm" id="${W}-next"${f.page>=pages-1?' disabled':''}>Berikutnya</button></span></div>
   <p class="note">GMV kotor, bersih dan batal/retur: periode Mei–21 Okt. <b>TikTok</b>: GMV kotor dari laporan performa kreator; bersih dan batal/retur dihitung dari porsi order gagal tiap kreator di export pesanan (Mei–Sep). <b>Shopee</b>: GMV bersih = omzet tanpa pesanan batal (validasi komisi Mei–Jul, AMS Agu–Okt); batal hanya bisa dihitung untuk Agu–Okt. <sup>*</sup> = perkiraan: TikTok memakai rata-rata 36% order gagal karena kreator tidak punya data order sendiri; Shopee berarti batal Mei–Jul tidak tercatat. Efektivitas sampel dihitung dari GMV bersih. <span class="chip ag">Agency/Platform</span> = kumpulan banyak kreator, data tidak bisa dirinci.</p>`;
   view.querySelectorAll('button.db-pl').forEach(b => b.onclick = () => { S.dbpl = b.dataset.pl; saveFilters(); render(); });
+  view.querySelectorAll('.pcs button.pc').forEach(b => b.onclick = () => { f.pr = String(f.pr) === b.dataset.p ? '' : b.dataset.p; f.page = 0; saveFilters(); render(); });
   const bind = (id, key, ev='change', get = el => el.value) => { const el = document.getElementById(W+'-'+id); el.addEventListener(ev, () => { f[key] = get(el); f.page = 0; saveFilters(); rerenderSoon(); }); };
   bind('q','q','input'); bind('pr','pr'); bind('tipe','tipe'); bind('st','st'); bind('resp','resp'); bind('kontak','kontak'); bind('samp','samp'); bind('jual','jual'); bind('due','due','change', el => el.checked); bind('p5','p5','change', el => el.checked); bind('akt','akt');
   const setSort = key => { if (f.sort === key) f.dir = (dir === 'asc' ? 'desc' : 'asc'); else { f.sort = key; f.dir = ''; } f.page = 0; saveFilters(); render(); };
@@ -637,10 +640,10 @@ const sampStat = r => {
   return st || {n: r.samp ? 1 : 0, last: '', has: false, gmv: 0, biaya: 0, ord: 0, bef: 0, blk: false};
 };
 const sampRoi = st => st.has && st.biaya ? (st.gmv + st.bef) / st.biaya : null; // efektivitas = GMV sebelum + sesudah sampel pertama ÷ total biaya sampel
-const ROI_MIN = 10; // syarat finance: (GMV sebelum + sesudah sampel) harus > 10× total biaya sampel untuk dapat sampel lagi
+const ROI_MIN = (typeof window !== 'undefined' && window.AFF_ROI_MIN) || 10; // syarat finance: (GMV sebelum + sesudah sampel) harus > 10× total biaya sampel untuk dapat sampel lagi
 const sampOk = st => !st.blk && (!st.n || (sampRoi(st) ?? 0) > ROI_MIN);
 const sampCell = r => { const st = sampStat(r); if (!st.n) return '<span class="muted">Belum</span>';
-  return `<b>${st.n}×</b>${st.last ? `<br><small class="muted">terakhir ${esc(fdate(st.last))}</small>` : ''}${st.blk ? '<br><span class="chip s-bad">Diblokir</span>' : sampOk(st) ? '<br><span class="chip s-ok">Boleh sampel lagi</span>' : '<br><span class="chip s-warn">Belum &gt;10×</span>'}`; };
+  return `<b>${st.n}×</b>${st.last ? `<br><small class="muted">terakhir ${esc(fdate(st.last))}</small>` : ''}${st.blk ? '<br><span class="chip s-bad">Diblokir</span>' : sampOk(st) ? '<br><span class="chip s-ok">Boleh sampel lagi</span>' : `<br><span class="chip s-warn">Belum &gt;${ROI_MIN}×</span>`}`; };
 const hasilCell = r => { const st = sampStat(r); if (!st.n) return '<span class="muted">–</span>';
   if (!st.has) return '<span class="muted">belum ada data penjualan</span><br><small class="muted">sampel baru dari form</small>';
   const roi = sampRoi(st);
@@ -1074,9 +1077,9 @@ async function exportXlsx(){
   try { XLSX = await loadXlsx(); } catch(e) { toast('Gagal memuat pembuat Excel. Coba lagi.'); return; }
   const wb = XLSX.utils.book_new();
   const add = (name, aoa, widths) => { const ws = XLSX.utils.aoa_to_sheet(aoa); ws['!cols'] = widths.map(w => ({wch:w})); XLSX.utils.book_append_sheet(wb, ws, name); };
-  add('TikTok Kreator', [['Username','Link profil','Tipe',...TT_M.map(m=>'GMV '+m),'GMV total','Bulan aktif','Video','LIVE','Porsi order gagal','GMV kotor','GMV bersih','GMV batal/retur','GMV bersih/batal perkiraan','Jumlah sampel (all time)','Sampel terakhir','GMV sebelum sampel pertama','GMV sejak sampel pertama','Order sejak sampel pertama','Total biaya sampel','GMV per biaya','Diblokir dari sampel','Boleh sampel lagi (>10×)','Catatan data','Prioritas','Saran aksi',...FUH],
+  add('TikTok Kreator', [['Username','Link profil','Tipe',...TT_M.map(m=>'GMV '+m),'GMV total','Bulan aktif','Video','LIVE','Porsi order gagal','GMV kotor','GMV bersih','GMV batal/retur','GMV bersih/batal perkiraan','Jumlah sampel (all time)','Sampel terakhir','GMV sebelum sampel pertama','GMV sejak sampel pertama','Order sejak sampel pertama','Total biaya sampel','GMV per biaya','Diblokir dari sampel','Boleh sampel lagi (>'+ROI_MIN+'×)','Catatan data','Prioritas','Saran aksi',...FUH],
     ...TT.map(r => [r.u,'https://www.tiktok.com/@'+r.u,r.tipe,...r.g,r.tot,r.bln,r.vid,r.live,r.gagal??'',...sampXl(r),r.cat,r.pr,r.aksi,...fuCols(r)])], [22,30,18,12,12,12,12,12,12,13,8,8,8,10,8,12,8,8,12,12,8,10,16,8,55,20,12,12,10,20,16,30]);
-  add('Shopee Affiliate', [['Username','Nama affiliate','Tipe','Channel utama',...SH_M.map(m=>'Omzet '+m),'Omzet total','Bulan aktif','Pembeli baru','Porsi batal','GMV kotor','GMV bersih','GMV batal/retur','GMV bersih/batal perkiraan','Jumlah sampel (all time)','Sampel terakhir','GMV sebelum sampel pertama','GMV sejak sampel pertama','Order sejak sampel pertama','Total biaya sampel','GMV per biaya','Diblokir dari sampel','Boleh sampel lagi (>10×)','Catatan data','Prioritas','Saran aksi',...FUH],
+  add('Shopee Affiliate', [['Username','Nama affiliate','Tipe','Channel utama',...SH_M.map(m=>'Omzet '+m),'Omzet total','Bulan aktif','Pembeli baru','Porsi batal','GMV kotor','GMV bersih','GMV batal/retur','GMV bersih/batal perkiraan','Jumlah sampel (all time)','Sampel terakhir','GMV sebelum sampel pertama','GMV sejak sampel pertama','Order sejak sampel pertama','Total biaya sampel','GMV per biaya','Diblokir dari sampel','Boleh sampel lagi (>'+ROI_MIN+'×)','Catatan data','Prioritas','Saran aksi',...FUH],
     ...SH.map(r => [r.u,r.nama,r.tipe,r.ch,...r.g,r.tot,r.bln,r.pb,r.batal??'',...sampXl(r),r.cat,r.pr,r.aksi,...fuCols(r)])], [22,22,18,18,12,12,12,13,8,10,10,8,12,8,8,12,12,8,10,16,8,55,20,12,12,10,20,16,30]);
   add('Agency & MCN', [['Agency / MCN','Anggota yang jualan','Omzet anggota Agu–21 Okt','Pesanan berhasil (Agu–12 Okt)','Porsi batal','Anggota terlaris','Daftar anggota','Prioritas','Saran aksi',...FUH],
     ...AGA.map(r => [r.nama,r.mem.length,r.om,r.ok,r.batal,r.top,r.mem.map(m=>m.u).join(', '),r.pr,r.aksi,...fuCols(r)])], [24,10,14,12,10,26,50,8,50,20,12,12,10,20,16,30]);

@@ -21,7 +21,7 @@ export default function IklanTable({ rows }: { rows: CRow[] }) {
       <span className="muted small">{F.length} kampanye</span>
     </div>
     <div className="tbl"><table><thead><tr><th>Kampanye</th><th>Tipe</th><th className="n">Dilihat</th><th className="n">Klik</th><th className="n">CTR</th><th className="n">Biaya</th><th className="n">GMV</th><th className="n">Pesanan</th><th className="n">CPA</th><th className="n">ROAS</th><th className="n">Δ ROAS</th><th>Diagnosis</th></tr></thead>
-      <tbody>{F.slice(0, n).map((c) => <tr key={c.k}><td className="wrapcell" title={c.nama}>{shortName(c.nama)}<div className="muted small">{c.toko}</div></td><td className="small">{c.tipe}</td>
+      <tbody>{F.slice(0, n).map((c) => <tr key={c.k} className={"row-" + c.st}><td className="wrapcell" title={c.nama}>{shortName(c.nama)}<div className="muted small">{c.toko}</div></td><td className="small">{c.tipe}</td>
         <td className="n">{c.dl != null ? Math.round(c.dl).toLocaleString("id") : "–"}</td><td className="n">{c.kl != null ? Math.round(c.kl).toLocaleString("id") : "–"}</td><td className="n">{c.dl ? ((c.kl ?? 0) / c.dl * 100).toFixed(2) + "%" : "–"}</td>
         <td className="n">{fmt(c.s)}</td><td className="n">{fmt(c.g)}</td><td className="n">{c.o ? c.o.toLocaleString("id") : "–"}</td><td className="n">{c.o ? fmt(c.s / c.o) : "–"}</td><td className="n">{c.r.toFixed(2).replace(".", ",")}</td>
         <td className={"n " + (c.dr == null ? "" : c.dr >= 0 ? "up" : "dn")}>{c.dr == null ? "–" : `${c.dr >= 0 ? "+" : ""}${c.dr.toFixed(2).replace(".", ",")}`}</td>

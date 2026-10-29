@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import markup from "@/data/aff/markup.json";
 
-type Brand = { nama: string; catatan?: string; ganti?: [string, string][]; hpp?: Record<string, number>; hpp_default?: number };
+type Brand = { nama: string; catatan?: string; ganti?: [string, string][]; hpp?: Record<string, number>; hpp_default?: number; roi_min?: number };
 type Win = { __affInit?: (c: string, u: string, t?: string) => void; __affGen: number; AFF_SRC: (f: string) => string };
 const w = () => window as unknown as Win;
 
@@ -23,9 +23,9 @@ export default function Affiliate({ client, user, nama, readOnly = false, token 
       if (off) return;
       el.innerHTML = fix(markup as string);
       setNote(b.catatan ?? "");
-      const ww = window as unknown as { AFF_HPP?: Record<string, number>; AFF_HPP_DEFAULT?: number };
-      ww.AFF_HPP = b.hpp ? Object.fromEntries(Object.entries(b.hpp).map(([k, v]) => [k.toUpperCase().trim(), v])) : undefined; ww.AFF_HPP_DEFAULT = b.hpp_default;
-      const js = fix(await fetch("/aff/aff.js?v=11").then((r) => r.text()));
+      const ww = window as unknown as { AFF_HPP?: Record<string, number>; AFF_HPP_DEFAULT?: number; AFF_ROI_MIN?: number };
+      ww.AFF_HPP = b.hpp ? Object.fromEntries(Object.entries(b.hpp).map(([k, v]) => [k.toUpperCase().trim(), v])) : undefined; ww.AFF_HPP_DEFAULT = b.hpp_default; ww.AFF_ROI_MIN = b.roi_min ?? (client === "jf" ? 10 : 5);
+      const js = fix(await fetch("/aff/aff.js?v=12").then((r) => r.text()));
       const u = URL.createObjectURL(new Blob([js], { type: "text/javascript" })); urls.push(u);
       if (!off) await add(u);
       if (readOnly) {
@@ -37,7 +37,7 @@ export default function Affiliate({ client, user, nama, readOnly = false, token 
     return () => { off = true; (el as unknown as { _mo?: MutationObserver })._mo?.disconnect(); w().__affGen++; document.querySelectorAll("script[data-aff]").forEach((s) => { if (s.getAttribute("src")?.startsWith("blob:")) s.remove(); }); urls.forEach((u) => { if (u.startsWith("blob:")) URL.revokeObjectURL(u); }); };
   }, [client, user, nama, readOnly, token]);
   return <>
-    <link rel="stylesheet" href="/aff/aff.css?v=4" />
+    <link rel="stylesheet" href="/aff/aff.css?v=5" />
     {note && <p className="note">{note}</p>}
     {readOnly && <p className="note">Tampilan baca saja: data affiliate dan database kreator bisa dilihat, perubahan hanya dilakukan oleh tim Ruria.</p>}
     <div id="aff-root" ref={ref} className={readOnly ? "ro" : undefined} />

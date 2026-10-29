@@ -241,3 +241,25 @@
 #aff-root .u small{white-space:normal;overflow:visible}
 #aff-root td.t{white-space:normal;min-width:100px;max-width:130px}
 #aff-root .aksi{min-width:180px;max-width:230px}
+/* Ringkasan P1–P5 (klik untuk filter) */
+#aff-root .pcs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:6px 0 12px}
+#aff-root .pcs .pc{all:unset;cursor:pointer;border-radius:12px;padding:10px 14px;display:grid;gap:2px;border:2px solid transparent;box-sizing:border-box}
+#aff-root .pcs .pc b{font-size:22px}#aff-root .pcs .pc span{font-size:12px}#aff-root .pcs .pt{font-weight:700}
+#aff-root .pcs .pc.sel{border-color:currentColor}#aff-root .pcs .pc:focus-visible{outline:2px solid var(--accent)}
+@media (max-width:760px){#aff-root .pcs{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* titik platform di samping username */
+#aff-root .pdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:1px}
+#aff-root .pdot.tt{background:#111}#aff-root .pdot.sh{background:#ee5a2c}
+#aff-root td.num small{display:block;font-weight:400}
+/* sel sampel boleh turun baris */
+#aff-root td.num.wrapn{white-space:normal;min-width:130px;max-width:190px}
+/* filter lainnya */
+#aff-root details.more{display:inline-block;position:relative}
+#aff-root details.more summary{list-style:none;display:inline-block}
+#aff-root details.more summary::-webkit-details-marker{display:none}
+#aff-root details.more[open] .morebox{position:absolute;z-index:20;top:110%;left:0;background:var(--surface,#fff);border:1px solid var(--line);border-radius:10px;padding:10px;display:grid;gap:8px;min-width:280px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+#aff-root .pcs .pc.p1{background:var(--p1);color:var(--p1-ink)}
+#aff-root .pcs .pc.p2{background:var(--p2);color:var(--p2-ink)}
+#aff-root .pcs .pc.p3{background:var(--p3);color:var(--p3-ink)}
+#aff-root .pcs .pc.p4{background:var(--p4);color:var(--p4-ink)}
+#aff-root .pcs .pc.p5{background:var(--sunk);color:var(--muted)}

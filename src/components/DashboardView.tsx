@@ -130,22 +130,32 @@ async function SumTab(R: Range, clients: { id: string; nama: string; modul: stri
     const g = (a: string, b: string) => D.sales.filter((s) => s.tanggal >= a && s.tanggal <= b).reduce((x, s) => x + s.gmv, 0);
     const ord = D.sales.filter((s) => s.tanggal >= R.from && s.tanggal <= R.to).reduce((x, s) => x + s.pesanan, 0);
     const ad = D.ads.filter((a) => a.dari <= R.to && a.sampai >= R.from), biaya = ad.reduce((x, a) => x + a.biaya, 0), ag = ad.reduce((x, a) => x + a.gmv, 0);
-    return { c, n: g(R.from, R.to), o: g(R.pf, R.pt), ord, roas: biaya ? ag / biaya : null };
+    const adP = D.ads.filter((a) => a.dari <= R.pt && a.sampai >= R.pf), bP = adP.reduce((x, a) => x + a.biaya, 0), gP = adP.reduce((x, a) => x + a.gmv, 0);
+    return { c, n: g(R.from, R.to), o: g(R.pf, R.pt), ord, roas: biaya ? ag / biaya : null, roasP: bP ? gP / bP : null };
   }));
   rows.sort((a, b) => b.n - a.n);
   const tot = rows.reduce((a, r) => a + r.n, 0) || 1;
   const up = [...rows].sort((a, b) => pct(b.n, b.o) - pct(a.n, a.o))[0], dn = [...rows].sort((a, b) => pct(a.n, a.o) - pct(b.n, b.o))[0];
+  // Indikator status kartu klien: data terlambat, saldo iklan menipis, ROAS turun
+  const SL = staff ? await q<{ client_id: string; brand: string; platform: string; saldo: number }>(
+    `select s.client_id, s.brand, s.platform, b.saldo from ad_balance b join stores s on s.id = b.store_id where s.id in (?) and b.id = (select b2.id from ad_balance b2 where b2.store_id = b.store_id order by b2.waktu desc, b2.id desc limit 1)`, [SALDO_STORES]) : [];
+  const statusOf = (r: (typeof rows)[number]) => { const f = F.find((x) => x.client_id === r.c.id); const out: [number, string][] = [];
+    for (const [k, d] of [["penjualan", f?.penjualan], ["iklan", r.c.modul.includes("iklan") ? f?.iklan : undefined]] as const) { if (!d) continue; const lag = dayDiff(d, yday); if (lag > 3) out.push([2, `Data ${k} tertinggal ${lag} hari`]); else if (lag > 0) out.push([1, `Data ${k} kurang ${lag} hari`]); }
+    for (const x of SL.filter((x) => x.client_id === r.c.id && +x.saldo < 500_000)) out.push([1, `Saldo ${x.brand} ${x.platform} < Rp500 rb`]);
+    if (r.roas != null && r.roasP && r.roas < r.roasP * 0.85) out.push([1, `ROAS turun ${((1 - r.roas / r.roasP) * 100).toFixed(0)}%`]);
+    out.sort((a, b) => b[0] - a[0]); return out; };
   return (<>
     {rows.length > 0 && <Insight src="Data asli" sum={[`Total GMV klien ${fmt(tot)} (${R.label.toLowerCase()}).`, `Klien terbesar: ${rows[0].c.nama} (${(rows[0].n / tot * 100).toFixed(0)}%).`]}
       ana={[`Pertumbuhan terbaik: ${up.c.nama} (${pct(up.n, up.o).toFixed(1)}%).`, `Paling melemah: ${dn.c.nama} (${pct(dn.n, dn.o).toFixed(1)}%).`]}
       next={[`Review ${dn.c.nama} lebih dulu.`, "Pastikan data semua klien sudah masuk sampai kemarin (lihat Status data)."]} />}
     <div className="ccards">{rows.map((r) => { const v = pct(r.n, r.o); const f = F.find((x) => x.client_id === r.c.id);
-      return <a key={r.c.id} className="ccard" href={href(r.c.id)}>
-        <div className="top"><h3>{r.c.nama}</h3>{badge(f?.penjualan)}</div>
+      const so = statusOf(r), lv = so[0]?.[0] ?? 0;
+      return <a key={r.c.id} className={"ccard st" + lv} href={href(r.c.id)}>
+        <div className="top"><h3>{r.c.nama}</h3><span className={"pill " + (lv === 2 ? "bad" : lv === 1 ? "warn" : "good")} title={so.map((x) => x[1]).join(" · ")}>{so[0]?.[1] ?? "Aman"}{so.length > 1 ? ` +${so.length - 1}` : ""}</span></div>
         <div className="cm"><div><span>GMV</span><b>{fmt(r.n)}</b></div><div><span>Perubahan</span><b className={v >= 0 ? "up" : "dn"}>{isFinite(v) ? `${v >= 0 ? "+" : ""}${v.toFixed(1)}%` : "–"}</b></div><div><span>ROAS iklan</span><b>{r.roas != null ? r.roas.toFixed(1) : "–"}</b></div></div>
         <div className="muted small">{r.ord.toLocaleString("id")} pesanan · data terakhir {f?.penjualan ? `${tgl(f.penjualan)} ${f.penjualan.slice(0, 4)}` : "–"}</div>
       </a>; })}</div>
-    {staff && await (async () => {
+    <div className="grid2c">{staff && await (async () => {
       const S2 = await q<{ client_id: string; nama: string; brand: string; platform: string; saldo: number; oleh: string | null; w: string }>(
         `select s.client_id, c.nama, s.brand, s.platform, b.saldo, b.nama oleh, date_format(b.waktu, '%Y-%m-%d %H:%i') w from ad_balance b join stores s on s.id = b.store_id join clients c on c.id = s.client_id
          where s.client_id in (?) and s.id in (?) and b.id = (select b2.id from ad_balance b2 where b2.store_id = b.store_id order by b2.waktu desc, b2.id desc limit 1) order by b.saldo`, [clients.map((c) => c.id), SALDO_STORES]);
@@ -157,7 +167,7 @@ async function SumTab(R: Range, clients: { id: string; nama: string; modul: stri
     })()}
     <div className="card"><h2>Status data terakhir</h2><p className="muted small">Aman kalau data sudah masuk sampai kemarin ({tgl(yday)} {yday.slice(0, 4)}).</p>
       <div className="tbl"><table><thead><tr><th>Klien</th><th>Penjualan</th><th></th><th>Iklan</th><th></th><th>Livestream</th><th></th></tr></thead>
-        <tbody>{clients.map((c) => { const f = F.find((x) => x.client_id === c.id); return <tr key={c.id}><td>{c.nama}</td>{cell(c.modul.includes("toko"), f?.penjualan)}{cell(c.modul.includes("iklan"), f?.iklan)}{cell(c.modul.includes("live"), f?.live)}</tr>; })}</tbody></table></div></div>
+        <tbody>{clients.map((c) => { const f = F.find((x) => x.client_id === c.id); return <tr key={c.id}><td>{c.nama}</td>{cell(c.modul.includes("toko"), f?.penjualan)}{cell(c.modul.includes("iklan"), f?.iklan)}{cell(c.modul.includes("live"), f?.live)}</tr>; })}</tbody></table></div></div></div>
     <div className="card"><h2>GMV per klien · {R.label}</h2><div className="tbl"><table><thead><tr><th>Klien</th><th className="n">GMV</th><th className="n">{R.sub}</th></tr></thead>
       <tbody>{rows.map((r) => { const v = pct(r.n, r.o); return <tr key={r.c.id}><td>{r.c.nama}</td><td className="n">{fmt(r.n)}</td><td className={"n " + (v >= 0 ? "up" : "dn")}>{v >= 0 ? "+" : ""}{v.toFixed(1)}%</td></tr>; })}</tbody></table></div></div>
   </>);
@@ -196,7 +206,7 @@ function TokoTab({ R, stores, sales, last, prod, live, ads, plat, scN, scP }: { 
     ...(staleN.length ? [`Upload data terbaru: ${staleN.map((r) => `${r.s.brand} · ${r.s.platform}`).join(", ")}.`] : []), ...prod.next.slice(0, 2)];
   const tot = n.g || 1;
   return (<>
-    <Insight src="Data asli" sum={sum} ana={ana.length ? ana : ["Belum ada pembanding untuk periode ini."]} next={next.length ? next : ["Pastikan stok produk andalan aman untuk 14 hari ke depan."]} />
+    <div className="ichart"><Insight src="Data asli" sum={sum} ana={ana.length ? ana : ["Belum ada pembanding untuk periode ini."]} next={next.length ? next : ["Pastikan stok produk andalan aman untuk 14 hari ke depan."]} />
     {(() => { const ser = (f: (x: ReturnType<typeof agg>) => number, bs: { f: string; t: string }[]) => bs.map((k) => f(agg(k.f, k.t)));
       const PBs = PB ?? undefined, cv = (x: ReturnType<typeof agg>) => x.vok && x.v ? (x.o / x.v) * 100 : NaN;
       const M: Metric[] = [
@@ -207,7 +217,7 @@ function TokoTab({ R, stores, sales, last, prod, live, ads, plat, scN, scP }: { 
         { g: "Penjualan", k: "aov", l: "Penjualan per pesanan", f: "rp", v: aov, d: cmp ? dA : null, s: ser((x) => (x.o ? x.g / x.o : 0), B), ps: PBs && ser((x) => (x.o ? x.g / x.o : 0), PBs) },
         { g: "Trafik", k: "vp", l: "Penjualan per pengunjung", f: "rp", v: n.vok && n.v ? n.g / n.v : NaN, d: cmp && nf.vok && nf.v && o.vok && o.v ? pct(nf.g / nf.v, o.g / o.v) : null, s: ser((x) => (x.v ? x.g / x.v : 0), B), ps: PBs && ser((x) => (x.v ? x.g / x.v : 0), PBs) },
       ];
-      return <MetricBoard metrics={M} labels={B.map((b) => b.l)} sub={R.sub} init={["g", "o"]} />; })()}
+      return <MetricBoard metrics={M} labels={B.map((b) => b.l)} sub={R.sub} init={["g", "o"]} />; })()}</div>
     {scN.length > 0 && (() => { // Metrik Seller Centre (ekspor statistik toko Shopee, bulanan)
       const S2 = (L: SP[], k: string) => L.reduce((t, x) => t + (typeof x.d[k] === "number" ? (x.d[k] as number) * x.w : 0), 0);
       const has = (L: SP[], k: string) => L.some((x) => typeof x.d[k] === "number");
@@ -319,7 +329,7 @@ function IklanTab({ R, stores, ads, sales, meta = [] }: { R: Range; stores: Stor
   const L = (t: string, xs: CRow[], f: (r: CRow) => string, cls: string, hint: string) => <div className="act"><h3><span className={"pill " + cls}>{xs.length}</span> {t}</h3><p className="muted small" style={{ margin: "-4px 0 8px" }}>{hint}</p>{xs.length ? <ul>{xs.slice(0, 5).map((r) => <li key={r.k} title={r.nama}><b>{shortName(r.nama)}</b> <span className="muted small">{r.toko} · {f(r)}</span></li>)}{xs.length > 5 && <li className="muted small">+{xs.length - 5} lainnya (filter status di tabel)</li>}</ul> : <p className="muted small">Tidak ada.</p>}</div>;
   return (<>
     <p className="note">Data iklan: {ket}.</p>
-    <Insight src="Data asli" sum={[`Biaya iklan ${fmt2(S)}${om ? ` (${(S / om * 100).toFixed(2).replace(".", ",")}% dari omzet toko)` : ""}, ROAS ${roas.toFixed(2).replace(".", ",")}${cmp ? ` (${roas >= roasP ? "naik" : "turun"} dari ${roasP.toFixed(2).replace(".", ",")} ${R.sub})` : ""}.`, ...(per.length > 1 ? [`Biaya terbesar: ${per[0].st.brand} · ${per[0].st.platform} (${fmt2(per[0].s)}, ROAS ${per[0].r.toFixed(2).replace(".", ",")}).`] : [])]}
+    <div className="ichart"><Insight src="Data asli" sum={[`Biaya iklan ${fmt2(S)}${om ? ` (${(S / om * 100).toFixed(2).replace(".", ",")}% dari omzet toko)` : ""}, ROAS ${roas.toFixed(2).replace(".", ",")}${cmp ? ` (${roas >= roasP ? "naik" : "turun"} dari ${roasP.toFixed(2).replace(".", ",")} ${R.sub})` : ""}.`, ...(per.length > 1 ? [`Biaya terbesar: ${per[0].st.brand} · ${per[0].st.platform} (${fmt2(per[0].s)}, ROAS ${per[0].r.toFixed(2).replace(".", ",")}).`] : [])]}
       ana={[...(boros.length ? [`${boros.length} kampanye boros menyerap ${fmt2(sumB)} (${(sumB / S * 100).toFixed(0)}% biaya) dengan ROAS di bawah ${(roas * 0.6).toFixed(2).replace(".", ",")}.`] : []), ...(nol.length ? [`${nol.length} kampanye keluar biaya tanpa pesanan (${fmt2(nol.reduce((a, r) => a + r.s, 0))}).`] : []), ...(scale.length ? [`${scale.length} kampanye efisien (ROAS ≥ ${(roas * 1.3).toFixed(2).replace(".", ",")}) masih berbiaya kecil.`] : [])]}
       next={[...(boros.length ? [`Pangkas atau turunkan bid ${boros.length} kampanye boros, hemat sampai ${fmt2(sumB * 0.5)}.`] : []), ...(nol.length ? [`Matikan atau ganti produk di ${nol.length} kampanye tanpa penjualan.`] : []), ...(scale.length ? [`Naikkan budget ${Math.min(5, scale.length)} kampanye "bisa di-scale" 20–30%, evaluasi 3 hari.`] : [])]} />
     {(() => { const B0 = buckets(R.from, R.to), PB0 = dayDiff(R.from, R.to) >= 13 ? buckets(R.pf, R.pt) : null;
@@ -341,7 +351,7 @@ function IklanTab({ R, stores, ads, sales, meta = [] }: { R: Range; stores: Stor
             { g: "Jangkauan (Shopee)", k: "kr", l: "Tambah ke keranjang", f: "n", v: kr, p: cmp && krP ? krP : null, s: c.map(() => NaN), note: nt }] as Metric[]; })()),
         { g: "Efisiensi", k: "bo", l: "Biaya iklan / omzet", f: "pct", v: om ? (S / om) * 100 : NaN, p: cmp && omP ? (Sp / omP) * 100 : null, inv: true, s: c.map((x) => (x.om ? (x.s / x.om) * 100 : 0)), ps: pv?.map((x) => (x.om ? (x.s / x.om) * 100 : 0)) },
       ];
-      return <MetricBoard metrics={M} labels={B0.map((b) => b.l)} sub={R.sub} init={["s", "r"]} dec={2} />; })()}
+      return <MetricBoard metrics={M} labels={B0.map((b) => b.l)} sub={R.sub} init={["s", "r"]} dec={2} />; })()}</div>
     {G > om && om > 0 && <p className="muted small" style={{ marginTop: -6 }}>GMV atribusi iklan bisa lebih besar dari omzet toko: platform menghitung pesanan dalam beberapa hari setelah klik (satu pesanan bisa tercatat di lebih dari satu kampanye) dan belum mengurangi pembatalan sebelum pesanan dikirim.</p>}
     {monthly && <p className="muted small">Laporan bulanan Shopee dibagi rata per hari, jadi angka hariannya perkiraan.</p>}
     {per.length > 0 && <div className="card"><h2>Per toko</h2><div className="tbl"><table><thead><tr><th>Toko</th><th className="n">Biaya</th><th className="n">GMV iklan</th><th className="n">Pesanan</th><th className="n">ROAS</th><th className="n">Δ ROAS</th><th className="n">Biaya / omzet</th></tr></thead>
@@ -411,7 +421,7 @@ function LiveTab({ R, live, brand, plat, jadwal }: { R: Range; live: Live[]; bra
   const weak = cur.filter((x) => x.durasi_jam >= 1).sort((a, b) => gf(a) / a.durasi_jam - gf(b) / b.durasi_jam).slice(0, 10);
   return (<>
     <p className="note">Periode: {R.label}. Durasi dihitung sekali per sesi walau live di Shopee dan TikTok bersamaan.</p>
-    <Insight src="Data asli" sum={[`GMV live ${fmt(a.g)} dari ${a.n} sesi (${jm(a.j)})${R.key === "all" ? "" : `, ${pct(a.g, b.g) >= 0 ? "naik" : "turun"} ${Math.abs(pct(a.g, b.g)).toFixed(1)}% ${R.sub}`}.`, `Rata-rata ${fmt(gj)} per jam.`, `Shopee ${fmt(a.gs)} · TikTok ${fmt(a.gt)}.`]}
+    <div className="ichart"><Insight src="Data asli" sum={[`GMV live ${fmt(a.g)} dari ${a.n} sesi (${jm(a.j)})${R.key === "all" ? "" : `, ${pct(a.g, b.g) >= 0 ? "naik" : "turun"} ${Math.abs(pct(a.g, b.g)).toFixed(1)}% ${R.sub}`}.`, `Rata-rata ${fmt(gj)} per jam.`, `Shopee ${fmt(a.gs)} · TikTok ${fmt(a.gt)}.`]}
       ana={[...(best && worst && best !== worst ? [`Slot ${SLOTS[best.i][2]} paling produktif (${fmt(best.g)}/jam), slot ${SLOTS[worst.i][2]} paling lemah (${fmt(worst.g)}/jam).`] : []), ...(effi.length > 1 ? [`GMV/jam tertinggi: ${effi[0].k} (${fmt(effi[0].s.g / effi[0].s.j)}); terendah: ${effi[effi.length - 1].k}.`] : []), ...(zr > 15 ? [`${zr.toFixed(0)}% sesi ≥1 jam berakhir Rp0.`] : [])]}
       next={[...(best && worst && best !== worst ? [`Geser jam dari slot ${SLOTS[worst.i][2]} ke ${SLOTS[best.i][2]}, atau coba promo khusus di slot ${SLOTS[worst.i][2]}.`] : []), ...(effi.length > 1 ? [`Tempatkan ${effi[0].k} di slot terbaik; dampingi ${effi[effi.length - 1].k} dengan review rekaman dan skrip penawaran.`] : []), "Cek sesi Rp0: produk yang dipajang, voucher live, dan jam tayang."]} />
     {(() => { const PBl = dayDiff(R.from, R.to) >= 13 ? buckets(R.pf, R.pt) : null;
@@ -431,7 +441,7 @@ function LiveTab({ R, live, brand, plat, jadwal }: { R: Range; live: Live[]; bra
         { g: "Transaksi", k: "gt", l: "GMV TikTok", f: "rp", v: a.gt, p: cm ? b.gt : null, s: c.map((x) => x.gt), ps: pv?.map((x) => x.gt) },
         { g: "Konversi", k: "z", l: "Sesi tanpa penjualan", f: "pct", v: zr, p: cm && b.n ? (b.z / b.n) * 100 : null, inv: true, s: c.map((x) => (x.n ? (x.z / x.n) * 100 : 0)) },
       ];
-      return <MetricBoard metrics={M} labels={B.map((x) => x.l)} sub={R.sub} init={["g", "gj"]} />; })()}
+      return <MetricBoard metrics={M} labels={B.map((x) => x.l)} sub={R.sub} init={["g", "gj"]} />; })()}</div>
     <JadwalVsLive jadwal={jadwal} live={cur} />
     <div className="card"><h2>Per host</h2><div className="tbl"><table><thead><tr><th>Host</th><th className="n">GMV</th><th className="n">Shopee</th><th className="n">TikTok</th><th className="n">Durasi</th><th className="n">Sesi</th><th className="n">GMV/jam</th><th className="n">Δ GMV/jam</th><th className="n">Sesi Rp0</th><th>Slot terbaik</th><th>Tren GMV/jam</th></tr></thead>
       <tbody>{hs.map((h) => { const p = agg(prev.filter((x) => (x.host || "Tanpa nama") === h.k)), gjH = h.s.g / h.s.j, gjPrev = p.j ? p.g / p.j : 0, d = gjPrev && R.key !== "all" ? pct(gjH, gjPrev) : NaN;
