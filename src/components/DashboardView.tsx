@@ -18,6 +18,8 @@ import UploadChecklist from "@/components/UploadChecklist";
 import ForecastView from "@/components/ForecastView";
 import StatusView from "@/components/StatusView";
 import SaldoIklan, { type SaldoRow } from "@/components/SaldoIklan";
+/* Akun yang saldo iklannya perlu dicatat tim */
+const SALDO_STORES = ["cahaya-cabydut-tiktok", "cahaya-qaira-tiktok", "jf-just-fluff-shopee", "cahaya-cabydut-cpas", "cahaya-qaira-cpas", "cahaya-pepisun-cpas", "pascal-pascal-shopee", "pascal-ruang-mebel-shopee"];
 import { shortName } from "@/lib/nama";
 import { Kpi, Insight, Bars, LineChart, Share, Spark } from "@/components/ui";
 import { clientsFor, loadClient, freshness, produkSku, storeLast, storePeriods, adsMeta, type SP, type Sale, type Ad, type Live, type Store } from "@/lib/data";
@@ -70,7 +72,7 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
       // Saldo iklan hanya untuk tim (tidak tampil di link klien)
       let saldo: React.ReactNode = null;
       if (isAdmin && !share) {
-        const acc = st.filter((s) => s.platform !== "CPAS");
+        const acc = st.filter((s) => SALDO_STORES.includes(s.id));
         const H = acc.length ? await q<{ store_id: string; saldo: number; catatan: string | null; nama: string | null; w: string }>("select store_id, saldo, catatan, nama, date_format(waktu, '%Y-%m-%d %H:%i') w from ad_balance where store_id in (?) order by waktu desc, id desc", [acc.map((s) => s.id)]) : [];
         const rowsS: SaldoRow[] = acc.map((s) => { const h = H.filter((x) => x.store_id === s.id); return { id: s.id, nama: `${s.brand} · ${s.platform}`, saldo: h[0] ? +h[0].saldo : null, waktu: h[0]?.w ?? null, oleh: h[0]?.nama ?? null, catatan: h[0]?.catatan ?? null, riwayat: h.slice(0, 15).map((x) => ({ saldo: +x.saldo, waktu: x.w, oleh: x.nama })) }; });
         saldo = <SaldoIklan rows={rowsS} canEdit={isAdmin} />;
@@ -146,7 +148,7 @@ async function SumTab(R: Range, clients: { id: string; nama: string; modul: stri
     {staff && await (async () => {
       const S2 = await q<{ client_id: string; nama: string; brand: string; platform: string; saldo: number; oleh: string | null; w: string }>(
         `select s.client_id, c.nama, s.brand, s.platform, b.saldo, b.nama oleh, date_format(b.waktu, '%Y-%m-%d %H:%i') w from ad_balance b join stores s on s.id = b.store_id join clients c on c.id = s.client_id
-         where s.client_id in (?) and b.id = (select b2.id from ad_balance b2 where b2.store_id = b.store_id order by b2.waktu desc, b2.id desc limit 1) order by b.saldo`, [clients.map((c) => c.id)]);
+         where s.client_id in (?) and s.id in (?) and b.id = (select b2.id from ad_balance b2 where b2.store_id = b.store_id order by b2.waktu desc, b2.id desc limit 1) order by b.saldo`, [clients.map((c) => c.id), SALDO_STORES]);
       if (!S2.length) return null;
       const lama = (w: string) => Date.now() - Date.parse(w.replace(" ", "T") + ":00+07:00") > 3 * 864e5;
       return <div className="card"><h2>Sisa saldo iklan terakhir</h2><div className="tbl"><table><thead><tr><th>Klien</th><th>Akun</th><th className="n">Sisa saldo</th><th>Dicatat</th><th>Oleh</th></tr></thead>
