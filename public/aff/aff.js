@@ -97,6 +97,7 @@ document.getElementById('n-db').textContent = nf.format(TT.length + SH.length);
 document.getElementById('n-shopee').textContent = nf.format(SH.length);
 
 function render(){
+  { const np = document.getElementById('navplat'); if (np) np.innerHTML = ''; }
   { const mw = document.getElementById('meet-wrap'); if (mw) { mw.hidden = S.tab !== 'ringkasan'; if (mw.hidden) mw.innerHTML = ''; } }
   if (S.tab === 'ringkasan') renderSummary();
   else if (S.tab === 'tiktok') { renderList('tiktok'); appendAgency('tiktok'); }
@@ -397,8 +398,6 @@ function renderDb(){
   const tot = k => list.reduce((a,r) => a + (r[k]||0), 0);
   const est = r => r.gest ? '<sup title="perkiraan">*</sup>' : '';
   view.innerHTML = `${bannerHtml()}
-  <div class="filters"><span class="flabel">Platform</span>${['','TikTok','Shopee'].map(p => `<button class="btn sm db-pl${(S.dbpl||'')===p?' pri':''}" data-pl="${p}">${p || 'Semua'}</button>`).join('')}
-    <span class="legend">${plChip('TikTok')} ${nf.format(TT.length)} kreator · ${plChip('Shopee')} ${nf.format(SH.length)} affiliate</span></div>
   <div class="pcs">${[1,2,3,4,5].map(p => { const rr = rows.filter(r => r.pr === p); return `<button class="pc p${p}${String(f.pr)===String(p)?' sel':''}" data-p="${p}"><span class="pt">P${p} · ${esc(PRIO[p])}</span><b>${nf.format(rr.length)}</b><span>akun · ${rpShort(rr.reduce((a,r)=>a+(r.gb||0),0))}</span></button>`; }).join('')}</div>
   <div class="toolbar">
     <div class="grow"><input type="search" id="${W}-q" placeholder="Cari username, nama atau kontak" value="${esc(f.q)}" aria-label="Cari"></div>
@@ -443,7 +442,9 @@ function renderDb(){
     <button class="btn sm" id="${W}-prev"${f.page===0?' disabled':''}>Sebelumnya</button>
     <button class="btn sm" id="${W}-next"${f.page>=pages-1?' disabled':''}>Berikutnya</button></span></div>
   <p class="note">GMV kotor, bersih dan batal/retur: periode Mei–21 Okt. <b>TikTok</b>: GMV kotor dari laporan performa kreator; bersih dan batal/retur dihitung dari porsi order gagal tiap kreator di export pesanan (Mei–Sep). <b>Shopee</b>: GMV bersih = omzet tanpa pesanan batal (validasi komisi Mei–Jul, AMS Agu–Okt); batal hanya bisa dihitung untuk Agu–Okt. <sup>*</sup> = perkiraan: TikTok memakai rata-rata 36% order gagal karena kreator tidak punya data order sendiri; Shopee berarti batal Mei–Jul tidak tercatat. Efektivitas sampel dihitung dari GMV bersih. <span class="chip ag">Agency/Platform</span> = kumpulan banyak kreator, data tidak bisa dirinci.</p>`;
-  view.querySelectorAll('button.db-pl').forEach(b => b.onclick = () => { S.dbpl = b.dataset.pl; saveFilters(); render(); });
+  const np = document.getElementById('navplat');
+  if (np) { np.innerHTML = `<span class="seg" role="radiogroup" aria-label="Platform">${[['','Semua',TT.length+SH.length],['TikTok','TikTok',TT.length],['Shopee','Shopee',SH.length]].map(([p,l,n]) => `<button class="db-pl${(S.dbpl||'')===p?' on':''}" data-pl="${p}" role="radio" aria-checked="${(S.dbpl||'')===p}">${p ? `<i class="pdot ${p==='TikTok'?'tt':'sh'}"></i>` : ''}${l} <span class="n">${nf.format(n)}</span></button>`).join('')}</span>`;
+    np.querySelectorAll('button.db-pl').forEach(b => b.onclick = () => { S.dbpl = b.dataset.pl; saveFilters(); render(); }); }
   view.querySelectorAll('.pcs button.pc').forEach(b => b.onclick = () => { f.pr = String(f.pr) === b.dataset.p ? '' : b.dataset.p; f.page = 0; saveFilters(); render(); });
   const bind = (id, key, ev='change', get = el => el.value) => { const el = document.getElementById(W+'-'+id); el.addEventListener(ev, () => { f[key] = get(el); f.page = 0; saveFilters(); rerenderSoon(); }); };
   bind('q','q','input'); bind('pr','pr'); bind('tipe','tipe'); bind('st','st'); bind('resp','resp'); bind('kontak','kontak'); bind('samp','samp'); bind('jual','jual'); bind('due','due','change', el => el.checked); bind('p5','p5','change', el => el.checked); bind('akt','akt');

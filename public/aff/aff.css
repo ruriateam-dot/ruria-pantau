@@ -268,3 +268,18 @@
 #aff-root td.num{white-space:nowrap}
 #aff-root td.num.wrapn{white-space:normal}
 #aff-root td.aksi{white-space:normal;word-break:normal;overflow-wrap:anywhere}
+/* Header ringkas (usulan A): judul rata kiri, tab + pilihan platform satu baris */
+#aff-root header.top .wrap{text-align:left}
+#aff-root .brand{justify-content:flex-start}
+#aff-root .brand h1{margin:0}
+#aff-root .brand .sync{margin-left:auto;font-size:12.5px}
+#aff-root nav.tabs{justify-content:flex-start;align-items:center;border-bottom:1px solid var(--line);margin-top:10px;overflow:visible;flex-wrap:wrap}
+#aff-root nav.tabs #n-db{display:none}
+#aff-root .navplat{margin-left:auto;padding-bottom:6px}
+#aff-root .navplat .seg{display:inline-flex;background:var(--surface,#fff);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px}
+#aff-root .navplat .seg button{all:unset;cursor:pointer;padding:6px 12px;border-radius:7px;font-weight:600;font-size:13px;display:inline-flex;align-items:center;gap:6px;color:var(--ink)}
+#aff-root .navplat .seg button .n{color:var(--muted);font-weight:500}
+#aff-root .navplat .seg button.on{background:var(--accent);color:#fff}
+#aff-root .navplat .seg button.on .n{color:rgba(255,255,255,.8)}
+#aff-root .navplat .seg button:focus-visible{outline:2px solid var(--accent)}
+#aff-root nav.tabs .navplat .n{background:none;padding:0;margin:0;font-size:12.5px}
