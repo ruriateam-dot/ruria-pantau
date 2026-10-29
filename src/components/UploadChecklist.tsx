@@ -127,5 +127,9 @@ async function inner(clientIds: string[]) {
     <div className="tbl"><table><thead><tr><th>Klien</th><th>Toko</th>{used.map(([k, l, s, fs, ft]) => <th key={k} className="ckc">{l}<span>{s}</span><span className="fn">S: {fs}</span>{ft !== "–" && <span className="fn">T: {ft}</span>}</th>)}</tr></thead>
       <tbody>{R.map((r, i) => <tr key={i}><td className="small">{i === 0 || R[i - 1].klien !== r.klien ? <b>{r.klien}</b> : ""}</td><td><b>{r.toko}</b></td>{used.map(([k, , , fs, ft]) => <Fragment key={k}>{show(r.c[k], r.tt ? ft : fs)}</Fragment>)}</tr>)}</tbody></table></div>
     <p className="muted small">✓ sudah sesuai jadwal · ✗ belum (nama file yang perlu diupload tertulis di kotak) · – tidak perlu untuk toko ini · S = Shopee, T = TikTok. Stok tidak diminta untuk klien yang stoknya dianggap selalu ada.</p>
+    {used.some(([k]) => k === "affp" || k === "affk") && <div className="tbl" style={{ marginTop: 12 }}><table><thead><tr><th>Platform</th><th>Performa affiliate</th><th>Pesanan affiliate / validasi tagihan</th><th>Jadwal</th></tr></thead><tbody>
+      <tr><td><b>Shopee</b></td><td><code>AMSAffiliatePerformance…csv</code></td><td>Validasi tagihan · <code>SellerOnlinePaymentValidationReport…csv</code></td><td>mingguan</td></tr>
+      <tr><td><b>TikTok</b></td><td><code>Transaction_Analysis_Creator_List…xlsx</code></td><td>Pesanan affiliate · <code>affiliate_orders…xlsx</code></td><td>mingguan</td></tr>
+    </tbody></table><p className="muted small">4 file affiliate per brand (2 per platform). Setelah di-upload, prioritas P1–P5 dihitung ulang otomatis.</p></div>}
   </div>;
 }
