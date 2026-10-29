@@ -4,11 +4,13 @@ import { todayWIB, addDays, tgl } from "@/lib/period";
 
 /* Checklist upload per toko sesuai jadwal di panduan:
    harian (data kemarin): statistik toko, produk, iklan · live: 7 hari terakhir · pesanan & penghasilan: tiap tanggal 1, 6, 11, 16, 21, 26, 30
-   stok: mingguan (klien yang stoknya dihitung) · affiliate OT: mingguan */
+   stok: mingguan (klien yang stoknya dihitung) · affiliate (JF, OT, CV Cahaya): 4 file mingguan */
 const JADWAL = [1, 6, 11, 16, 21, 26, 30];
 type Cell = { ok: boolean | null; last: string | null; need: string; gaps: [string, string][] };
 /* Iklan Shopee Jan–Mar 2026 sudah tidak bisa diunduh dari Shopee: tidak diminta & tidak ditandai kurang */
 const SHOPEE_ADS_ARSIP = "2026-04-01";
+/* Klien dengan ruang kerja affiliate: wajib 4 file per brand (Shopee: validasi komisi + AMS; TikTok: pesanan affiliate + Transaction Analysis) */
+const AFF_KLIEN = ["jf", "ot", "cahaya"];
 const maxD = (a: string | null, b: string) => (a && a > b ? a : b);
 const START = "2026-01-01", BLN = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
 const mEnd = (d: string) => { const [y, m] = d.split("-").map(Number); return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10); };
@@ -97,7 +99,9 @@ async function inner(clientIds: string[]) {
         hasil: cell(ff(s.id, /^penghasilan/), ordNeed, toko, "inc|" + s.id, "2026-10-01"),
         live: cell(live.get(c.id), addDays(y, -1), lv && i === 0, "live|" + c.id, [...(sets.get("live|" + c.id) ?? [])].sort()[0] ?? addDays(today, -183).slice(0, 8) + "01", 1, true),
         stok: cell(stok.get(c.id), weekNeed, stokOn && i === 0),
-        aff: cell(ff(s.id, /^aff-(shopee|tiktok)$/), addDays(today, -9), c.id === "ot" && m.includes("affiliate")),
+        // Affiliate: 2 file per platform (pesanan + kreator) untuk klien yang punya ruang kerja affiliate
+        affp: cell(ff(s.id, /^(aff-pesanan-tiktok|validasi-shopee)$/), addDays(today, -9), AFF_KLIEN.includes(c.id) && (s.platform === "Shopee" || s.platform === "TikTok")),
+        affk: cell(ff(s.id, /^aff-(shopee|tiktok)$/), addDays(today, -9), AFF_KLIEN.includes(c.id) && (s.platform === "Shopee" || s.platform === "TikTok")),
       } });
     });
   }
@@ -110,7 +114,8 @@ async function inner(clientIds: string[]) {
     ["pesanan", "Pesanan", `s.d. ${tgl(ordNeed)}`, "Order.all…xlsx", "Semua pesanan…csv"],
     ["hasil", "Penghasilan", `s.d. ${tgl(ordNeed)}`, "Income.sudah_dilepas…xlsx", "income_…xlsx"],
     ["stok", "Stok", "mingguan", "mass_update_sales_info…zip", "–"],
-    ["aff", "Affiliate OT", "mingguan", "AMSAffiliatePerformance…csv", "Transaction_Analysis_Creator_List…xlsx"]];
+    ["affp", "Affiliate: pesanan", "mingguan", "SellerOnlinePaymentValidationReport…csv", "affiliate_orders…xlsx"],
+    ["affk", "Affiliate: kreator", "mingguan", "AMSAffiliatePerformance…csv", "Transaction_Analysis_Creator_List…xlsx"]];
   const used = COLS.filter(([k]) => R.some((r) => r.c[k].ok !== null));
   const todo = R.reduce((a, r) => a + used.filter(([k]) => r.c[k].ok === false).length, 0), all = R.reduce((a, r) => a + used.filter(([k]) => r.c[k].ok !== null).length, 0);
   const show = (x: Cell, file: string) => x.ok === null ? <td className="ckc na">–</td>

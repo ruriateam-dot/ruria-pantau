@@ -4,6 +4,8 @@ import { q, exec } from "@/lib/db";
 import { requireUser, allowedClients } from "@/lib/auth";
 import type { Parsed } from "@/lib/parse";
 import { logAct } from "@/lib/log";
+import { ingestAff, rebuildAff } from "@/lib/affBuild";
+const AFF_JENIS = ["aff-pesanan-tiktok", "aff-tiktok", "validasi-shopee", "aff-shopee"];
 
 type Res = { ok: boolean; msg: string };
 const chunk = <T,>(a: T[], n: number) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
@@ -90,6 +92,13 @@ export async function saveUpload(clientId: string, storeId: string, file: string
       if (p.jenis === "produk-shopee" && p.pp) await exec("insert into product_period (store_id, dari, sampai, data) values (?, ?, ?, ?) on duplicate key update data = values(data)", [st!.id, p.dari, p.sampai, JSON.stringify(p.pp)]);
       if (p.jenis === "live-shopee" || p.jenis === "live-tiktok") await liveFromPlatform(clientId, st!.brand, p, uid);
       await log(clientId, p.jenis, file, p.dari, p.sampai, p.n, uid);
+      // File affiliate: simpan data mentah lalu hitung ulang prioritas P1–P5 klien ini
+      if (AFF_JENIS.includes(p.jenis)) {
+        await ingestAff(st!.id, p.jenis, p.dari, p.data as { rows: (string | number)[][] });
+        const r = await rebuildAff(clientId);
+        revalidatePath("/dashboard");
+        return { ok: true, msg: `Tersimpan: ${p.info} (${p.dari} s/d ${p.sampai}). ${r}` };
+      }
       return { ok: true, msg: `Tersimpan: ${p.info} (${p.dari} s/d ${p.sampai}).` };
     }
 

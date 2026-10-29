@@ -17,6 +17,11 @@ import chEf from "@/data/aff/cahaya/efektivitas.json";
 import chHasil from "@/data/aff/cahaya/sampel_hasil.json";
 import chSampel from "@/data/aff/cahaya/sampel_mei_okt.json";
 import chBrand from "@/data/aff/cahaya/brand.json";
+import chRaw from "@/data/aff/cahaya/raw.gz.json";
+import jfRaw from "@/data/aff/raw.gz.json";
+import otRaw from "@/data/aff/ot/raw.gz.json";
+import { seedAffRaw, rebuildAff } from "@/lib/affBuild";
+import { gunzipSync } from "zlib";
 import extra from "@/data/extra.json";
 import hist from "@/data/hist2025.json";
 import fcseed from "@/data/fcseed.json";
@@ -34,7 +39,7 @@ const S = seed as unknown as Seed;
 // Naikkan angka ini setiap kali file di src/data diperbarui
 const DATA_VERSION = "2026-10-24e";
 // Versi terpisah per jenis data, supaya pembaruan satu bagian tidak menimpa data upload tim
-const AFF_VERSION = "aff-2026-10-30l";
+const AFF_VERSION = "aff-2026-10-30n";
 const EXTRA_VERSION = "extra-2026-10-26a";
 // Riwayat 2025 (CV Cahaya & PMG) dari arsip: hanya menambah baris yang belum ada, tidak menimpa data upload tim
 const HIST_VERSION = "hist-2025-2026-10-28c";
@@ -132,6 +137,11 @@ export async function importAff(): Promise<string> {
       ["cahaya", "aff-jf.json", chJf], ["cahaya", "efektivitas.json", chEf], ["cahaya", "sampel_hasil.json", chHasil], ["cahaya", "sampel_mei_okt.json", chSampel], ["cahaya", "brand.json", chBrand]];
     for (const [c, nama, isi] of F)
       await exec("insert into aff_files (client_id, nama, isi) values (?, ?, ?) on duplicate key update isi = values(isi)", [c, nama, JSON.stringify(isi)]);
+    // Data mentah affiliate: CV Cahaya dari file asli (Jan–Sep 2026); Just Fluff & Organic Treasure dari rekap bulanan lama (perkiraan, diganti otomatis saat file asli di-upload).
+    // Insert ignore: data hasil upload tim tidak ditimpa. Setelah itu prioritas P1–P5 dihitung ulang dengan aturan baru.
+    const un = (x: unknown) => JSON.parse(gunzipSync(Buffer.from((x as { gz: string }).gz, "base64")).toString());
+    for (const raw of [chRaw, jfRaw, otRaw]) await seedAffRaw(un(raw));
+    for (const c of ["cahaya", "jf", "ot"]) await rebuildAff(c);
   } catch (e) { return "Gagal di tahap affiliate: " + (e as Error).message; }
   return "Selesai";
 }
