@@ -467,3 +467,10 @@ button.ghost{border:1.5px solid var(--accent);color:var(--accent-ink);background
 button.ghost:hover{background:color-mix(in srgb,var(--accent) 10%,var(--panel))}
 
 .fnote{margin:24px 0 8px;padding-top:10px;border-top:1px solid var(--line,#eee);font-size:12px}.fnote table{border-collapse:collapse}.fnote td{padding:2px 12px 2px 0;white-space:normal;vertical-align:top}.fnote td:first-child{font-weight:600;white-space:nowrap}
+tr[data-pgh]{display:none!important}
+.pgr{display:flex;justify-content:flex-end;align-items:center;gap:16px;margin:10px 0 4px;font-size:14px}
+.pgr .pgi{margin-right:auto;color:var(--muted,#888);font-size:12px}
+.pgr button{border:0!important;background:none!important;font-size:20px;line-height:1;padding:2px 6px;color:#555;cursor:pointer;box-shadow:none}
+.pgr button:disabled{color:#f0a58a;cursor:default}
+.pgr .pgn i{font-style:normal;margin:0 10px;color:#888}
+.pgr select{border:1px solid #ddd;border-radius:8px;padding:6px 10px;background:#fff;font:inherit;width:auto}
