@@ -37,7 +37,7 @@ export default function Affiliate({ client, user, nama, readOnly = false, token 
     return () => { off = true; (el as unknown as { _mo?: MutationObserver })._mo?.disconnect(); w().__affGen++; document.querySelectorAll("script[data-aff]").forEach((s) => { if (s.getAttribute("src")?.startsWith("blob:")) s.remove(); }); urls.forEach((u) => { if (u.startsWith("blob:")) URL.revokeObjectURL(u); }); };
   }, [client, user, nama, readOnly, token]);
   return <>
-    <link rel="stylesheet" href="/aff/aff.css?v=1" />
+    <link rel="stylesheet" href="/aff/aff.css?v=2" />
     {note && <p className="note">{note}</p>}
     {readOnly && <p className="note">Tampilan baca saja: data affiliate dan database kreator bisa dilihat, perubahan hanya dilakukan oleh tim Ruria.</p>}
     <div id="aff-root" ref={ref} className={readOnly ? "ro" : undefined} />
