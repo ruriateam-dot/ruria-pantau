@@ -34,7 +34,7 @@ const S = seed as unknown as Seed;
 // Naikkan angka ini setiap kali file di src/data diperbarui
 const DATA_VERSION = "2026-10-24e";
 // Versi terpisah per jenis data, supaya pembaruan satu bagian tidak menimpa data upload tim
-const AFF_VERSION = "aff-2026-10-30b";
+const AFF_VERSION = "aff-2026-10-30c";
 const EXTRA_VERSION = "extra-2026-10-26a";
 // Riwayat 2025 (CV Cahaya & PMG) dari arsip: hanya menambah baris yang belum ada, tidak menimpa data upload tim
 const HIST_VERSION = "hist-2025-2026-10-28c";
