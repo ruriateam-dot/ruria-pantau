@@ -83,7 +83,7 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
         saldo = rowsS.length ? <SaldoIklan rows={rowsS} canEdit={isAdmin} /> : null;
       }
       const AM = await adsMeta(st.map((s) => s.id), R.pf < R.from ? R.pf : R.from, R.to);
-      body = <>{saldo}<IklanTab R={R} stores={st} ads={D.ads} sales={D.sales} meta={AM} /></>;
+      body = <>{saldo}<IklanTab R={R} stores={st} ads={D.ads} sales={D.sales} meta={AM} share={!!share} /></>;
     }
     else if (tab === "affiliate") {
       const has = (await q<{ n: number }>("select count(*) n from aff_files where client_id = ?", [c.id]))[0].n > 0;
@@ -332,7 +332,7 @@ const porsi = (x: Ad, a: string, b: string) => { const f = x.dari > a ? x.dari :
 /* Tab iklan: angka desimal 2 digit */
 const fmt2 = (n: number) => fmt(n); // Rupiah tetap 1 desimal; ROAS & persen 2 desimal
 type AMeta = { store_id: string; dari: string; sampai: string; kampanye: string; dilihat: number | null; klik: number | null; keranjang: number | null };
-function IklanTab({ R, stores, ads, sales, meta = [] }: { R: Range; stores: Store[]; ads: Ad[]; sales: Sale[]; meta?: AMeta[] }) {
+function IklanTab({ R, stores, ads, sales, meta = [], share = false }: { R: Range; stores: Store[]; ads: Ad[]; sales: Sale[]; meta?: AMeta[]; share?: boolean }) {
   const nk = (s2: string) => s2.replace(/\s+/g, " ").trim().slice(0, 255);
   const MM = new Map(meta.map((m) => [m.store_id + "|" + m.dari + "|" + m.sampai + "|" + m.kampanye, m]));
   const ids = new Set(stores.map((s) => s.id)); const SM = new Map(stores.map((s) => [s.id, s]));
@@ -404,7 +404,7 @@ function IklanTab({ R, stores, ads, sales, meta = [] }: { R: Range; stores: Stor
       {L("Bisa di-scale", scale, (r) => `${fmt2(r.s)} · ROAS ${r.r.toFixed(2).replace(".", ",")}`, "good", `ROAS ≥ ${(roas * 1.3).toFixed(2).replace(".", ",")}, biaya masih kecil`)}
       {L("Tanpa penjualan", nol, (r) => `${fmt2(r.s)} · 0 pesanan`, "bad", "Biaya ≥ Rp100 rb, 0 pesanan")}
     </div><p className="muted small">Patokan memakai ROAS rata-rata periode ini ({roas.toFixed(2).replace(".", ",")}), sampai KPI tiap klien diisi.</p></div>}
-    <div className="card"><h2>Daftar iklan</h2><IklanTable rows={rows} /></div>
+    <div className="card"><h2>Daftar iklan</h2><IklanTable rows={rows} lite={share} /></div>
   </>);
 }
 

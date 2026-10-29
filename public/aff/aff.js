@@ -45,6 +45,10 @@ const waNum = k => { for (const m of (String(k||'').match(/\+?\d[\d\s.\-()]{7,}\
 const kontakHtml = (k, r, tp) => { const n = waNum(k); if (!n) return `<small class="kt-x" title="Belum ada nomor HP">${/@/.test(k) && /\./.test(k) ? 'Email' : 'Kontak'}: ${esc(k)} · belum ada no. HP</small>`;
   return `<a class="wa" href="https://wa.me/${n}${waText(r, tp)}" target="_blank" rel="noopener" title="Buka chat WhatsApp ${esc(k)}"><svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3a.4.4 0 0 0 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6a2.7 2.7 0 0 0 1.8-1.2 2.2 2.2 0 0 0 .1-1.2c0-.1-.2-.2-.5-.3z"/></svg>${esc(k)}</a>`; };
 const hasPhone = row => { const k = fuOf(row)?.kontak; if (!k) return false; return (String(k).match(/\+?\d[\d\s.\-()]{7,}\d/g) || []).some(m => { const d = m.replace(/\D/g, ''); return d.length >= 9 && d.length <= 15; }); };
+const RO = () => !!document.getElementById('aff-root')?.classList.contains('ro');
+const kerjaTxt = r => { const f = fuOf(r); const p = [dispStatus(r)]; if (f?.respon) p.push(f.respon); if (f?.tglLast) p.push('dihubungi ' + fdate(f.tglLast)); return p.join(' · '); };
+const aksiTd = r => RO() ? `<td class="aksi">${esc(kerjaTxt(r))}</td>` : `${aksiTd(r)}`;
+const aksiLbl = () => RO() ? 'Status kerja Ruria' : 'Saran aksi';
 const dispStatus = row => (row.pr >= 4 && statusOf(row) === 'Belum dihubungi') ? NOCONTACT : statusOf(row);
 const STAT_ALL = () => [...STAT, NOCONTACT];
 const daysSince = iso => { if (!iso) return null; const d = new Date(iso+'T00:00:00'); if (isNaN(d)) return null; return Math.round((TODAY - d)/86400000); };
@@ -294,13 +298,13 @@ function renderList(which){
     <span class="count">${nf.format(list.length)} dari ${nf.format(rows.length)} ${isTT?'kreator':'affiliate'} · klik judul kolom untuk mengurutkan, klik baris untuk mencatat</span>
   </div>
   <div class="tscroll"><table>
-    <thead><tr>${th('pr','Prio')}${th('u', isTT?'Username':'Affiliate')}<th>Tipe</th>${th('okt',mLbl,'num')}${th('tot',tLbl,'num')}${th('bln','Bulan aktif','num')}${th('sn','Sampel (all time)','num')}${th('sroi','Efektivitas sampel (all time)','num')}<th>Saran aksi</th>${th('st','Status')}${th('resp','Respon')}${th('last','Terakhir dihubungi')}</tr></thead>
+    <thead><tr>${th('pr','Prio')}${th('u', isTT?'Username':'Affiliate')}<th>Tipe</th>${th('okt',mLbl,'num')}${th('tot',tLbl,'num')}${th('bln','Bulan aktif','num')}${th('sn','Sampel (all time)','num')}${th('sroi','Efektivitas sampel (all time)','num')}<th>${aksiLbl()}</th>${th('st','Status')}${th('resp','Respon')}${th('last','Terakhir dihubungi')}</tr></thead>
     <tbody>${slice.length ? slice.map((r,i) => `<tr class="click" tabindex="0" data-i="${f.page*PAGE+i}">
       <td>${prioChip(r.pr)}</td>
       <td class="u">${esc(r.u)}${!isTT && r.nama && r.nama !== r.u ? `<small>${esc(r.nama)}</small>` : ''}${fuOf(r)?.kontak ? `<small class="kt">☎ ${esc(fuOf(r).kontak)}</small>`:''}</td>
       <td class="t">${tipeR(r)}</td>
       <td class="num">${rpShort(r.okt)}</td><td class="num">${rpShort(r.tot)}</td><td class="num">${blnCell(r)}</td><td class="num wrapn">${sampCell(r)}</td><td class="num wrapn">${hasilCell(r)}</td>
-      <td class="aksi">${esc(r.aksi)}</td>
+      ${aksiTd(r)}
       <td>${statChip(dispStatus(r))}</td>
       <td>${esc(fuOf(r)?.respon || '') || '<span class="muted">–</span>'}</td>
       <td>${lastCell(r)}</td></tr>`).join('') : `<tr><td colspan="12" class="muted">Tidak ada yang cocok dengan filter ini.</td></tr>`}</tbody>
@@ -434,14 +438,14 @@ function renderDb(){
     <span class="count">${nf.format(list.length)} dari ${nf.format(rows.length)} akun · GMV kotor ${rpShort(tot('gk'))} · bersih ${rpShort(tot('gb'))} · batal/retur ${rpShort(tot('gx'))}</span>
   </div>
   <div class="tscroll"><table>
-    <thead><tr>${th('pr','Prio')}${th('u','Username')}<th>Tipe</th>${th('okt','GMV 30 hari terakhir','num')}${th('gb','GMV bersih','num')}${th('bln','Bulan aktif','num')}${th('sn','Sampel (all time)','num')}${th('sroi','Efektivitas sampel (all time)','num')}<th>Saran aksi</th>${th('st','Status')}${th('resp','Respon')}${th('last','Terakhir dihubungi')}</tr></thead>
+    <thead><tr>${th('pr','Prio')}${th('u','Username')}<th>Tipe</th>${th('okt','GMV 30 hari terakhir','num')}${th('gb','GMV bersih','num')}${th('bln','Bulan aktif','num')}${th('sn','Sampel (all time)','num')}${th('sroi','Efektivitas sampel (all time)','num')}<th>${aksiLbl()}</th>${th('st','Status')}${th('resp','Respon')}${th('last','Terakhir dihubungi')}</tr></thead>
     <tbody>${slice.length ? slice.map((r,i) => `<tr class="click" tabindex="0" data-i="${f.page*PAGE+i}">
       <td>${prioChip(r.pr)}</td>
       <td class="u">${esc(r.u)}${liveChip(r)}${andalan(r) ? ' <span class="chip p1" title="Kreator andalan: jualan ≥5 dari 6 bulan, GMV bersih ≥Rp3 jt, masih jualan bulan terakhir. Pertahankan dengan komisi khusus/prioritas produk baru">Andalan</span>' : ''}${halOf(r) ? ` <span class="chip" title="Peserta acara Haluan ClickConnect Semarang (${esc(halOf(r))}), dapat 1 sampel">Haluan</span>` : ''}${r.k==='sh' && r.nama && r.nama !== r.u ? `<small>${esc(r.nama)}</small>` : ''}${ptags(r)}${fuOf(r)?.kontak ? `<br>${kontakHtml(fuOf(r).kontak, r)}`:''}</td>
       <td class="t">${tipeR(r)}</td>
       <td class="num">${rpShort(r.okt)}</td><td class="num"><b>${rpShort(r.gb)}</b>${est(r)}<small class="${r.gk && r.gx/r.gk>=.4?'late':'muted'}">kotor ${rpShort(r.gk)} · batal ${r.gk ? pct(r.gx/r.gk) : '0%'}</small></td>
       <td class="num">${blnCell(r)}</td><td class="num wrapn">${sampCell(r)}</td><td class="num wrapn">${hasilCell(r)}</td>
-      <td class="aksi">${esc(r.aksi)}</td>
+      ${aksiTd(r)}
       <td>${statChip(dispStatus(r))}</td>
       <td>${esc(fuOf(r)?.respon || '') || '<span class="muted">–</span>'}</td>
       <td>${lastCell(r)}</td></tr>`).join('') : `<tr><td colspan="12" class="muted">Tidak ada yang cocok dengan filter ini.</td></tr>`}</tbody>
@@ -497,13 +501,13 @@ function renderAgency(host){
     <h2>A. Agency/MCN Shopee dengan anggota yang sudah jualan</h2>
     <p class="note">Dari kolom "MCN Terhubung" di laporan konversi Shopee (1 Agu–12 Okt). Omzet anggota dihitung sampai 21 Okt. Data TikTok tidak mencatat agency/MCN kreator. Klik baris untuk melihat anggota dan mencatat follow-up.</p>
     <div class="tscroll"><table><thead><tr><th>Prio</th><th>Platform</th><th>Agency / MCN</th><th class="num">Anggota jualan</th><th class="num">Omzet anggota</th><th class="num">Pesanan berhasil</th><th class="num">Batal</th><th>Anggota terlaris</th><th>Saran aksi</th><th>Status</th><th>Terakhir dihubungi</th></tr></thead>
-    <tbody>${A.map(r => `<tr class="click" tabindex="0" data-g="A" data-n="${esc(r.nama)}"><td>${prioChip(r.pr)}</td><td>${agPl(r).map(plChip).join(' ')}</td><td class="u">${esc(r.nama)}${fuOf(r)?.kontak?`<small>${esc(fuOf(r).kontak)}</small>`:''}</td><td class="num">${r.mem.length}</td><td class="num">${rpShort(r.om)}</td><td class="num">${nf.format(r.ok)}</td><td class="num ${r.batal>=.5?'late':''}">${pct(r.batal)}</td><td>${esc(r.top)}</td><td class="aksi">${esc(r.aksi)}</td><td>${statChip(dispStatus(r))}</td><td>${lastCell(r)}</td></tr>`).join('') || `<tr><td colspan="11" class="muted">${pf === 'TikTok' ? 'Laporan TikTok tidak mencatat agency/MCN kreator, jadi bagian ini hanya berisi data Shopee.' : 'Tidak ada yang cocok.'}</td></tr>`}</tbody></table></div>
+    <tbody>${A.map(r => `<tr class="click" tabindex="0" data-g="A" data-n="${esc(r.nama)}"><td>${prioChip(r.pr)}</td><td>${agPl(r).map(plChip).join(' ')}</td><td class="u">${esc(r.nama)}${fuOf(r)?.kontak?`<small>${esc(fuOf(r).kontak)}</small>`:''}</td><td class="num">${r.mem.length}</td><td class="num">${rpShort(r.om)}</td><td class="num">${nf.format(r.ok)}</td><td class="num ${r.batal>=.5?'late':''}">${pct(r.batal)}</td><td>${esc(r.top)}</td>${aksiTd(r)}<td>${statChip(dispStatus(r))}</td><td>${lastCell(r)}</td></tr>`).join('') || `<tr><td colspan="11" class="muted">${pf === 'TikTok' ? 'Laporan TikTok tidak mencatat agency/MCN kreator, jadi bagian ini hanya berisi data Shopee.' : 'Tidak ada yang cocok.'}</td></tr>`}</tbody></table></div>
   </section>
   <section class="panel">
     <h2>B. Jaringan affiliate / platform (TikTok &amp; Shopee)</h2>
     <p class="note">Akun yang jualan atas nama banyak kreator, jadi datanya tidak bisa dirinci per kreator. YouTube Shopping dan Shopee Media Network tidak dimasukkan karena program milik platform. GMV TikTok masih kotor.</p>
     <div class="tscroll"><table><thead><tr><th>Prio</th><th>Platform</th><th>Jaringan</th><th class="num">GMV TikTok</th><th class="num">Omzet Shopee</th><th class="num">Total</th><th>Akun</th><th>Saran aksi</th><th>Status</th><th>Terakhir dihubungi</th></tr></thead>
-    <tbody>${B.map(r => `<tr class="click" tabindex="0" data-g="B" data-n="${esc(r.nama)}"><td>${prioChip(r.pr)}</td><td style="white-space:nowrap">${agPl(r).map(plChip).join(' ')}</td><td class="u">${esc(r.nama)}${r.cat?`<small>${esc(r.cat)}</small>`:''}</td><td class="num">${rpShort(r.gt)}</td><td class="num">${rpShort(r.gs)}</td><td class="num"><b>${rpShort(r.tot)}</b></td><td style="min-width:180px;font-size:12.5px">${esc([r.att,r.ash].filter(Boolean).join(', '))}</td><td class="aksi">${esc(r.aksi)}</td><td>${statChip(dispStatus(r))}</td><td>${lastCell(r)}</td></tr>`).join('') || `<tr><td colspan="10" class="muted">Tidak ada yang cocok.</td></tr>`}</tbody></table></div>
+    <tbody>${B.map(r => `<tr class="click" tabindex="0" data-g="B" data-n="${esc(r.nama)}"><td>${prioChip(r.pr)}</td><td style="white-space:nowrap">${agPl(r).map(plChip).join(' ')}</td><td class="u">${esc(r.nama)}${r.cat?`<small>${esc(r.cat)}</small>`:''}</td><td class="num">${rpShort(r.gt)}</td><td class="num">${rpShort(r.gs)}</td><td class="num"><b>${rpShort(r.tot)}</b></td><td style="min-width:180px;font-size:12.5px">${esc([r.att,r.ash].filter(Boolean).join(', '))}</td>${aksiTd(r)}<td>${statChip(dispStatus(r))}</td><td>${lastCell(r)}</td></tr>`).join('') || `<tr><td colspan="10" class="muted">Tidak ada yang cocok.</td></tr>`}</tbody></table></div>
   </section>`;
   host.querySelectorAll('button.ag-pl').forEach(b => b.onclick = () => { S.f.agency.pl = b.dataset.pl; rerenderSoon(); });
   const qi = document.getElementById('agency-q'); qi.addEventListener('input', () => { S.f.agency.q = qi.value; rerenderSoon(); });
@@ -525,8 +529,8 @@ function detailHtml(r){
       <div><span>GMV bersih${r.gest ? '*' : ''}</span><b>${rp(r.gb)}</b></div>
       <div><span>GMV batal/retur${r.gest ? '*' : ''}</span><b>${rp(r.gx)}${r.gk ? ' (' + pct(r.gx / r.gk) + ')' : ''}</b></div>
       <div><span>${r.k==='tt'?'GMV Mei–Okt':'Omzet Mei–Okt'}</span><b>${rp(r.tot)}</b></div>
-      ${r.k==='tt' ? `<div><span>Video / LIVE</span><b>${nf.format(r.vid)} / ${nf.format(r.live)}</b></div><div><span>Porsi order gagal</span><b>${pct(r.gagal)}</b></div>`
-                   : `<div><span>Channel utama</span><b>${esc(r.ch||'–')}</b></div><div><span>Pembeli baru</span><b>${nf.format(r.pb)}</b></div><div><span>Porsi batal</span><b>${pct(r.batal)}</b></div>`}
+      ${r.k==='tt' ? `<div><span>Video / LIVE</span><b>${nf.format(r.vid)} / ${nf.format(r.live)}</b></div><div class="noshare"><span>Porsi order gagal</span><b>${pct(r.gagal)}</b></div>`
+                   : `<div><span>Channel utama</span><b>${esc(r.ch||'–')}</b></div><div><span>Pembeli baru</span><b>${nf.format(r.pb)}</b></div><div class="noshare"><span>Porsi batal</span><b>${pct(r.batal)}</b></div>`}
       ${(() => { const st = sampStat(r), roi = sampRoi(st); return `<div><span>Sampel diterima</span><b>${st.n ? st.n + '×' + (st.last ? ' · terakhir ' + esc(fdate(st.last)) : '') : 'Belum pernah'}</b></div>
       <div><span>Efektivitas sampel</span><b>${!st.n ? '–' : !st.has ? 'belum ada data penjualan' : roi == null ? 'biaya sampel Rp0' : `${roi.toLocaleString('id-ID',{maximumFractionDigits:1})}× biaya`}</b></div>
       ${st.has ? `<div><span>GMV sejak sampel pertama</span><b>${st.gmv ? rp(st.gmv) : 'Rp0'}</b></div>` : ''}
@@ -535,15 +539,15 @@ function detailHtml(r){
       ${r.cat ? `<div style="grid-column:1/-1"><span>Catatan data</span><b>${esc(r.cat)}</b></div>`:''}
     </div>
     <div><h3 style="margin-bottom:8px">${r.k==='tt'?'GMV':'Omzet'} per bulan</h3><div class="months">${months.map((m,i)=>`<span>${m}</span><div class="bar" style="width:${Math.max(1,r.g[i]/mx*100)}%;opacity:${r.g[i]?1:.25}"></div><span>${rpShort(r.g[i])}</span>`).join('')}</div></div>
-    <div class="callout"><b>Saran aksi</b>${esc(r.aksi)}</div>`;
+    <div class="callout"><b>${aksiLbl()}</b>${esc(RO() ? kerjaTxt(r) : r.aksi)}</div>`;
   }
-  if (r.grp === 'A') return `<div class="kv"><div><span>Prioritas</span><b>${prioChip(r.pr)}</b></div><div><span>Omzet anggota</span><b>${rp(r.om)}</b></div><div><span>Pesanan berhasil</span><b>${nf.format(r.ok)}</b></div><div><span>Porsi batal</span><b>${pct(r.batal)}</b></div></div>
-    <div class="callout"><b>Saran aksi</b>${esc(r.aksi)}</div>
+  if (r.grp === 'A') return `<div class="kv"><div><span>Prioritas</span><b>${prioChip(r.pr)}</b></div><div><span>Omzet anggota</span><b>${rp(r.om)}</b></div><div><span>Pesanan berhasil</span><b>${nf.format(r.ok)}</b></div><div class="noshare"><span>Porsi batal</span><b>${pct(r.batal)}</b></div></div>
+    <div class="callout"><b>${aksiLbl()}</b>${esc(RO() ? kerjaTxt(r) : r.aksi)}</div>
     <div><h3 style="margin-bottom:8px">Anggota yang sudah jualan (${r.mem.length})</h3><div class="tscroll"><table class="mini"><thead><tr><th>Username Shopee</th><th class="num">Omzet</th><th class="num">Pesanan</th></tr></thead><tbody>
     ${r.mem.map(m => `<tr><td class="u">${esc(m.u)}${m.nama && m.nama!==m.u?`<small>${esc(m.nama)}</small>`:''}</td><td class="num">${rpShort(m.om)}</td><td class="num">${m.ok}/${m.all}</td></tr>`).join('')}</tbody></table></div></div>`;
   return `<div class="kv"><div><span>Prioritas</span><b>${prioChip(r.pr)}</b></div><div><span>GMV TikTok</span><b>${rp(r.gt)}</b></div><div><span>Omzet Shopee</span><b>${rp(r.gs)}</b></div><div><span>Total</span><b>${rp(r.tot)}</b></div></div>
     ${r.att?`<div><h3>Akun TikTok</h3><p>${esc(r.att)}</p></div>`:''}${r.ash?`<div><h3>Akun Shopee</h3><p>${esc(r.ash)}</p></div>`:''}${r.cat?`<p class="note">${esc(r.cat)}</p>`:''}
-    <div class="callout"><b>Saran aksi</b>${esc(r.aksi)}</div>`;
+    <div class="callout"><b>${aksiLbl()}</b>${esc(RO() ? kerjaTxt(r) : r.aksi)}</div>`;
 }
 function openDrawer(r){
   if (!r) return;
