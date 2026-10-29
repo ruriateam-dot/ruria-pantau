@@ -12,6 +12,11 @@ import otEf from "@/data/aff/ot/efektivitas.json";
 import otHasil from "@/data/aff/ot/sampel_hasil.json";
 import otSampel from "@/data/aff/ot/sampel_mei_okt.json";
 import otBrand from "@/data/aff/ot/brand.json";
+import chJf from "@/data/aff/cahaya/aff-jf.json";
+import chEf from "@/data/aff/cahaya/efektivitas.json";
+import chHasil from "@/data/aff/cahaya/sampel_hasil.json";
+import chSampel from "@/data/aff/cahaya/sampel_mei_okt.json";
+import chBrand from "@/data/aff/cahaya/brand.json";
 import extra from "@/data/extra.json";
 import hist from "@/data/hist2025.json";
 import fcseed from "@/data/fcseed.json";
@@ -29,7 +34,7 @@ const S = seed as unknown as Seed;
 // Naikkan angka ini setiap kali file di src/data diperbarui
 const DATA_VERSION = "2026-10-24e";
 // Versi terpisah per jenis data, supaya pembaruan satu bagian tidak menimpa data upload tim
-const AFF_VERSION = "aff-2026-10-26g";
+const AFF_VERSION = "aff-2026-10-30a";
 const EXTRA_VERSION = "extra-2026-10-26a";
 // Riwayat 2025 (CV Cahaya & PMG) dari arsip: hanya menambah baris yang belum ada, tidak menimpa data upload tim
 const HIST_VERSION = "hist-2025-2026-10-28c";
@@ -123,7 +128,8 @@ export async function importAff(): Promise<string> {
   try {
     const F: [string, string, unknown][] = [
       ["jf", "aff-jf.json", affJf], ["jf", "efektivitas.json", affEf], ["jf", "sampel_hasil.json", affHasil], ["jf", "sampel_mei_okt.json", affSampel],
-      ["ot", "aff-jf.json", otJf], ["ot", "efektivitas.json", otEf], ["ot", "sampel_hasil.json", otHasil], ["ot", "sampel_mei_okt.json", otSampel], ["ot", "brand.json", otBrand]];
+      ["ot", "aff-jf.json", otJf], ["ot", "efektivitas.json", otEf], ["ot", "sampel_hasil.json", otHasil], ["ot", "sampel_mei_okt.json", otSampel], ["ot", "brand.json", otBrand],
+      ["cahaya", "aff-jf.json", chJf], ["cahaya", "efektivitas.json", chEf], ["cahaya", "sampel_hasil.json", chHasil], ["cahaya", "sampel_mei_okt.json", chSampel], ["cahaya", "brand.json", chBrand]];
     for (const [c, nama, isi] of F)
       await exec("insert into aff_files (client_id, nama, isi) values (?, ?, ?) on duplicate key update isi = values(isi)", [c, nama, JSON.stringify(isi)]);
   } catch (e) { return "Gagal di tahap affiliate: " + (e as Error).message; }
