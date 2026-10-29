@@ -62,6 +62,6 @@ export async function deleteStore(_p: R | null, f: FormData): Promise<R> {
   if (n) return { ok: false, msg: "Toko ini sudah punya data, jadi tidak bisa dihapus (supaya riwayat tidak hilang)." };
   const s = (await q<{ client_id: string; brand: string; platform: string }>("select client_id, brand, platform from stores where id = ?", [id]))[0];
   await exec("delete from stores where id = ?", [id]);
-  if (s) await logAct(me, "hapus toko", s.client_id, `${s.brand} · ${s.platform}`);
+  if (s) await logAct(me, "hapus toko", s.client_id, `${s.platform} · ${s.brand}`);
   return done("Toko dihapus.");
 }

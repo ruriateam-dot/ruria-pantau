@@ -74,7 +74,7 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
       if (isAdmin && !share) {
         const acc = st.filter((s) => SALDO_STORES.includes(s.id));
         const H = acc.length ? await q<{ store_id: string; saldo: number; catatan: string | null; nama: string | null; w: string }>("select store_id, saldo, catatan, nama, date_format(waktu, '%Y-%m-%d %H:%i') w from ad_balance where store_id in (?) order by waktu desc, id desc", [acc.map((s) => s.id)]) : [];
-        const rowsS: SaldoRow[] = acc.map((s) => { const h = H.filter((x) => x.store_id === s.id); return { id: s.id, nama: `${s.brand} · ${s.platform}`, saldo: h[0] ? +h[0].saldo : null, waktu: h[0]?.w ?? null, oleh: h[0]?.nama ?? null, catatan: h[0]?.catatan ?? null, riwayat: h.slice(0, 15).map((x) => ({ saldo: +x.saldo, waktu: x.w, oleh: x.nama })) }; });
+        const rowsS: SaldoRow[] = acc.map((s) => { const h = H.filter((x) => x.store_id === s.id); return { id: s.id, nama: `${s.platform} · ${s.brand}`, saldo: h[0] ? +h[0].saldo : null, waktu: h[0]?.w ?? null, oleh: h[0]?.nama ?? null, catatan: h[0]?.catatan ?? null, riwayat: h.slice(0, 15).map((x) => ({ saldo: +x.saldo, waktu: x.w, oleh: x.nama })) }; });
         saldo = rowsS.length ? <SaldoIklan rows={rowsS} canEdit={isAdmin} /> : null;
       }
       const AM = await adsMeta(st.map((s) => s.id), R.pf < R.from ? R.pf : R.from, R.to);
@@ -141,7 +141,7 @@ async function SumTab(R: Range, clients: { id: string; nama: string; modul: stri
     `select s.client_id, s.brand, s.platform, b.saldo from ad_balance b join stores s on s.id = b.store_id where s.id in (?) and b.id = (select b2.id from ad_balance b2 where b2.store_id = b.store_id order by b2.waktu desc, b2.id desc limit 1)`, [SALDO_STORES]) : [];
   const statusOf = (r: (typeof rows)[number]) => { const f = F.find((x) => x.client_id === r.c.id); const out: [number, string][] = [];
     for (const [k, d] of [["penjualan", f?.penjualan], ["iklan", r.c.modul.includes("iklan") ? f?.iklan : undefined]] as const) { if (!d) continue; const lag = dayDiff(d, yday); if (lag > 3) out.push([2, `Data ${k} tertinggal ${lag} hari`]); else if (lag > 0) out.push([1, `Data ${k} kurang ${lag} hari`]); }
-    for (const x of SL.filter((x) => x.client_id === r.c.id && +x.saldo < 500_000)) out.push([1, `Saldo ${x.brand} ${x.platform} < Rp500 rb`]);
+    for (const x of SL.filter((x) => x.client_id === r.c.id && +x.saldo < 500_000)) out.push([1, `Saldo ${x.platform} ${x.brand} < Rp500 rb`]);
     if (r.roas != null && r.roasP && r.roas < r.roasP * 0.85) out.push([1, `ROAS turun ${((1 - r.roas / r.roasP) * 100).toFixed(0)}%`]);
     out.sort((a, b) => b[0] - a[0]); return out; };
   return (<>
@@ -162,7 +162,7 @@ async function SumTab(R: Range, clients: { id: string; nama: string; modul: stri
       if (!S2.length) return null;
       const lama = (w: string) => Date.now() - Date.parse(w.replace(" ", "T") + ":00+07:00") > 3 * 864e5;
       return <div className="card"><h2>Sisa saldo iklan terakhir</h2><div className="tbl"><table><thead><tr><th>Klien</th><th>Akun</th><th className="n">Sisa saldo</th><th>Dicatat</th><th>Oleh</th></tr></thead>
-        <tbody>{S2.map((x, i) => <tr key={i}><td><a href={hrefIklan(x.client_id)}>{x.nama}</a></td><td>{x.brand} · {x.platform}</td><td className="n"><b>Rp{Math.round(+x.saldo).toLocaleString("id")}</b></td><td className={"small" + (lama(x.w) ? " dn" : "")}>{tgl(x.w.slice(0, 10))} {x.w.slice(11)} WIB{lama(x.w) ? " · lebih dari 3 hari" : ""}</td><td className="small">{x.oleh ?? "–"}</td></tr>)}</tbody></table></div>
+        <tbody>{S2.map((x, i) => <tr key={i}><td><a href={hrefIklan(x.client_id)}>{x.nama}</a></td><td>{x.platform} · {x.brand}</td><td className="n"><b>Rp{Math.round(+x.saldo).toLocaleString("id")}</b></td><td className={"small" + (lama(x.w) ? " dn" : "")}>{tgl(x.w.slice(0, 10))} {x.w.slice(11)} WIB{lama(x.w) ? " · lebih dari 3 hari" : ""}</td><td className="small">{x.oleh ?? "–"}</td></tr>)}</tbody></table></div>
         <p className="muted small">Urut dari saldo terkecil. Update saldo di tab Analisa Iklan masing-masing klien.</p></div>;
     })()}
     <div className="card"><h2>Status data terakhir</h2><p className="muted small">Aman kalau data sudah masuk sampai kemarin ({tgl(yday)} {yday.slice(0, 4)}).</p>
@@ -200,10 +200,10 @@ function TokoTab({ R, stores, sales, last, prod, live, ads, plat, scN, scP }: { 
   const sum = [`GMV ${fmt(n.g)}${cmp ? `, ${dG >= 0 ? "naik" : "turun"} ${Math.abs(dG).toFixed(1)}% ${R.sub}` : ""}${staleN.length ? ` (perbandingan tanpa ${staleN.length} toko yang datanya belum lengkap)` : ""}.`,
     ...(per.length > 1 ? [`Kontributor terbesar: ${per[0].s.brand} · ${per[0].s.platform} (${(per[0].g / (n.g || 1) * 100).toFixed(0)}%).`] : []), ...prod.sum.slice(0, 2)];
   const ana = [...(cmp ? [isFinite(dC) && Math.abs(dC) > Math.abs(dA) ? `Perubahan GMV lebih didorong konversi (${dC.toFixed(1)}%) daripada AOV (${dA.toFixed(1)}%).` : `Perubahan GMV lebih didorong AOV (${dA.toFixed(1)}%)${isFinite(dC) ? ` daripada konversi (${dC.toFixed(1)}%)` : ""}.`] : []),
-    ...(worst && worst.ch < -5 && cmpd.length > 1 ? [`${worst.s.brand} · ${worst.s.platform} paling melemah (${worst.ch.toFixed(1)}%).`] : []),
-    ...(best && best.ch > 5 && cmpd.length > 1 ? [`${best.s.brand} · ${best.s.platform} paling tumbuh (+${best.ch.toFixed(1)}%).`] : []), ...prod.ana.slice(0, 2)];
-  const next = [...(worst && worst.ch < -5 && cmpd.length > 1 ? [`Cek ${worst.s.brand} · ${worst.s.platform}: listing, stok varian laris, harga, status iklan.`] : []),
-    ...(staleN.length ? [`Upload data terbaru: ${staleN.map((r) => `${r.s.brand} · ${r.s.platform}`).join(", ")}.`] : []), ...prod.next.slice(0, 2)];
+    ...(worst && worst.ch < -5 && cmpd.length > 1 ? [`${worst.s.platform} · ${worst.s.brand} paling melemah (${worst.ch.toFixed(1)}%).`] : []),
+    ...(best && best.ch > 5 && cmpd.length > 1 ? [`${best.s.platform} · ${best.s.brand} paling tumbuh (+${best.ch.toFixed(1)}%).`] : []), ...prod.ana.slice(0, 2)];
+  const next = [...(worst && worst.ch < -5 && cmpd.length > 1 ? [`Cek ${worst.s.platform} · ${worst.s.brand}: listing, stok varian laris, harga, status iklan.`] : []),
+    ...(staleN.length ? [`Upload data terbaru: ${staleN.map((r) => `${r.s.platform} · ${r.s.brand}`).join(", ")}.`] : []), ...prod.next.slice(0, 2)];
   const tot = n.g || 1;
   return (<>
     <div className="ichart"><Insight src="Data asli" sum={sum} ana={ana.length ? ana : ["Belum ada pembanding untuk periode ini."]} next={next.length ? next : ["Pastikan stok produk andalan aman untuk 14 hari ke depan."]} />
@@ -273,7 +273,7 @@ function TokoTab({ R, stores, sales, last, prod, live, ads, plat, scN, scP }: { 
         return P.length > 1 ? <div className="pfrow"><div className="pfsplit">{P.map((x) => <i key={x.l} style={{ width: `${(x.v / t) * 100}%`, background: x.l === "Shopee" ? "var(--accent)" : "var(--aqua)" }} />)}</div>
           <div className="muted small">{P.map((x) => <span key={x.l} style={{ marginRight: 14 }}><b style={{ color: x.l === "Shopee" ? "var(--accent)" : "var(--aqua)" }}>■</b> {x.l} {fmt(x.v)} · {((x.v / t) * 100).toFixed(0)}%</span>)}</div></div> : null; })()}
       <div className="tbl"><table><thead><tr><th>Toko</th><th className="n">GMV</th><th className="n">Porsi</th><th className="n">Pesanan</th><th className="n">AOV</th><th className="n">Pengunjung</th><th className="n">Konversi</th><th className="n">Δ GMV</th><th>Tren</th><th>Data s.d.</th><th>Status</th></tr></thead>
-      <tbody>{per.map((r) => <tr key={r.s.id}><td>{r.s.brand} · {r.s.platform}</td><td className="n">{fmt(r.g)}</td>
+      <tbody>{per.map((r) => <tr key={r.s.id}><td>{r.s.platform} · {r.s.brand}</td><td className="n">{fmt(r.g)}</td>
         <td className="n"><div className="minibar"><i style={{ width: `${(r.g / tot) * 100}%` }} /></div>{((r.g / tot) * 100).toFixed(0)}%</td>
         <td className="n">{r.o.toLocaleString("id")}</td><td className="n">{r.o ? fmt(r.aov) : "–"}</td><td className="n">{r.v != null ? r.v.toLocaleString("id") : "–"}</td><td className="n">{isFinite(r.cr) ? r.cr.toFixed(2) + "%" : "–"}</td>
         <td className={"n " + (!isFinite(r.ch) ? "" : r.ch >= 0 ? "up" : "dn")}>{!isFinite(r.ch) || R.key === "all" ? "–" : `${r.ch >= 0 ? "+" : ""}${r.ch.toFixed(1)}%`}</td>
@@ -294,7 +294,7 @@ function IklanTab({ R, stores, ads, sales, meta = [] }: { R: Range; stores: Stor
   const nk = (s2: string) => s2.replace(/\s+/g, " ").trim().slice(0, 255);
   const MM = new Map(meta.map((m) => [m.store_id + "|" + m.dari + "|" + m.sampai + "|" + m.kampanye, m]));
   const ids = new Set(stores.map((s) => s.id)); const SM = new Map(stores.map((s) => [s.id, s]));
-  const nameS = (id: string) => { const s = SM.get(id)!; return `${s.brand} · ${s.platform}`; };
+  const nameS = (id: string) => { const s = SM.get(id)!; return `${s.platform} · ${s.brand}`; };
   const all = ads.filter((a) => ids.has(a.store_id));
   const A = all.filter((a) => porsi(a, R.from, R.to) > 0), PA = all.filter((a) => porsi(a, R.pf, R.pt) > 0);
   if (!A.length) return <p className="note">Belum ada data iklan untuk {R.label.toLowerCase()} pada pilihan ini.</p>;
@@ -355,7 +355,7 @@ function IklanTab({ R, stores, ads, sales, meta = [] }: { R: Range; stores: Stor
     {G > om && om > 0 && <p className="muted small" style={{ marginTop: -6 }}>GMV atribusi iklan bisa lebih besar dari omzet toko: platform menghitung pesanan dalam beberapa hari setelah klik (satu pesanan bisa tercatat di lebih dari satu kampanye) dan belum mengurangi pembatalan sebelum pesanan dikirim.</p>}
     {monthly && <p className="muted small">Laporan bulanan Shopee dibagi rata per hari, jadi angka hariannya perkiraan.</p>}
     {per.length > 0 && <div className="card"><h2>Per toko</h2><div className="tbl"><table><thead><tr><th>Toko</th><th className="n">Biaya</th><th className="n">GMV iklan</th><th className="n">Pesanan</th><th className="n">ROAS</th><th className="n">Δ ROAS</th><th className="n">Biaya / omzet</th></tr></thead>
-      <tbody>{per.map((x) => <tr key={x.st.id}><td>{x.st.brand} · {x.st.platform}</td><td className="n">{fmt2(x.s)}</td><td className="n">{fmt2(x.g)}</td><td className="n">{x.o.toLocaleString("id")}</td><td className="n">{x.r.toFixed(2).replace(".", ",")}</td>
+      <tbody>{per.map((x) => <tr key={x.st.id}><td>{x.st.platform} · {x.st.brand}</td><td className="n">{fmt2(x.s)}</td><td className="n">{fmt2(x.g)}</td><td className="n">{x.o.toLocaleString("id")}</td><td className="n">{x.r.toFixed(2).replace(".", ",")}</td>
         <td className={"n " + (x.rp == null || !cmp ? "" : x.r >= x.rp ? "up" : "dn")}>{x.rp == null || !cmp ? "–" : `${x.r - x.rp >= 0 ? "+" : ""}${(x.r - x.rp).toFixed(2).replace(".", ",")}`}</td><td className="n">{x.bo != null ? x.bo.toFixed(2).replace(".", ",") + "%" : "–"}</td></tr>)}</tbody></table></div></div>}
     {(boros.length + scale.length + nol.length) > 0 && <div className="card"><h2>Perlu tindakan</h2><div className="acts">
       {L("Boros", boros, (r) => `${fmt2(r.s)} · ROAS ${r.r.toFixed(2).replace(".", ",")}`, "bad", `Biaya ≥3% total, ROAS < ${(roas * 0.6).toFixed(2).replace(".", ",")}`)}
@@ -472,7 +472,7 @@ function LiveTab({ R, live, brand, plat, jadwal }: { R: Range; live: Live[]; bra
 type Prod = { grup: string; nama: string; kode: string[] | null; gmv: number; qty: number; pesanan: number; gmv_prev: number; qty_prev: number; toko: string[] | null; varian: PRow["varian"] };
 type PStats = { st: PRow[]; tokoName: Record<string, string>; sum: string[]; ana: string[]; next: string[]; stop: PRow[]; turun: PRow[]; baru: PRow[]; naik: PRow[] };
 function prodStats(rows: Prod[], stores: Store[], PM: Map<string, { dl: number; kl: number; kr: number; pg: number }> = new Map()): PStats {
-  const tokoName: Record<string, string> = Object.fromEntries(stores.map((s) => [s.id, `${s.brand} ${s.platform === "TikTok" ? "TT" : s.platform === "Shopee" ? "SP" : s.platform}`]));
+  const tokoName: Record<string, string> = Object.fromEntries(stores.map((s) => [s.id, `${s.platform === "TikTok" ? "TT" : s.platform === "Shopee" ? "SP" : s.platform} ${s.brand}`]));
   const P = rows.map((r) => ({ ...r, gmv: +r.gmv, gmv_prev: +r.gmv_prev, qty: +r.qty, qty_prev: +r.qty_prev }));
   const tot = P.reduce((a, r) => a + r.gmv, 0) || 1;
   let cum = 0;

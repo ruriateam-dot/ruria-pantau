@@ -56,7 +56,7 @@ export async function forecast(clientId: string, months: string[], safety: numbe
     RATE.set(s.id, sv / sw);
     const f = new Map<string, number>(); let miss = false;
     for (const m of allM) { const x = seasonFactor(dm, sl, m); if (x === null) miss = true; f.set(m, x ?? 1); }
-    SF.set(s.id, f); if (miss && sv > 0) noSeason.push(`${s.brand} · ${s.platform}`);
+    SF.set(s.id, f); if (miss && sv > 0) noSeason.push(`${s.platform} · ${s.brand}`);
   }
   const fOf = (s: string, d: string) => SF.get(s)!.get(d.slice(0, 7)) ?? 1;
   const ahead = (m: string) => Math.max(0, (+m.slice(0, 4) - +last.slice(0, 4)) * 12 + (+m.slice(5) - +last.slice(5, 7)));
@@ -80,7 +80,7 @@ export async function forecast(clientId: string, months: string[], safety: numbe
     let fc = 0, lyv = 0, lyN = 0, prev = 0;
     for (const m of months) { const f = SF.get(s.id)!.get(m) ?? 1; for (let d = mStart(m); d <= mEnd(m); d = addDays(d, 1)) { fc += d <= sl ? dm.get(d) ?? 0 : r * f; const l = dm.get(ly(d)); if (l !== undefined) { lyv += l; lyN++; } } }
     for (let d = mStart(prevM); d <= mEnd(prevM); d = addDays(d, 1)) prev += dm.get(d) ?? 0;
-    return { id: s.id, nama: `${s.brand} · ${s.platform}`, fc, ly: lyN >= 20 ? lyv : null, prev, last: sl, season: !noSeason.includes(`${s.brand} · ${s.platform}`) };
+    return { id: s.id, nama: `${s.platform} · ${s.brand}`, fc, ly: lyN >= 20 ? lyv : null, prev, last: sl, season: !noSeason.includes(`${s.platform} · ${s.brand}`) };
   }).filter((x) => x.fc > 0 || x.prev > 0).sort((a, b) => b.fc - a.fc);
 
   // ---- Produk / SKU (stok dipakai bersama semua toko klien)

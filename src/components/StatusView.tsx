@@ -24,7 +24,7 @@ export default async function StatusView({ R, stores, share, staff }: { R: Range
   const RA = await q<{ store_id: string; d: number; g: number }>("select f.store_id, sum(f.dana) d, sum(o.gmv) g from order_fees f join orders o on o.store_id = f.store_id and o.order_id = f.order_id where f.store_id in (?) and o.tanggal >= ? and o.status <> 'batal' group by f.store_id", [ids, addDays(R.to, -120)]);
   const ratio = new Map(RA.filter((x) => +x.g > 0).map((x) => [x.store_id, +x.d / +x.g]));
   const all = RA.reduce((a, x) => a + +x.d, 0) / (RA.reduce((a, x) => a + +x.g, 0) || 1);
-  const nm = new Map(stores.map((s) => [s.id, `${s.brand} · ${s.platform}`]));
+  const nm = new Map(stores.map((s) => [s.id, `${s.platform} · ${s.brand}`]));
 
   const by = new Map<string, { n: number; g: number }>(); ST.forEach(([k]) => by.set(k, { n: 0, g: 0 }));
   const T = new Map<string, { kotor: number; batal: number; retur: number; dana: number; est: boolean; n: number }>();

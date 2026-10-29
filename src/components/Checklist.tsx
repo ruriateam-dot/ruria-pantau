@@ -28,7 +28,7 @@ async function inner(clientIds: string[]) {
   for (const c of cl) {
     const m = c.modul.split(",");
     if (m.includes("toko") || m.includes("iklan")) for (const s of stores.filter((x) => x.client_id === c.id))
-      rows.push({ c: c.nama, t: `${s.brand} · ${s.platform}`, cells: [...(m.includes("toko") ? [["Penjualan", sales, s.id], ["Produk", prod, s.id]] as [string, Set<string>, string][] : []), ...(m.includes("iklan") ? [["Iklan", ads, s.id]] as [string, Set<string>, string][] : [])] });
+      rows.push({ c: c.nama, t: `${s.platform} · ${s.brand}`, cells: [...(m.includes("toko") ? [["Penjualan", sales, s.id], ["Produk", prod, s.id]] as [string, Set<string>, string][] : []), ...(m.includes("iklan") ? [["Iklan", ads, s.id]] as [string, Set<string>, string][] : [])] });
     if (m.includes("live")) rows.push({ c: c.nama, t: "Livestream", cells: [["Live", live, c.id]] });
   }
   // Hanya tampilkan data yang belum masuk untuk kemarin

@@ -14,7 +14,7 @@ export async function catatSaldo(storeId: string, saldoTxt: string, catatan: str
   // Waktu disimpan dalam WIB dari jam server aplikasi (tidak bergantung zona waktu database)
   const wib = new Date(Date.now() + 7 * 36e5).toISOString().slice(0, 19).replace("T", " ");
   await exec("insert into ad_balance (store_id, saldo, catatan, oleh, nama, waktu) values (?, ?, ?, ?, ?, ?)", [storeId, saldo, catatan.trim().slice(0, 200) || null, me.id, me.nama || me.email, wib]);
-  await logAct(me, "catat saldo iklan", st.client_id, `${st.brand} · ${st.platform}: Rp${saldo.toLocaleString("id")}`);
+  await logAct(me, "catat saldo iklan", st.client_id, `${st.platform} · ${st.brand}: Rp${saldo.toLocaleString("id")}`);
   revalidatePath("/dashboard");
-  return { ok: true, msg: `Saldo ${st.brand} · ${st.platform} tercatat.` };
+  return { ok: true, msg: `Saldo ${st.platform} · ${st.brand} tercatat.` };
 }

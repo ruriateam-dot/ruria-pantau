@@ -103,7 +103,7 @@ export default function Uploader({ clients, stores }: { clients: C[]; stores: St
   return <div className="card form upl">
     <div className="grid2">
       <label>Klien<select value={c} onChange={(e) => { setC(e.target.value); setS(""); setItems([]); }}>{clients.map((x) => <option key={x.id} value={x.id}>{x.nama}</option>)}</select></label>
-      <label>Toko<select value={s} onChange={(e) => setS(e.target.value)}><option value="">— pilih toko —</option>{ss.map((x) => <option key={x.id} value={x.id}>{x.brand} · {x.platform}</option>)}</select></label>
+      <label>Toko<select value={s} onChange={(e) => setS(e.target.value)}><option value="">— pilih toko —</option>{ss.map((x) => <option key={x.id} value={x.id}>{x.platform} · {x.brand}</option>)}</select></label>
     </div>
     <label className="drop">
       <input type="file" multiple accept=".xlsx,.xls,.csv,.zip" disabled={busy} onChange={(e) => { pick(e.target.files); e.target.value = ""; }} />
@@ -117,7 +117,7 @@ export default function Uploader({ clients, stores }: { clients: C[]; stores: St
     </li>)}</ul>}
     {items.length > 0 && <>
       {needStore && !store && <p className="err">Pilih toko tujuan dulu.</p>}
-      {store && needStore && <p className="muted small">Akan disimpan ke <b>{store.brand} · {store.platform}</b>. Laporan livestream disimpan per klien.</p>}
+      {store && needStore && <p className="muted small">Akan disimpan ke <b>{store.platform} · {store.brand}</b>. Laporan livestream disimpan per klien.</p>}
       <button disabled={!ready || busy} onClick={save}>{busy ? "Menyimpan…" : "Simpan ke dashboard"}</button>
     </>}
   </div>;

@@ -85,7 +85,7 @@ async function inner(clientIds: string[]) {
       const tt = s.platform === "TikTok";
       // toko live-only (VOIE, Dren): cukup satu baris live per klien
       if (!toko && !ik && i > 0) return;
-      R.push({ klien: c.nama, toko: toko || ik ? `${s.brand} · ${s.platform}` : "Livestream", tt, c: {
+      R.push({ klien: c.nama, toko: toko || ik ? `${s.platform} · ${s.brand}` : "Livestream", tt, c: {
         stat: cell(jual.get(s.id), y, toko, "stat|" + s.id, first(s.id)),
         // file produk TikTok (product_list) baru diminta sejak Okt 2026
         produk: cell(tt ? ff(s.id, /^produk-tiktok$/) : mx(ff(s.id, /^produk-shopee$/), pp.get(s.id)), y, toko, "prod|" + s.id, tt ? "2026-10-01" : first(s.id)),
