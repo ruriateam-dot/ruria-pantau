@@ -75,7 +75,7 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
         const acc = st.filter((s) => SALDO_STORES.includes(s.id));
         const H = acc.length ? await q<{ store_id: string; saldo: number; catatan: string | null; nama: string | null; w: string }>("select store_id, saldo, catatan, nama, date_format(waktu, '%Y-%m-%d %H:%i') w from ad_balance where store_id in (?) order by waktu desc, id desc", [acc.map((s) => s.id)]) : [];
         const rowsS: SaldoRow[] = acc.map((s) => { const h = H.filter((x) => x.store_id === s.id); return { id: s.id, nama: `${s.brand} · ${s.platform}`, saldo: h[0] ? +h[0].saldo : null, waktu: h[0]?.w ?? null, oleh: h[0]?.nama ?? null, catatan: h[0]?.catatan ?? null, riwayat: h.slice(0, 15).map((x) => ({ saldo: +x.saldo, waktu: x.w, oleh: x.nama })) }; });
-        saldo = <SaldoIklan rows={rowsS} canEdit={isAdmin} />;
+        saldo = rowsS.length ? <SaldoIklan rows={rowsS} canEdit={isAdmin} /> : null;
       }
       const AM = await adsMeta(st.map((s) => s.id), R.pf < R.from ? R.pf : R.from, R.to);
       body = <>{saldo}<IklanTab R={R} stores={st} ads={D.ads} sales={D.sales} meta={AM} /></>;
