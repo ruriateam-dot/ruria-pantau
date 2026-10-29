@@ -233,3 +233,4 @@
 #aff-root header.top{position:static;background:transparent;border:0;box-shadow:none}
 #aff-root main .wrap,#aff-root .wrap{padding-left:0;padding-right:0;max-width:none}
 #aff-root #picbox{display:none}
+#aff-root label.picbox{display:none}
