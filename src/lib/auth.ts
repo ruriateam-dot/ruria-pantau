@@ -15,8 +15,21 @@ export async function getUser(): Promise<User | null> {
   const t = (await cookies()).get(COOKIE)?.value;
   if (!t || !/^[a-f0-9]{64}$/.test(t)) return null;
   const r = await q<User>("select u.id, u.email, u.nama, u.peran from sessions s join users u on u.id = s.user_id where s.token = ? and s.kadaluarsa > now()", [t]);
+  if (r[0] && !logoutDone) {
+    // Sekali jalan: keluarkan semua sesi semua akun (diminta superadmin 30 Okt 2026). Penanda disimpan di tabel uploads.
+    const done = await q<{ n: number }>("select count(*) n from uploads where jenis = ?", [LOGOUT_ALL]);
+    if (!+done[0].n) {
+      await exec("insert into uploads (client_id, jenis, nama_file, oleh) values (null, ?, 'logout semua akun', ?)", [LOGOUT_ALL, r[0].id]);
+      await exec("delete from sessions");
+      logoutDone = true;
+      return null;
+    }
+    logoutDone = true;
+  }
   return r[0] ?? null;
 }
+const LOGOUT_ALL = "sistem:logout-semua-2026-10-30";
+let logoutDone = false;
 
 export async function requireUser() {
   const u = await getUser();
