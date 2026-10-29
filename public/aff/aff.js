@@ -16,6 +16,16 @@ const SH = D.sh.map(r => {
   const g = r.slice(4,4+NS); return {k:'sh', key:r[0], u:r[0], nama:r[1], tipe:D.tip[r[2]], ch:r[3], g, okt:g[NS-1], tot:g.reduce((a,b)=>a+b,0), bln:g.filter(v=>v>0).length,
     pb:r[10+oS], batal:r[11+oS], samp:r[12+oS], cat:r[13+oS], pr:r[14+oS], aksi:D.aks[r[15+oS]], gk:r[16+oS]||0, gb:r[17+oS]||0, gx:r[18+oS]||0, gest:r[19+oS]?1:0, tp:r[20+oS]};
 });
+/* bulan aktif: penyebut = bulan yang ada datanya, plus bulan kontribusi terbesar */
+const availOf = rows => { const n = rows[0] ? rows[0].g.length : 0; const t = Array(n).fill(0); rows.forEach(r => r.g.forEach((v,i) => { t[i] += v||0; })); return t.map(v => v > 0); };
+const AV_TT = availOf(TT), AV_SH = availOf(SH);
+[[TT, AV_TT, TT_M], [SH, AV_SH, SH_M]].forEach(([rows, av, lbl]) => rows.forEach(r => {
+  r.bln = r.g.filter((v,i) => av[i] && v > 0).length; r.blnN = av.filter(Boolean).length;
+  let mi = -1, mv = 0; r.g.forEach((v,i) => { if (v > mv) { mv = v; mi = i; } });
+  const pos = r.g.reduce((a,v) => a + (v > 0 ? v : 0), 0);
+  r.blnTop = mi >= 0 && pos > 0 ? String(lbl[mi]).split(' ')[0] + ' ' + Math.round(mv / pos * 100) + '%' : '';
+}));
+const blnCell = r => `${r.bln}/${r.blnN ?? r.g.length}${r.blnTop ? `<br><small class="muted" title="Bulan dengan kontribusi GMV terbesar">${r.blnTop}</small>` : ''}`;
 const MEM = {}; D.C.forEach(c => (MEM[c[0]] ||= []).push({u:c[1], nama:c[2], om:c[3], ok:c[4], all:c[5]}));
 const AGA = D.A.map(r => ({k:'ag', key:'A '+r[0], grp:'A', nama:r[0], om:r[1], ok:r[2], batal:r[3], top:r[4], pr:r[6], aksi:r[7], mem:MEM[r[0]]||[]}));
 const AGB = D.B.map(r => ({k:'ag', key:'B '+r[0], grp:'B', nama:r[0], att:r[1], ash:r[2], gt:r[3], gs:r[4], tot:r[3]+r[4], cat:r[5], pr:r[6], aksi:r[7]}));
@@ -282,7 +292,7 @@ function renderList(which){
       <td>${prioChip(r.pr)}</td>
       <td class="u">${esc(r.u)}${!isTT && r.nama && r.nama !== r.u ? `<small>${esc(r.nama)}</small>` : ''}${fuOf(r)?.kontak ? `<small class="kt">☎ ${esc(fuOf(r).kontak)}</small>`:''}</td>
       <td class="t">${tipeR(r)}</td>
-      <td class="num">${rpShort(r.okt)}</td><td class="num">${rpShort(r.tot)}</td><td class="num">${r.bln}/${r.g.length}</td><td class="num">${sampCell(r)}</td><td class="num">${hasilCell(r)}</td>
+      <td class="num">${rpShort(r.okt)}</td><td class="num">${rpShort(r.tot)}</td><td class="num">${blnCell(r)}</td><td class="num">${sampCell(r)}</td><td class="num">${hasilCell(r)}</td>
       <td class="aksi">${esc(r.aksi)}</td>
       <td>${statChip(dispStatus(r))}</td>
       <td>${esc(fuOf(r)?.respon || '') || '<span class="muted">–</span>'}</td>
@@ -421,7 +431,7 @@ function renderDb(){
       <td class="t">${tipeR(r)}</td>
       <td class="num">${rpShort(r.okt)}</td><td class="num">${rpShort(r.gk)}${est(r)}</td><td class="num"><b>${rpShort(r.gb)}</b>${est(r)}</td>
       <td class="num">${rpShort(r.gx)}${est(r)}${r.gk && r.gx ? `<br><small class="${r.gx/r.gk>=.4?'late':'muted'}">${pct(r.gx/r.gk)}</small>` : ''}</td>
-      <td class="num">${r.bln}/${r.g.length}</td><td class="num">${sampCell(r)}</td><td class="num">${hasilCell(r)}</td>
+      <td class="num">${blnCell(r)}</td><td class="num">${sampCell(r)}</td><td class="num">${hasilCell(r)}</td>
       <td class="aksi">${esc(r.aksi)}</td>
       <td>${statChip(dispStatus(r))}</td>
       <td>${esc(fuOf(r)?.respon || '') || '<span class="muted">–</span>'}</td>
