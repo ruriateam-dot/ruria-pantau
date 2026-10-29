@@ -283,3 +283,8 @@
 #aff-root .navplat .seg button.on .n{color:rgba(255,255,255,.8)}
 #aff-root .navplat .seg button:focus-visible{outline:2px solid var(--accent)}
 #aff-root nav.tabs .navplat .n{background:none;padding:0;margin:0;font-size:12.5px}
+/* label platform di kiri nama toko, di bawah username */
+#aff-root .ptags{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:4px}
+#aff-root .ptags .plt{font-size:10.5px;font-weight:800;border-radius:5px;padding:1px 6px;color:#fff;letter-spacing:.02em}
+#aff-root .ptags .plt.tt{background:#111}#aff-root .ptags .plt.sh{background:#ee5a2c}
+#aff-root .ptags .brt{font-size:11px;font-weight:600;border:1px solid var(--line);border-radius:5px;padding:0 6px;color:var(--muted)}

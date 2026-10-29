@@ -25,6 +25,8 @@ const AV_TT = availOf(TT), AV_SH = availOf(SH);
   const pos = r.g.reduce((a,v) => a + (v > 0 ? v : 0), 0);
   r.blnTop = mi >= 0 && pos > 0 ? String(lbl[mi]).split(' ')[0] + ' ' + Math.round(mv / pos * 100) + '%' : '';
 }));
+/* label platform + nama toko (toko hanya untuk klien dengan lebih dari satu brand) */
+const ptags = r => `<div class="ptags"><span class="plt ${r.k}">${r.k==='tt'?'TIKTOK':'SHOPEE'}</span>${(D.BRANDS||[]).filter(b => String(r.cat||'').includes(b)).map(b => `<span class="brt">${esc(b)}</span>`).join('')}</div>`;
 const blnCell = r => `${r.bln}/${r.blnN ?? r.g.length}${r.blnTop ? `<br><small class="muted" title="Bulan dengan kontribusi GMV terbesar">${r.blnTop}</small>` : ''}`;
 const MEM = {}; D.C.forEach(c => (MEM[c[0]] ||= []).push({u:c[1], nama:c[2], om:c[3], ok:c[4], all:c[5]}));
 const AGA = D.A.map(r => ({k:'ag', key:'A '+r[0], grp:'A', nama:r[0], om:r[1], ok:r[2], batal:r[3], top:r[4], pr:r[6], aksi:r[7], mem:MEM[r[0]]||[]}));
@@ -429,7 +431,7 @@ function renderDb(){
     <thead><tr>${th('pr','Prio')}${th('u','Username')}<th>Tipe</th>${th('okt','GMV 30 hari terakhir','num')}${th('gb','GMV bersih','num')}${th('bln','Bulan aktif','num')}${th('sn','Sampel (all time)','num')}${th('sroi','Efektivitas sampel (all time)','num')}<th>Saran aksi</th>${th('st','Status')}${th('resp','Respon')}${th('last','Terakhir dihubungi')}</tr></thead>
     <tbody>${slice.length ? slice.map((r,i) => `<tr class="click" tabindex="0" data-i="${f.page*PAGE+i}">
       <td>${prioChip(r.pr)}</td>
-      <td class="u"><span class="pdot ${r.k}" title="${r.k==='tt'?'TikTok':'Shopee'}"></span>${esc(r.u)}${liveChip(r)}${andalan(r) ? ' <span class="chip p1" title="Kreator andalan: jualan ≥5 dari 6 bulan, GMV bersih ≥Rp3 jt, masih jualan bulan terakhir. Pertahankan dengan komisi khusus/prioritas produk baru">Andalan</span>' : ''}${halOf(r) ? ` <span class="chip" title="Peserta acara Haluan ClickConnect Semarang (${esc(halOf(r))}), dapat 1 sampel">Haluan</span>` : ''}${r.k==='sh' && r.nama && r.nama !== r.u ? `<small>${esc(r.nama)}</small>` : ''}${fuOf(r)?.kontak ? `<br>${kontakHtml(fuOf(r).kontak, r)}`:''}</td>
+      <td class="u">${esc(r.u)}${liveChip(r)}${andalan(r) ? ' <span class="chip p1" title="Kreator andalan: jualan ≥5 dari 6 bulan, GMV bersih ≥Rp3 jt, masih jualan bulan terakhir. Pertahankan dengan komisi khusus/prioritas produk baru">Andalan</span>' : ''}${halOf(r) ? ` <span class="chip" title="Peserta acara Haluan ClickConnect Semarang (${esc(halOf(r))}), dapat 1 sampel">Haluan</span>` : ''}${r.k==='sh' && r.nama && r.nama !== r.u ? `<small>${esc(r.nama)}</small>` : ''}${ptags(r)}${fuOf(r)?.kontak ? `<br>${kontakHtml(fuOf(r).kontak, r)}`:''}</td>
       <td class="t">${tipeR(r)}</td>
       <td class="num">${rpShort(r.okt)}</td><td class="num"><b>${rpShort(r.gb)}</b>${est(r)}<small class="${r.gk && r.gx/r.gk>=.4?'late':'muted'}">kotor ${rpShort(r.gk)} · batal ${r.gk ? pct(r.gx/r.gk) : '0%'}</small></td>
       <td class="num">${blnCell(r)}</td><td class="num wrapn">${sampCell(r)}</td><td class="num wrapn">${hasilCell(r)}</td>
