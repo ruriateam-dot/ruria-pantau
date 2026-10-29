@@ -6,7 +6,7 @@ export type Metric = { k: string; l: string; f: "rp" | "n" | "pct" | "x" | "jam"
 const COL = ["var(--accent)", "var(--aqua)", "#7c5cff", "#e0a100"];
 const fmtV = (f: Metric["f"], n: number, dec = 1) => {
   if (!isFinite(n)) return "–";
-  if (f === "rp") return n >= 1e9 ? `Rp${(n / 1e9).toFixed(2).replace(".", ",")} M` : n >= 1e6 ? `Rp${(n / 1e6).toFixed(dec).replace(".", ",")} jt` : dec > 1 ? `Rp${(n / 1e3).toFixed(dec).replace(".", ",")} rb` : `Rp${Math.round(n / 1e3)} rb`;
+  if (f === "rp") return n >= 1e9 ? `Rp${(n / 1e9).toFixed(2).replace(".", ",")} M` : n >= 1e6 ? `Rp${(n / 1e6).toFixed(1).replace(".", ",")} jt` : `Rp${Math.round(n / 1e3)} rb`;
   if (f === "pct") return n.toFixed(2).replace(".", ",") + "%";
   if (f === "x") return n.toFixed(dec).replace(".", ",");
   if (f === "jam") { const t = Math.round(n * 60); return `${Math.floor(t / 60)}j ${String(t % 60).padStart(2, "0")}m`; }

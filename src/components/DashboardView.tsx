@@ -137,11 +137,15 @@ async function SumTab(R: Range, clients: { id: string; nama: string; modul: stri
   const tot = rows.reduce((a, r) => a + r.n, 0) || 1;
   const up = [...rows].sort((a, b) => pct(b.n, b.o) - pct(a.n, a.o))[0], dn = [...rows].sort((a, b) => pct(a.n, a.o) - pct(b.n, b.o))[0];
   // Indikator status kartu klien: data terlambat, saldo iklan menipis, ROAS turun
-  const SL = staff ? await q<{ client_id: string; brand: string; platform: string; saldo: number }>(
-    `select s.client_id, s.brand, s.platform, b.saldo from ad_balance b join stores s on s.id = b.store_id where s.id in (?) and b.id = (select b2.id from ad_balance b2 where b2.store_id = b.store_id order by b2.waktu desc, b2.id desc limit 1)`, [SALDO_STORES]) : [];
+  // Rata-rata biaya iklan harian 30 hari terakhir per akun (untuk ambang saldo: 2 hari belanja)
+  const a30 = addDays(yday, -29);
+  const AR = staff ? await q<{ store_id: string; dari: string; sampai: string; biaya: number }>("select store_id, date_format(dari, '%Y-%m-%d') dari, date_format(sampai, '%Y-%m-%d') sampai, biaya from ads where store_id in (?) and sampai >= ? and dari <= ?", [SALDO_STORES, a30, yday]) : [];
+  const AVG = new Map<string, number>(); for (const x of AR) { const f = x.dari > a30 ? x.dari : a30, t = x.sampai < yday ? x.sampai : yday; const w = (dayDiff(f, t) + 1) / (dayDiff(x.dari, x.sampai) + 1); AVG.set(x.store_id, (AVG.get(x.store_id) ?? 0) + (+x.biaya * w) / 30); }
+  const SL = staff ? await q<{ client_id: string; store_id: string; brand: string; platform: string; saldo: number }>(
+    `select s.client_id, s.id store_id, s.brand, s.platform, b.saldo from ad_balance b join stores s on s.id = b.store_id where s.id in (?) and b.id = (select b2.id from ad_balance b2 where b2.store_id = b.store_id order by b2.waktu desc, b2.id desc limit 1)`, [SALDO_STORES]) : [];
   const statusOf = (r: (typeof rows)[number]) => { const f = F.find((x) => x.client_id === r.c.id); const out: [number, string][] = [];
     for (const [k, d] of [["penjualan", f?.penjualan], ["iklan", r.c.modul.includes("iklan") ? f?.iklan : undefined]] as const) { if (!d) continue; const lag = dayDiff(d, yday); if (lag > 3) out.push([2, `Data ${k} tertinggal ${lag} hari`]); else if (lag > 0) out.push([1, `Data ${k} kurang ${lag} hari`]); }
-    for (const x of SL.filter((x) => x.client_id === r.c.id && +x.saldo < 500_000)) out.push([1, `Saldo ${x.platform} ${x.brand} < Rp500 rb`]);
+    for (const x of SL.filter((x) => x.client_id === r.c.id && +x.saldo < 2 * (AVG.get(x.store_id) ?? 0))) out.push([1, `Saldo ${x.platform} ${x.brand} < 2 hari belanja iklan`]);
     if (r.roas != null && r.roasP && r.roas < r.roasP * 0.85) out.push([1, `ROAS turun ${((1 - r.roas / r.roasP) * 100).toFixed(0)}%`]);
     out.sort((a, b) => b[0] - a[0]); return out; };
   return (<>
@@ -288,7 +292,7 @@ const tipeIklan = (k: string, pf: string) => /gmv max/i.test(k) ? "GMV Max" : /o
 /* Bagian biaya/GMV sebuah baris iklan yang jatuh di rentang [a,b] (laporan bulanan dibagi rata per hari) */
 const porsi = (x: Ad, a: string, b: string) => { const f = x.dari > a ? x.dari : a, t = x.sampai < b ? x.sampai : b; if (f > t) return 0; return (dayDiff(f, t) + 1) / (dayDiff(x.dari, x.sampai) + 1); };
 /* Tab iklan: angka desimal 2 digit */
-const fmt2 = (n: number) => n >= 1e9 ? `Rp${(n / 1e9).toFixed(2).replace(".", ",")} M` : n >= 1e6 ? `Rp${(n / 1e6).toFixed(2).replace(".", ",")} jt` : `Rp${(n / 1e3).toFixed(2).replace(".", ",")} rb`;
+const fmt2 = (n: number) => fmt(n); // Rupiah tetap 1 desimal; ROAS & persen 2 desimal
 type AMeta = { store_id: string; dari: string; sampai: string; kampanye: string; dilihat: number | null; klik: number | null; keranjang: number | null };
 function IklanTab({ R, stores, ads, sales, meta = [] }: { R: Range; stores: Store[]; ads: Ad[]; sales: Sale[]; meta?: AMeta[] }) {
   const nk = (s2: string) => s2.replace(/\s+/g, " ").trim().slice(0, 255);

@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { shortName } from "@/lib/nama";
 
 export type CRow = { k: string; toko: string; platform: string; tipe: string; nama: string; s: number; g: number; o: number; r: number; dr: number | null; st: string; dl?: number | null; kl?: number | null };
-const fmt = (n: number) => n >= 1e9 ? `Rp${(n / 1e9).toFixed(2).replace(".", ",")} M` : n >= 1e6 ? `Rp${(n / 1e6).toFixed(2).replace(".", ",")} jt` : `Rp${(n / 1e3).toFixed(2).replace(".", ",")} rb`;
+const fmt = (n: number) => n >= 1e9 ? `Rp${(n / 1e9).toFixed(2).replace(".", ",")} M` : n >= 1e6 ? `Rp${(n / 1e6).toFixed(1).replace(".", ",")} jt` : `Rp${Math.round(n / 1e3)} rb`;
 export const ST: Record<string, [string, string]> = { boros: ["bad", "Boros"], scale: ["good", "Bisa di-scale"], nol: ["bad", "Tanpa penjualan"], normal: ["mute", "Normal"] };
 const STEP = 15;
 
