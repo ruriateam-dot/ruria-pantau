@@ -10,6 +10,7 @@ const PF = ["Shopee", "TikTok", "Lazada", "CPAS"];
 const slug = (s: string) => s.toLowerCase().normalize("NFKD").replace(/[^\w\s-]/g, "").trim().replace(/[\s_]+/g, "-").replace(/-+/g, "-").slice(0, 36);
 const done = (msg: string): R => { revalidatePath("/dashboard", "layout"); return { ok: true, msg }; };
 
+const TABK = ["ringkas", "toko", "iklan", "live", "affiliate", "forecast", "status"];
 export async function saveClient(_p: R | null, f: FormData): Promise<R> {
   const me = await requireAdmin(); if (!me) return { ok: false, msg: "Hanya superadmin." };
   const id = String(f.get("id") || ""), nama = String(f.get("nama") || "").trim().slice(0, 150);
@@ -19,8 +20,9 @@ export async function saveClient(_p: R | null, f: FormData): Promise<R> {
   if (!modul.length) return { ok: false, msg: "Pilih minimal satu modul." };
   if (target != null && (!isFinite(target) || target < 0 || target > 1000)) return { ok: false, msg: "Target ROAS tidak valid." };
   const ssa = f.get("stok_selalu_ada") ? 1 : 0;
+  const tabs = f.getAll("tab_klien").map(String).filter((t) => TABK.includes(t)), tk = f.get("tab_set") ? tabs.join(",") : null;
   if (id) {
-    await exec("update clients set nama = ?, modul = ?, target_roas = ?, stok_selalu_ada = ? where id = ?", [nama, modul.join(","), target, ssa, id]);
+    await exec("update clients set nama = ?, modul = ?, target_roas = ?, stok_selalu_ada = ?, tab_klien = ? where id = ?", [nama, modul.join(","), target, ssa, tk, id]);
     await logAct(me, "ubah klien", id, `${nama} · modul ${modul.join(", ")} · target ROAS ${target ?? "–"}`);
     return done("Klien disimpan.");
   }

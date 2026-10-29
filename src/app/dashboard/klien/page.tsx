@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function KlienPage() {
   const me = await requireUser();
   if (me.peran !== "superadmin" || !isStaff(me)) redirect("/dashboard");
-  const clients = (await q<{ id: string; nama: string; modul: string; target_roas: number | null; stok_selalu_ada: number }>("select id, nama, modul, target_roas, stok_selalu_ada from clients order by nama")).map((c) => ({ ...c, modul: c.modul.split(",") }));
+  const clients = (await q<{ id: string; nama: string; modul: string; target_roas: number | null; stok_selalu_ada: number; tab_klien: string | null }>("select id, nama, modul, target_roas, stok_selalu_ada, tab_klien from clients order by nama")).map((c) => ({ ...c, modul: c.modul.split(",") }));
   const stores = await q<{ id: string; client_id: string; brand: string; platform: string; akun: string | null; n: number }>(
     "select s.id, s.client_id, s.brand, s.platform, s.akun, (select count(*) from daily_sales d where d.store_id = s.id) + (select count(*) from ads a where a.store_id = s.id) n from stores s order by s.brand, s.platform");
   await logAct(me, "lihat", null, "Kelola klien");

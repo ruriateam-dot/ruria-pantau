@@ -26,7 +26,7 @@ import { clientsFor, loadClient, freshness, produkSku, storeLast, storePeriods, 
 import { resolvePeriod, buckets, fmt, pct, jm, tgl, addDays, dayDiff, todayWIB, type Range } from "@/lib/period";
 
 type SPv = Record<string, string | undefined>;
-type Cl = { id: string; nama: string; modul: string[]; target_roas: number | null };
+type Cl = { id: string; nama: string; modul: string[]; target_roas: number | null; tab_klien?: string[] | null };
 
 const TABS: [string, string][] = [["sum", "Dashboard"], ["ringkas", "Ringkasan"], ["toko", "Analisa Toko"], ["iklan", "Analisa Iklan"], ["live", "Livestream"], ["affiliate", "Affiliate"], ["forecast", "Forecast"], ["status", "Status Pesanan"]];
 
@@ -38,8 +38,9 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
   const c = clients.find((x) => x.id === sp.c) ?? clients[0];
   let tab = sp.m ?? (sp.c || share ? "toko" : "sum");
   if (share && tab === "sum") tab = "toko";
-  const has = (k: string) => !!c && (k === "forecast" || k === "status" || k === "ringkas" ? c.modul.includes("toko") : c.modul.includes(k));
-  if (c && tab !== "sum" && !has(tab)) tab = c.modul[0];
+  const viewKlien = !!share || !isAdmin;
+  const has = (k: string) => !!c && (k === "forecast" || k === "status" || k === "ringkas" ? c.modul.includes("toko") : c.modul.includes(k)) && !(viewKlien && c.tab_klien && !c.tab_klien.includes(k));
+  if (c && tab !== "sum" && !has(tab)) tab = TABS.map(([k]) => k).find((k) => k !== "sum" && has(k)) ?? c.modul[0];
   // Periode relatif dihitung mundur dari tanggal data terakhir klien (per jenis data)
   const F0 = c && tab !== "sum" ? (await freshness([c.id]))[0] : undefined;
   const lastData = tab === "iklan" ? F0?.iklan : tab === "live" ? F0?.live : F0?.penjualan;
