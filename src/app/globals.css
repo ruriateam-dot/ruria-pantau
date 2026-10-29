@@ -455,3 +455,10 @@ tr.row-scale td{background:color-mix(in srgb,var(--good) 7%,transparent)}tr.row-
 .tbl{max-height:75vh;overflow:auto}.tbl thead th{position:sticky;top:0;z-index:2;background:var(--panel)}
 /* 10. Perubahan di tabel diberi latar warna lembut */
 td.n.up,td.n.dn{font-weight:600}td.n.up{background:color-mix(in srgb,var(--good) 9%,transparent)}td.n.dn{background:color-mix(in srgb,var(--bad) 9%,transparent)}
+/* Ringkasan 1 layar klien */
+.rk{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.rkc{display:grid;gap:4px}.rkc b{font-size:24px}
+.rk2{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:12px;margin-top:12px}
+@media (max-width:900px){.rk{grid-template-columns:repeat(2,minmax(0,1fr))}.rk2{grid-template-columns:1fr}}
+.rkbar{height:8px;border-radius:99px;background:var(--bg);overflow:hidden;margin:4px 0}.rkbar i{display:block;height:100%;background:var(--good)}
+/* ikon penjelasan istilah */
+.ii{display:inline-grid;place-items:center;width:14px;height:14px;border-radius:50%;background:var(--bg);color:var(--muted);font-size:9.5px;font-weight:800;font-style:normal;margin-left:4px;vertical-align:1px;cursor:help}

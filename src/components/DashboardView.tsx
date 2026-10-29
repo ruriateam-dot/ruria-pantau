@@ -28,7 +28,7 @@ import { resolvePeriod, buckets, fmt, pct, jm, tgl, addDays, dayDiff, todayWIB, 
 type SPv = Record<string, string | undefined>;
 type Cl = { id: string; nama: string; modul: string[]; target_roas: number | null };
 
-const TABS: [string, string][] = [["sum", "Dashboard"], ["toko", "Analisa Toko"], ["iklan", "Analisa Iklan"], ["live", "Livestream"], ["affiliate", "Affiliate"], ["forecast", "Forecast"], ["status", "Status Pesanan"]];
+const TABS: [string, string][] = [["sum", "Dashboard"], ["ringkas", "Ringkasan"], ["toko", "Analisa Toko"], ["iklan", "Analisa Iklan"], ["live", "Livestream"], ["affiliate", "Affiliate"], ["forecast", "Forecast"], ["status", "Status Pesanan"]];
 
 /* Dipakai oleh /dashboard (login) dan /lihat/[token] (klien tanpa login, hanya lihat) */
 export default async function DashboardView({ sp, profile, clients: all, base, share, shareLabel, token }: { sp: SPv; profile: User | null; clients: Cl[]; base: string; share?: boolean; shareLabel?: string; token?: string }) {
@@ -38,7 +38,7 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
   const c = clients.find((x) => x.id === sp.c) ?? clients[0];
   let tab = sp.m ?? (sp.c || share ? "toko" : "sum");
   if (share && tab === "sum") tab = "toko";
-  const has = (k: string) => !!c && (k === "forecast" || k === "status" ? c.modul.includes("toko") : c.modul.includes(k));
+  const has = (k: string) => !!c && (k === "forecast" || k === "status" || k === "ringkas" ? c.modul.includes("toko") : c.modul.includes(k));
   if (c && tab !== "sum" && !has(tab)) tab = c.modul[0];
   // Periode relatif dihitung mundur dari tanggal data terakhir klien (per jenis data)
   const F0 = c && tab !== "sum" ? (await freshness([c.id]))[0] : undefined;
@@ -75,6 +75,10 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
         const acc = st.filter((s) => SALDO_STORES.includes(s.id));
         const H = acc.length ? await q<{ store_id: string; saldo: number; catatan: string | null; nama: string | null; w: string }>("select store_id, saldo, catatan, nama, date_format(waktu, '%Y-%m-%d %H:%i') w from ad_balance where store_id in (?) order by waktu desc, id desc", [acc.map((s) => s.id)]) : [];
         const rowsS: SaldoRow[] = acc.map((s) => { const h = H.filter((x) => x.store_id === s.id); return { id: s.id, nama: `${s.platform} · ${s.brand}`, saldo: h[0] ? +h[0].saldo : null, waktu: h[0]?.w ?? null, oleh: h[0]?.nama ?? null, catatan: h[0]?.catatan ?? null, riwayat: h.slice(0, 15).map((x) => ({ saldo: +x.saldo, waktu: x.w, oleh: x.nama })) }; });
+        // Rata-rata belanja iklan per hari (30 hari s.d. kemarin) untuk perkiraan saldo cukup berapa hari
+        const yd = addDays(todayWIB(), -1), d30 = addDays(yd, -29);
+        const AR = acc.length ? await q<{ store_id: string; dari: string; sampai: string; biaya: number }>("select store_id, date_format(dari, '%Y-%m-%d') dari, date_format(sampai, '%Y-%m-%d') sampai, biaya from ads where store_id in (?) and sampai >= ? and dari <= ?", [acc.map((x) => x.id), d30, yd]) : [];
+        for (const r of rowsS) r.avg = AR.filter((x) => x.store_id === r.id).reduce((t, x) => t + (+x.biaya * porsi({ ...x, dari: x.dari, sampai: x.sampai } as unknown as Ad, d30, yd)) / 30, 0);
         saldo = rowsS.length ? <SaldoIklan rows={rowsS} canEdit={isAdmin} /> : null;
       }
       const AM = await adsMeta(st.map((s) => s.id), R.pf < R.from ? R.pf : R.from, R.to);
@@ -85,6 +89,7 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
       body = has ? <Affiliate key={c.id} client={c.id} nama={c.nama} user={profile ? "u" + profile.id : "klien"} readOnly={!!share || !isAdmin} token={share ? token : undefined} />
         : <div className="card"><h2>Affiliate · {c.nama}</h2><p className="muted">Ruang kerja affiliate untuk klien ini belum disiapkan. Kirim ke Claude ekspor data affiliate (TikTok: Affiliate → Kreator / Performa; Shopee: Affiliate Marketing Solution → Laporan kreator) untuk periode yang ingin dipantau, nanti disiapkan seperti ruang kerja Just Fluff.</p></div>;
     }
+    else if (tab === "ringkas") body = await RingkasTab({ R, c, stores: st, sales: D.sales, ads: D.ads, live: D.live });
     else if (tab === "status") {
       body = <StatusView R={R} stores={st} share={!!share} staff={isAdmin && !share} />;
     }
@@ -113,10 +118,42 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
     </header>
   );
   const lag = lastData ? dayDiff(lastData, addDays(todayWIB(), -1)) : 0;
-  const warn = tab !== "sum" && tab !== "affiliate" && lastData && lag > 3 ? <p className="note warnnote">Data {tab === "iklan" ? "iklan" : tab === "live" ? "live" : "penjualan"} klien ini baru sampai <b>{tgl(lastData)} {lastData.slice(0, 4)}</b> (tertinggal {lag} hari). Periode dihitung sampai tanggal itu supaya data yang belum diupload tidak terbaca sebagai penurunan.</p> : null;
+  // Peringatan data terlambat hanya untuk yang login (tim Ruria & tim klien), tidak tampil di link klien
+  const warn = !share && tab !== "sum" && tab !== "affiliate" && lastData && lag > 3 ? <p className="note warnnote">Data {tab === "iklan" ? "iklan" : tab === "live" ? "live" : "penjualan"} klien ini baru sampai <b>{tgl(lastData)} {lastData.slice(0, 4)}</b> (tertinggal {lag} hari). Periode dihitung sampai tanggal itu supaya data yang belum diupload tidak terbaca sebagai penurunan.</p> : null;
   const main = <main className="wrap dv">{isAdmin && <AutoImport />}{isAdmin && !share && tab === "sum" && <><JadwalUpload /><UploadChecklist clientIds={clients.map((x) => x.id)} /></>}{warn}{body}</main>;
   if (share || !profile) return <><LoadingBar />{head}{main}</>;
   return <AppShell user={profile} active={tab === "sum" ? undefined : c?.id} keep={{ m: tab, per: sp.per }}>{head}{main}</AppShell>;
+}
+
+/* ---------------- Ringkasan 1 layar untuk klien ---------------- */
+async function RingkasTab({ R, c, stores, sales, ads, live }: { R: Range; c: Cl; stores: Store[]; sales: Sale[]; ads: Ad[]; live: Live[] }) {
+  const ids = new Set(stores.filter((s) => s.platform !== "CPAS").map((s) => s.id)), cmp = R.key !== "all";
+  const gm = (a: string, b: string, id?: string) => sales.filter((x) => (id ? x.store_id === id : ids.has(x.store_id)) && x.tanggal >= a && x.tanggal <= b).reduce((t, x) => t + +x.gmv, 0);
+  const ad = (a: string, b: string) => ads.filter((x) => x.dari <= b && x.sampai >= a).reduce((t, x) => { const w = porsi(x, a, b); t.s += +x.biaya * w; t.g += +x.gmv * w; return t; }, { s: 0, g: 0 });
+  const lv = (a: string, b: string) => live.filter((x) => x.tanggal >= a && x.tanggal <= b);
+  const G = gm(R.from, R.to), Gp = gm(R.pf, R.pt), A = ad(R.from, R.to), Ap = ad(R.pf, R.pt), roas = A.s ? A.g / A.s : null, roasP = Ap.s ? Ap.g / Ap.s : null;
+  const L = lv(R.from, R.to), LG = L.reduce((t, x) => t + +x.gmv_shopee + +x.gmv_tiktok, 0);
+  let aff = 0, affP = 0;
+  try { const af = await q<{ a: number; b: number }>("select sum(case when tanggal between ? and ? and gagal = 0 then nilai - retur else 0 end) a, sum(case when tanggal between ? and ? and gagal = 0 then nilai - retur else 0 end) b from aff_orders where store_id in (?)", [R.from, R.to, R.pf, R.pt, [...ids]]); aff = +(af[0]?.a ?? 0); affP = +(af[0]?.b ?? 0); } catch { /* tabel affiliate belum ada */ }
+  const act = await q<{ aksi: string; n: number }>("select aksi, count(*) n from activity_log where client_id = ? and waktu >= now() - interval 7 day group by aksi", [c.id]).catch(() => []);
+  const nAct = (re: RegExp) => act.filter((x) => re.test(x.aksi)).reduce((t, x) => t + +x.n, 0);
+  const done = [nAct(/^affiliate/) ? `${nAct(/^affiliate/)} catatan follow-up affiliate diperbarui` : "", nAct(/upload|impor/) ? `${nAct(/upload|impor/)} file data diperbarui` : "", nAct(/saldo/) ? `${nAct(/saldo/)} kali saldo iklan dicatat` : ""].filter(Boolean);
+  const ch = (a: number, b: number) => cmp && b ? <span className={a >= b ? "up" : "dn"}>{a >= b ? "▲" : "▼"} {Math.abs(pct(a, b)).toFixed(2).replace(".", ",")}% {R.sub}</span> : null;
+  const per = stores.filter((s) => ids.has(s.id)).map((s) => ({ s, n: gm(R.from, R.to, s.id), o: gm(R.pf, R.pt, s.id) })).filter((x) => x.n || x.o).sort((a, b) => b.n - a.n);
+  return (<>
+    <div className="rk">
+      <div className="card rkc"><span className="muted small">GMV · {R.label}</span><b>{fmt(G)}</b>{ch(G, Gp)}</div>
+      <div className="card rkc"><span className="muted small">ROAS iklan</span><b>{roas != null ? roas.toFixed(2).replace(".", ",") : "–"}</b>
+        {c.target_roas ? <><div className="rkbar"><i style={{ width: `${Math.min(100, ((roas ?? 0) / c.target_roas) * 100)}%` }} /></div><span className={"small " + ((roas ?? 0) >= c.target_roas ? "up" : "dn")}>target {c.target_roas} · {(roas ?? 0) >= c.target_roas ? "tercapai" : "di bawah target"}</span></> : roas != null && roasP != null ? <span className={roas >= roasP ? "up small" : "dn small"}>{roas >= roasP ? "▲" : "▼"} dari {roasP.toFixed(2).replace(".", ",")}</span> : null}</div>
+      <div className="card rkc"><span className="muted small">Kontribusi affiliate</span><b>{G ? ((aff / G) * 100).toFixed(2).replace(".", ",") + "%" : "–"}</b><span className="small muted">{fmt(aff)} dari affiliate</span>{ch(aff, affP)}</div>
+      <div className="card rkc"><span className="muted small">Livestream</span><b>{fmt(LG)}</b><span className="small muted">{L.length} sesi{L.length ? ` · ${fmt(LG / L.length)}/sesi` : ""}</span></div>
+    </div>
+    <div className="rk2">
+      <div className="card"><h2>Per toko</h2><div className="tbl"><table><thead><tr><th>Toko</th><th className="n">GMV</th><th className="n">{R.sub}</th><th className="n">Porsi</th></tr></thead>
+        <tbody>{per.map((x) => { const v = pct(x.n, x.o); return <tr key={x.s.id}><td>{x.s.platform} · {x.s.brand}</td><td className="n">{fmt(x.n)}</td><td className={"n " + (v >= 0 ? "up" : "dn")}>{cmp && x.o ? `${v >= 0 ? "+" : ""}${v.toFixed(2).replace(".", ",")}%` : "–"}</td><td className="n">{G ? ((x.n / G) * 100).toFixed(0) : 0}%</td></tr>; })}</tbody></table></div></div>
+      <div className="card"><h2>Yang dikerjakan Ruria · 7 hari terakhir</h2>{done.length ? <ol className="small">{done.map((x) => <li key={x}>{x}</li>)}</ol> : <p className="muted small">Belum ada aktivitas tercatat minggu ini.</p>}</div>
+    </div>
+  </>);
 }
 
 /* ---------------- Semua klien ---------------- */

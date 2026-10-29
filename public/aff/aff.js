@@ -48,7 +48,7 @@ const hasPhone = row => { const k = fuOf(row)?.kontak; if (!k) return false; ret
 const dispStatus = row => (row.pr >= 4 && statusOf(row) === 'Belum dihubungi') ? NOCONTACT : statusOf(row);
 const STAT_ALL = () => [...STAT, NOCONTACT];
 const daysSince = iso => { if (!iso) return null; const d = new Date(iso+'T00:00:00'); if (isNaN(d)) return null; return Math.round((TODAY - d)/86400000); };
-const needsFU = row => { const f = fuOf(row); if (!f) return false; const h = daysSince(f.tglLast); return f.respon === 'Belum ada respon' && h !== null && h >= 3; };
+const needsFU = row => { const f = fuOf(row); if (!f) return false; if (f.next && f.next <= isoToday()) return true; const h = daysSince(f.tglLast); return f.respon === 'Belum ada respon' && h !== null && h >= 3; };
 
 /* ---------- format ---------- */
 const nf = new Intl.NumberFormat('id-ID');
@@ -102,6 +102,7 @@ function render(){
   { const np = document.getElementById('navplat'); if (np) np.innerHTML = ''; }
   { const mw = document.getElementById('meet-wrap'); if (mw) { mw.hidden = S.tab !== 'ringkasan'; if (mw.hidden) mw.innerHTML = ''; } }
   if (S.tab === 'ringkasan') renderSummary();
+  else if (S.tab === 'kerja') renderKerja();
   else if (S.tab === 'tiktok') { renderList('tiktok'); appendAgency('tiktok'); }
   else if (S.tab === 'shopee') { renderList('shopee'); appendAgency('shopee'); }
   else if (S.tab === 'db') { renderDb(); appendAgency(S.dbpl === 'TikTok' ? 'tiktok' : S.dbpl === 'Shopee' ? 'shopee' : 'semua'); }
@@ -263,7 +264,8 @@ function renderList(which){
   const slice = list.slice(f.page*PAGE, f.page*PAGE + PAGE);
   const mLbl = isTT ? 'GMV 30 hari terakhir' : 'Omzet 30 hari terakhir', tLbl = isTT ? 'GMV Mei–Okt' : 'Omzet Mei–Okt';
   const nAct = activeFilters(f);
-  const th = (key, label, cls='') => { const on = f.sort === key; const arrow = on ? (dir === 'asc' ? '▲' : '▼') : '↕';
+  const th = (key, label, cls='') => { const on = f.sort === key; const arrow = on ? (dir === 'asc' ? '▲' : '▼') : '↕'; const G_ = GLOS_AFF_F(), gl = G_[label] ? `<i class="ii" title="${esc(G_[label])}">i</i>` : '';
+    label = label + gl;
     return `<th class="${cls}" aria-sort="${on ? (dir==='asc'?'ascending':'descending') : 'none'}"><button class="sorth${on?' on':''}" data-sort="${key}" title="Urutkan menurut ${esc(defs[key].lbl)}">${label}<span class="arr" aria-hidden="true">${arrow}</span></button></th>`; };
   view.innerHTML = `${bannerHtml()}
   <div class="toolbar">
@@ -274,7 +276,7 @@ function renderList(which){
     <span class="flabel">Filter</span>
     <select id="${which}-pr" aria-label="Prioritas" class="${f.pr?'act':''}">${opt('','Semua prioritas',f.pr)}${[1,2,3,4,5].map(p=>opt(p,'P'+p+' · '+PRIO[p],f.pr)).join('')}</select>
     <select id="${which}-kontak" aria-label="Kontak" class="${f.kontak?'act':''}">${opt('','Kontak: semua',f.kontak)}${opt('belum','Belum ada no. HP',f.kontak)}${opt('ada','Sudah ada no. HP',f.kontak)}${opt('lain','Kontak lain (email/DM), tanpa no. HP',f.kontak)}</select>
-    <select id="${which}-jual" aria-label="Penjualan bulan terakhir" class="${f.jual?'act':''}">${opt('','Jualan: aktif 3 bulan terakhir',f.jual)}${opt('okt','Ada jualan bulan terakhir',f.jual)}${opt('tidakokt','Belum jualan bulan terakhir',f.jual)}${isTT?'':opt('reak','Reaktivasi: aktif Mei–Jul, berhenti',f.jual)}${opt('nolj','Belum ada penjualan (penerima sampel)',f.jual)}${opt('semua','Semua termasuk reaktivasi',f.jual)}</select>
+    <select id="${which}-jual" aria-label="Penjualan bulan terakhir" class="${f.jual?'act':''}">${opt('','Jualan: ada penjualan 90 hari terakhir',f.jual)}${opt('okt','Ada jualan bulan terakhir',f.jual)}${opt('tidakokt','Belum jualan bulan terakhir',f.jual)}${isTT?'':opt('reak','Reaktivasi: aktif Mei–Jul, berhenti',f.jual)}${opt('nolj','Belum ada penjualan (penerima sampel)',f.jual)}${opt('semua','Semua termasuk reaktivasi',f.jual)}</select>
     <select id="${which}-samp" aria-label="Sampel" class="${f.samp?'act':''}">${opt('','Sampel: semua',f.samp)}${opt('ya','Pernah dapat sampel',f.samp)}${opt('tidak','Belum pernah dapat sampel',f.samp)}${opt('laku','Sampel menghasilkan order',f.samp)}${opt('nol','Sampel tanpa order',f.samp)}${opt('boleh','Boleh sampel lagi (>'+ROI_MIN+'×)',f.samp)}${opt('belum10','Pernah sampel, belum >'+ROI_MIN+'×',f.samp)}${opt('blk','Diblokir dari sampel',f.samp)}</select>
     <select id="${which}-tipe" aria-label="Tipe akun" class="${f.tipe?'act':''}">${opt('','Semua tipe',f.tipe)}${tipes.map(t=>opt(t,t,f.tipe)).join('')}</select>
     <select id="${which}-st" aria-label="Status" class="${f.st?'act':''}">${opt('','Semua status',f.st)}${STAT_ALL().map(s=>opt(s,s,f.st)).join('')}</select>
@@ -395,7 +397,8 @@ function renderDb(){
   if (f.page >= pages) f.page = Math.max(0, pages - 1);
   const slice = list.slice(f.page*PAGE, f.page*PAGE + PAGE);
   const nAct = activeFilters(f);
-  const th = (key, label, cls='') => { const on = f.sort === key; const arrow = on ? (dir === 'asc' ? '▲' : '▼') : '↕';
+  const th = (key, label, cls='') => { const on = f.sort === key; const arrow = on ? (dir === 'asc' ? '▲' : '▼') : '↕'; const G_ = GLOS_AFF_F(), gl = G_[label] ? `<i class="ii" title="${esc(G_[label])}">i</i>` : '';
+    label = label + gl;
     return `<th class="${cls}" aria-sort="${on ? (dir==='asc'?'ascending':'descending') : 'none'}"><button class="sorth${on?' on':''}" data-sort="${key}" title="Urutkan menurut ${esc(defs[key].lbl)}">${label}<span class="arr" aria-hidden="true">${arrow}</span></button></th>`; };
   const tot = k => list.reduce((a,r) => a + (r[k]||0), 0);
   const est = r => r.gest ? '<sup title="perkiraan">*</sup>' : '';
@@ -408,11 +411,11 @@ function renderDb(){
   <div class="filters">
     <span class="flabel">Filter</span>
     <select id="${W}-pr" aria-label="Prioritas" class="${f.pr?'act':''}">${opt('','Semua prioritas',f.pr)}${[1,2,3,4,5].map(p=>opt(p,'P'+p+' · '+PRIO[p],f.pr)).join('')}</select>
-    <select id="${W}-jual" aria-label="Penjualan" class="${f.jual?'act':''}">${opt('','Jualan: aktif 3 bulan terakhir',f.jual)}${opt('okt','Ada jualan bulan terakhir',f.jual)}${opt('tidakokt','Belum jualan bulan terakhir',f.jual)}${opt('reak','Reaktivasi Shopee: aktif Mei–Jul, berhenti',f.jual)}${opt('nolj','Belum ada penjualan (penerima sampel)',f.jual)}${opt('semua','Semua termasuk reaktivasi',f.jual)}</select>
+    <select id="${W}-jual" aria-label="Penjualan" class="${f.jual?'act':''}">${opt('','Jualan: ada penjualan 90 hari terakhir',f.jual)}${opt('okt','Ada jualan bulan terakhir',f.jual)}${opt('tidakokt','Belum jualan bulan terakhir',f.jual)}${opt('nolj','Belum ada penjualan (penerima sampel)',f.jual)}${opt('semua','Semua termasuk reaktivasi',f.jual)}</select>
     <details class="more"${['kontak','samp','akt','tipe','st','resp','due'].some(k => f[k]) ? ' open' : ''}><summary class="btn sm">⚙ Filter lainnya${(n => n ? ' (' + n + ' aktif)' : '')(['kontak','samp','akt','tipe','st','resp','due'].filter(k => f[k]).length)}</summary><div class="morebox">
     <select id="${W}-kontak" aria-label="Kontak" class="${f.kontak?'act':''}">${opt('','Kontak: semua',f.kontak)}${opt('belum','Belum ada no. HP',f.kontak)}${opt('ada','Sudah ada no. HP',f.kontak)}${opt('lain','Kontak lain (email/DM), tanpa no. HP',f.kontak)}</select>
     <select id="${W}-samp" aria-label="Sampel" class="${f.samp?'act':''}">${opt('','Sampel: semua',f.samp)}${opt('ya','Pernah dapat sampel',f.samp)}${opt('tidak','Belum pernah dapat sampel',f.samp)}${opt('laku','Sampel menghasilkan order',f.samp)}${opt('nol','Sampel tanpa order',f.samp)}${opt('boleh','Boleh sampel lagi (>'+ROI_MIN+'×)',f.samp)}${opt('belum10','Pernah sampel, belum >'+ROI_MIN+'×',f.samp)}${opt('blk','Diblokir dari sampel',f.samp)}</select>
-    <select id="${W}-akt" aria-label="Aktivitas LIVE" class="${f.akt?'act':''}">${opt('','Aktivitas: semua',f.akt||'')}${opt('live','Semua yang LIVE',f.akt||'')}${opt('haluan','Peserta acara Haluan',f.akt||'')}${opt('andalan','Kreator andalan',f.akt||'')}${opt('rutin','LIVE rutin (≥5 sesi, TikTok)',f.akt||'')}${opt('pernah','Pernah LIVE (1–4 sesi, TikTok)',f.akt||'')}${opt('shlive','Shopee Live',f.akt||'')}${opt('video','Video saja (tanpa LIVE)',f.akt||'')}</select>
+    <select id="${W}-akt" aria-label="Aktivitas LIVE" class="${f.akt?'act':''}">${opt('','Aktivitas: semua',f.akt||'')}${opt('live','Semua yang LIVE',f.akt||'')}${opt('rutin','LIVE rutin (≥5 sesi, TikTok)',f.akt||'')}${opt('pernah','Pernah LIVE (1–4 sesi, TikTok)',f.akt||'')}${opt('shlive','Shopee Live',f.akt||'')}${opt('video','Video saja (tanpa LIVE)',f.akt||'')}</select>
     <select id="${W}-tipe" aria-label="Tipe akun" class="${f.tipe?'act':''}">${opt('','Semua tipe',f.tipe)}${tipes.map(t=>opt(t,t,f.tipe)).join('')}</select>
     <select id="${W}-st" aria-label="Status" class="${f.st?'act':''}">${opt('','Semua status',f.st)}${STAT_ALL().map(s=>opt(s,s,f.st)).join('')}</select>
     <select id="${W}-resp" aria-label="Respon" class="${f.resp?'act':''}">${opt('','Semua respon',f.resp)}${opt('(kosong)','Respon belum diisi',f.resp)}${RESP.map(s=>opt(s,s,f.resp)).join('')}</select>
@@ -443,7 +446,7 @@ function renderDb(){
   <div class="pager"><span>Halaman ${f.page+1} dari ${pages}</span><span class="btns">
     <button class="btn sm" id="${W}-prev"${f.page===0?' disabled':''}>Sebelumnya</button>
     <button class="btn sm" id="${W}-next"${f.page>=pages-1?' disabled':''}>Berikutnya</button></span></div>
-  <p class="note">GMV kotor, bersih dan batal/retur: periode Mei–21 Okt. <b>TikTok</b>: GMV kotor dari laporan performa kreator; bersih dan batal/retur dihitung dari porsi order gagal tiap kreator di export pesanan (Mei–Sep). <b>Shopee</b>: GMV bersih = omzet tanpa pesanan batal (validasi komisi Mei–Jul, AMS Agu–Okt); batal hanya bisa dihitung untuk Agu–Okt. <sup>*</sup> = perkiraan: TikTok memakai rata-rata 36% order gagal karena kreator tidak punya data order sendiri; Shopee berarti batal Mei–Jul tidak tercatat. Efektivitas sampel dihitung dari GMV bersih. <span class="chip ag">Agency/Platform</span> = kumpulan banyak kreator, data tidak bisa dirinci.</p>`;
+  <details class="srcnote"><summary class="note">Sumber data <i class="ii">i</i></summary>  <p class="note">GMV kotor, bersih dan batal/retur: periode Mei–21 Okt. <b>TikTok</b>: GMV kotor dari laporan performa kreator; bersih dan batal/retur dihitung dari porsi order gagal tiap kreator di export pesanan (Mei–Sep). <b>Shopee</b>: GMV bersih = omzet tanpa pesanan batal (validasi komisi Mei–Jul, AMS Agu–Okt); batal hanya bisa dihitung untuk Agu–Okt. <sup>*</sup> = perkiraan: TikTok memakai rata-rata 36% order gagal karena kreator tidak punya data order sendiri; Shopee berarti batal Mei–Jul tidak tercatat. Efektivitas sampel dihitung dari GMV bersih. <span class="chip ag">Agency/Platform</span> = kumpulan banyak kreator, data tidak bisa dirinci.</p></details>`;
   const np = document.getElementById('navplat');
   if (np) { np.innerHTML = `<span class="seg" role="radiogroup" aria-label="Platform">${[['','Semua',TT.length+SH.length],['TikTok','TikTok',TT.length],['Shopee','Shopee',SH.length]].map(([p,l,n]) => `<button class="db-pl${(S.dbpl||'')===p?' on':''}" data-pl="${p}" role="radio" aria-checked="${(S.dbpl||'')===p}">${p ? `<i class="pdot ${p==='TikTok'?'tt':'sh'}"></i>` : ''}${l} <span class="n">${nf.format(n)}</span></button>`).join('')}</span>`;
     np.querySelectorAll('button.db-pl').forEach(b => b.onclick = () => { S.dbpl = b.dataset.pl; saveFilters(); render(); }); }
@@ -556,6 +559,7 @@ function openDrawer(r){
           <label>Terakhir dihubungi<input type="date" id="fu-tglLast" value="${esc(f.tglLast||'')}"></label>
           <label>Respon<select id="fu-respon">${opt('','–',f.respon||'')}${RESP.map(s=>opt(s,s,f.respon||'')).join('')}</select></label>
           <label>Status<select id="fu-status">${STAT.map(s=>opt(s,s,f.status||'Belum dihubungi')).join('')}</select></label>
+          <label class="full nextfu">Follow-up berikutnya *<span class="nfrow"><input type="date" id="fu-next" value="${esc(f.next||'')}"><button type="button" class="btn sm" data-add="1">+1 hari</button><button type="button" class="btn sm" data-add="3">+3 hari</button><button type="button" class="btn sm" data-add="7">+7 hari</button></span><small class="muted">Wajib diisi, kecuali status "Belum dihubungi" atau respon "Tidak tertarik" / "Akun/nomor tidak aktif".</small></label>
           <label class="full">Keterangan<textarea id="fu-ket" placeholder="Isi percakapan, janji posting, produk yang dikirim…">${esc(f.ket||'')}</textarea></label>
           <div class="fbar full">
             <button type="submit" class="btn pri" id="fu-save">Simpan</button>
@@ -578,6 +582,7 @@ function openDrawer(r){
     const st = document.getElementById('fu-status'); if (st.value === 'Belum dihubungi') st.value = 'Sudah dihubungi';
     const rs = document.getElementById('fu-respon'); if (!rs.value) rs.value = 'Belum ada respon';
   };
+  form.querySelectorAll('[data-add]').forEach(b => b.onclick = () => { document.getElementById('fu-next').value = addDays(isoToday(), +b.dataset.add); });
   form.addEventListener('submit', e => { e.preventDefault(); saveFU(r); });
   const fs = document.getElementById('fu-sampel'); if (fs) { fs.disabled = false; fs.onclick = () => goInputSampel(r); }
   refreshDrawerMeta();
@@ -599,7 +604,9 @@ function toast(msg){ const t = document.createElement('div'); t.className = 'toa
 async function saveFU(r){
   if (!db) return;
   const v = id => document.getElementById(id).value;
-  const body = { key: String(r.key), kontak: v('fu-kontak').trim(), tgl1: v('fu-tgl1'), tglLast: v('fu-tglLast'), respon: v('fu-respon'), status: v('fu-status'), ket: v('fu-ket').trim(), updatedAt: new Date().toISOString() };
+  const body = { key: String(r.key), kontak: v('fu-kontak').trim(), tgl1: v('fu-tgl1'), tglLast: v('fu-tglLast'), respon: v('fu-respon'), status: v('fu-status'), next: v('fu-next'), ket: v('fu-ket').trim(), updatedAt: new Date().toISOString() };
+  const bebas = body.status === 'Belum dihubungi' || body.respon === 'Tidak tertarik' || body.respon === 'Akun/nomor tidak aktif';
+  if (!body.next && !bebas) { toast('Isi tanggal follow-up berikutnya dulu.'); document.getElementById('fu-next').focus(); return; }
   if (me) body.by = me;
   const btn = document.getElementById('fu-save'); btn.disabled = true; btn.textContent = 'Menyimpan…';
   const id = docId(r.key);
@@ -905,6 +912,46 @@ const waText = (r, tp, extra) => { const t = WATPL[tp ?? WA_SEL]; if (!t || !t[1
 (() => { const sel = document.getElementById('watpl'); if (!sel) return; Object.entries(WATPL).forEach(([k, v]) => sel.append(new Option(v[0], k))); sel.value = WA_SEL; sel.onchange = () => { WA_SEL = sel.value; try { localStorage.setItem('jf-watpl', WA_SEL); } catch(e) {} rerenderSoon(); }; })();
 /* ---------- kreator andalan ---------- */
 const andalan = r => r.k !== 'ag' && (D.tipArti ? true : r.tipe === 'Kreator konten') && r.bln >= 5 && r.gb >= 3e6 && r.okt > 0 && r.pr <= 3;
+/* penjelasan istilah (ikon ⓘ) */
+function GLOS_AFF_F(){ return { 'Prio': 'P1: GMV bersih 30 hari > Rp3 jt · P2: GMV bersih 90 hari > Rp1 jt · P3: ≤ Rp1 jt · P4: tidak jualan 60 hari / sampel belum efektif · P5: GMV 0 atau akun platform',
+  'GMV bersih': 'Penjualan setelah dikurangi pesanan batal / tidak memenuhi syarat dan dana yang dikembalikan.',
+  'GMV 30 hari terakhir': 'GMV bersih 30 hari terakhir sampai kemarin.',
+  'Efektivitas sampel (all time)': '(GMV sebelum + sesudah sampel) ÷ (HPP + ongkir). Efektif bila di atas ambang klien.',
+  'Bulan aktif': 'Jumlah bulan ada penjualan dari bulan yang ada datanya; di bawahnya bulan dengan kontribusi terbesar.' }; }
+
+/* ---------- tab "Kerja hari ini": siapa yang dihubungi hari ini + riwayat prioritas ---------- */
+var PHIST = null;
+function kerjaRows(){
+  const today = isoToday();
+  return [...TT, ...SH].map(r => { const f = fuOf(r) || {}; let why = '';
+    if (f.next && f.next <= today) why = f.next === today ? 'Jadwal follow-up hari ini' : 'Jadwal follow-up terlewat (' + fdate(f.next) + ')';
+    else if (needsFU(r)) why = 'Belum respon ≥3 hari';
+    else if (r.pr <= 2 && statusOf(r) === 'Belum dihubungi') why = r.pr === 1 ? 'P1 · GMV 30 hari ' + rpShort(r.okt) : 'P2 · belum dihubungi';
+    return why ? { r, why } : null; }).filter(Boolean).sort((a, b) => a.r.pr - b.r.pr || (b.r.gb || 0) - (a.r.gb || 0));
+}
+function renderKerja(){
+  const L = kerjaRows(), done = [...TT, ...SH].filter(r => { const f = fuOf(r); return f && f.tglLast === isoToday(); }).length;
+  const hist = PHIST ? histHtml() : '<p class="muted">Memuat riwayat…</p>';
+  view.innerHTML = `${bannerHtml()}<div class="kerja"><section class="panel"><h2>Hubungi hari ini · ${esc(fdate(isoToday()))} <span class="count">${nf.format(L.length)}</span></h2>
+    <p class="note">Otomatis dari P1–P2 yang belum dihubungi dan follow-up yang jatuh tempo. Sudah dihubungi hari ini: <b>${nf.format(done)}</b>.</p>
+    <div class="tscroll"><table><thead><tr><th>Prio</th><th>Username</th><th>Alasan</th><th>Terakhir dihubungi</th></tr></thead><tbody>
+    ${L.slice(0, 200).map(({ r, why }, i) => `<tr class="click" tabindex="0" data-i="${i}"><td>${prioChip(r.pr)}</td><td class="u">${esc(r.u)}${r.k==='sh' && r.nama && r.nama !== r.u ? `<small>${esc(r.nama)}</small>` : ''}${ptags(r)}${fuOf(r)?.kontak ? `<br>${kontakHtml(fuOf(r).kontak, r)}` : ''}</td><td>${esc(why)}</td><td>${lastCell(r)}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">Tidak ada yang perlu dihubungi hari ini.</td></tr>'}
+    </tbody></table></div></section>
+    <section class="panel"><h2>Riwayat prioritas · 7 hari terakhir</h2>${hist}</section></div>`;
+  view.querySelectorAll('tr.click').forEach(tr => { const open = () => openDrawer(L[+tr.dataset.i].r); tr.addEventListener('click', e => { if (e.target.closest('a')) return; open(); }); tr.addEventListener('keydown', e => { if (e.key === 'Enter') open(); }); });
+  if (!PHIST && db) db.collection('prio_hist').get().then(sn => { PHIST = sn.docs.map(d => ({ id: d.id, m: d.data() || {} })).sort((a, b) => a.id < b.id ? -1 : 1); if (S.tab === 'kerja') render(); }).catch(() => { PHIST = []; });
+}
+function histHtml(){
+  if (!PHIST.length) return '<p class="muted">Riwayat mulai tercatat sejak data affiliate di-upload. Perubahan akan terlihat setelah upload berikutnya.</p>';
+  const last = PHIST[PHIST.length - 1], lim = addDays(last.id, -7), base = [...PHIST].reverse().find(x => x.id <= lim) || PHIST[0];
+  if (base === last) return '<p class="muted">Baru ada satu catatan riwayat (' + esc(fdate(last.id)) + '). Perubahan terlihat setelah upload berikutnya.</p>';
+  const idx = {}; [...TT, ...SH].forEach(r => { idx[(r.k === 'sh' ? 'S|' : 'T|') + r.u.toLowerCase()] = r; });
+  const up = [], dn = []; for (const [k, p] of Object.entries(last.m)) { const o = base.m[k]; if (o == null || o === p) continue; (p < o ? up : dn).push({ k, o, p, r: idx[k] }); }
+  const li = x => `<div class="small">${esc(x.r ? x.r.u : x.k.slice(2))} ${prioChip(x.o)} → ${prioChip(x.p)}</div>`;
+  return `<p class="note">Dibanding ${esc(fdate(base.id))}.</p><p><b class="kt">▲ Naik (${up.length})</b></p>${up.slice(0, 15).map(li).join('')}${up.length > 15 ? `<div class="small muted">+${up.length - 15} lainnya</div>` : ''}
+    <p style="margin-top:10px"><b class="late">▼ Turun (${dn.length})</b></p>${dn.slice(0, 15).map(li).join('')}${dn.length > 15 ? `<div class="small muted">+${dn.length - 15} lainnya</div>` : ''}`;
+}
+
 /* ---------- kerja hari ini ---------- */
 function tagihRows(){
   const now = wibDay(), lo = addDays(now, -45), hi = addDays(now, -14);
@@ -1104,12 +1151,12 @@ const syncDot = document.getElementById('syncdot'), syncTxt = document.getElemen
   claude.use('user').then(async u => { userApi = u; if (u) { try { me = await u.id(); } catch(e){} } });
   const d = await claude.use('db');
   if (!d) { dbState = 'off'; syncDot.className = 'dot off'; syncTxt.textContent = 'Catatan follow-up hanya bisa dibaca'; render(); return; }
-  db = d; dbState = 'ok'; syncDot.className = 'dot on'; syncTxt.textContent = 'Catatan follow-up tersimpan bersama';
+  db = d; dbState = 'ok'; syncDot.className = 'dot on'; syncTxt.textContent = 'Tersimpan';
   Object.entries(COLL).forEach(([k, c]) => {
     db.collection(c).onSnapshot(snap => {
       const m = {}; snap.docs.forEach(doc => { if (doc.exists) m[doc.id] = doc.data(); });
       FU[k] = m; rerenderSoon();
-    }, err => { syncDot.className = 'dot off'; syncTxt.textContent = 'Koneksi catatan terputus, muat ulang halaman'; if (err && err.code === 'revoked') { dbState = 'off'; rerenderSoon(); } });
+    }, err => { syncDot.className = 'dot off'; syncTxt.textContent = 'Gagal menyimpan, cek koneksi lalu muat ulang'; syncTxt.parentElement.classList.add('bad'); if (err && err.code === 'revoked') { dbState = 'off'; rerenderSoon(); } });
   });
   subscribeLog(); subscribeTeam();
   render();

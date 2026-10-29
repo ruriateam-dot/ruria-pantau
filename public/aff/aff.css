@@ -298,3 +298,25 @@
 #aff-root nav.tabs #n-db{display:inline;background:none;padding:0;margin-left:6px;font-size:11.5px;color:inherit;opacity:.7}
 #aff-root .navplat{margin-left:auto;padding-bottom:0}
 #aff-root .navplat .pdot,#aff-root .navplat i.pdot{flex:none;width:9px;height:9px;margin:0;border-radius:50%}
+/* Header: subjudul dihapus, status simpan ringkas (merah kalau gagal) */
+#aff-root .brand .sub{display:none}
+#aff-root .brand .sync{color:#1b8a4a}
+#aff-root .brand .sync.bad{color:#c2412d;font-weight:700}
+/* Follow-up berikutnya (wajib) */
+#aff-root .nextfu .nfrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px}
+#aff-root .nextfu small{display:block;margin-top:4px;font-weight:400}
+/* Tab Kerja hari ini */
+#aff-root .kerja{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(280px,1fr);gap:16px;align-items:start}
+@media (max-width:1000px){#aff-root .kerja{grid-template-columns:1fr}}
+#aff-root nav.tabs #n-kerja:empty{display:none}
+/* HP: tabel database jadi kartu per kreator */
+@media (max-width:700px){
+  #aff-root .tscroll table,#aff-root .tscroll tbody{display:block;width:100%}
+  #aff-root .tscroll thead{display:none}
+  #aff-root .tscroll tr{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;padding:12px;margin-bottom:10px;border:1px solid var(--line);border-radius:12px;background:var(--surface,#fff)}
+  #aff-root .tscroll td{border:0;padding:0;max-width:none !important;min-width:0 !important;text-align:left !important}
+  #aff-root .tscroll td.u{grid-column:2}
+  #aff-root .tscroll td.num{font-size:13px}
+  #aff-root .tscroll td.aksi{grid-column:1 / -1;color:var(--muted)}
+}
+#aff-root details.srcnote summary{cursor:pointer;list-style:none}#aff-root .ii{display:inline-grid;place-items:center;width:14px;height:14px;border-radius:50%;background:var(--sunk);color:var(--muted);font-size:9.5px;font-weight:800;font-style:normal;margin-left:4px;cursor:help;text-transform:none}

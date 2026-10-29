@@ -13,11 +13,11 @@ export function Kpi({ l, v, d, sub, invert }: { l: string; v: string; d?: number
 export function Insight({ sum, ana, next, src }: { sum: string[]; ana: string[]; next: string[]; src: string }) {
   return (
     <details className="ins" open>
-      <summary><b>Summary, analisa & next action</b> <span className="muted">{src}</span></summary>
+      <summary><b>Ringkasan, analisa & langkah berikutnya</b> <span className="muted">{src}</span></summary>
       <div className="insg">
-        <div className="insc"><h3>Summary</h3><ul>{sum.map((x, i) => <li key={i}>{x}</li>)}</ul></div>
+        <div className="insc"><h3>Ringkasan</h3><ul>{sum.map((x, i) => <li key={i}>{x}</li>)}</ul></div>
         <div className="insc"><h3>Analisa</h3><ul>{ana.map((x, i) => <li key={i}>{x}</li>)}</ul></div>
-        <div className="insc nx"><h3>Next action</h3><ol>{next.map((x, i) => <li key={i}>{x}</li>)}</ol></div>
+        <div className="insc nx"><h3>Langkah berikutnya</h3><ol>{next.map((x, i) => <li key={i}>{x}</li>)}</ol></div>
       </div>
     </details>
   );

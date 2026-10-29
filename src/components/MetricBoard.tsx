@@ -3,6 +3,16 @@ import { useState } from "react";
 
 /* Kartu metrik ala Seller Centre: klik kartu untuk menampilkan/menyembunyikan garisnya di grafik (maks. 4). */
 export type Metric = { k: string; l: string; f: "rp" | "n" | "pct" | "x" | "jam"; v: number; p?: number | null; s: number[]; ps?: number[]; inv?: boolean; note?: string; d?: number | null; g?: string };
+/* Penjelasan istilah (ikon ⓘ di label kartu) */
+export const GLOS: Record<string, string> = {
+  ROAS: "Return on ad spend: GMV dari iklan dibagi biaya iklan. ROAS 10 = setiap Rp1 iklan menghasilkan Rp10 penjualan.",
+  "GMV atribusi iklan": "Penjualan yang dicatat platform berasal dari klik iklan.",
+  "Biaya per pesanan": "Biaya iklan dibagi jumlah pesanan dari iklan (CPA).",
+  "Biaya iklan / omzet": "Porsi biaya iklan terhadap seluruh penjualan toko (ACOS total).",
+  GMV: "Gross Merchandise Value: total nilai penjualan sebelum potongan biaya platform.",
+  "Tingkat konversi": "Pesanan dibagi pengunjung toko.",
+  AOV: "Average order value: rata-rata nilai per pesanan.",
+};
 const COL = ["var(--accent)", "var(--aqua)", "#7c5cff", "#e0a100"];
 const fmtV = (f: Metric["f"], n: number, dec = 1) => {
   if (!isFinite(n)) return "–";
@@ -26,7 +36,7 @@ export default function MetricBoard({ metrics, labels, sub, init, dec = 1 }: { m
     <div className="card mb">
       <div className="grps">{[...new Set(metrics.map((m) => m.g ?? ""))].map((grp) => { const nG = metrics.filter((m) => (m.g ?? "") === grp).length; return <div key={grp} className="grp" style={{ flex: nG }}>{grp && <h3 className="mbgh">{grp}</h3>}<div className="mbg" style={{ gridTemplateColumns: `repeat(${nG}, minmax(0, 1fr))` }}>{metrics.filter((m) => (m.g ?? "") === grp).map((m) => { const i = sel.indexOf(m.k), d = m.d !== undefined ? (m.d != null && isFinite(m.d) ? m.d : null) : m.p != null && m.p !== 0 && isFinite(m.p) ? ((m.v - m.p) / Math.abs(m.p)) * 100 : null, good = d == null ? true : m.inv ? d <= 0 : d >= 0;
         return <button type="button" key={m.k} className={"mbc" + (i >= 0 ? " on" : "")} style={i >= 0 ? { borderTopColor: COL[i] } : undefined} onClick={() => toggle(m.k)} aria-pressed={i >= 0}>
-          <span className="mbl">{m.l}</span><b>{fmtV(m.f, m.v, dec)}</b>
+          <span className="mbl">{m.l}{GLOS[m.l] && <i className="ii" title={GLOS[m.l]} aria-label={GLOS[m.l]}>i</i>}</span><b>{fmtV(m.f, m.v, dec)}</b>
           <span className={"mbd " + (d == null ? "muted" : good ? "up" : "dn")}>{d == null ? (m.note ?? sub) : `${d >= 0 ? "▲" : "▼"} ${Math.abs(d).toFixed(dec).replace(".", ",")}% ${sub}`}</span>
         </button>; })}</div></div>; })}</div>
       <div className="mbch" onMouseLeave={() => setHov(null)}>
@@ -36,7 +46,9 @@ export default function MetricBoard({ metrics, labels, sub, init, dec = 1 }: { m
             const path = (s: number[]) => s.slice(0, n).map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join("");
             return <g key={m.k}>{m.ps && on.length === 1 && <path d={path(m.ps)} fill="none" stroke={COL[j]} strokeOpacity=".45" strokeWidth="1.5" strokeDasharray="5 4" />}
               <path d={path(m.s)} fill="none" stroke={COL[j]} strokeWidth="2.2" strokeLinejoin="round" />
-              {hov != null && <circle cx={x(hov)} cy={y(m.s[hov])} r="3.5" fill={COL[j]} />}</g>; })}
+              {hov != null && <circle cx={x(hov)} cy={y(m.s[hov])} r="3.5" fill={COL[j]} />}
+              {(() => { let li = Math.min(n, m.s.length) - 1; while (li > 0 && !isFinite(m.s[li])) li--; if (li < 0 || !isFinite(m.s[li])) return null;
+                return <><circle cx={x(li)} cy={y(m.s[li])} r="4" fill={COL[j]} /><text x={x(li) - 6} y={y(m.s[li]) - 8 - j * 14} textAnchor="end" style={{ fontSize: 12, fontWeight: 700, fill: "var(--fg)" }}>{fmtV(m.f, m.s[li], dec)}</text></>; })()}</g>; })}
           {hov != null && <line x1={x(hov)} x2={x(hov)} y1={T} y2={H - B} stroke="var(--muted)" strokeDasharray="3 3" />}
           {labels.map((l, i) => ((i % step === 0 && (n - 1 - i >= step * 0.6 || i === n - 1)) || i === n - 1) && <text key={i} x={x(i)} y={H - 8} textAnchor="middle">{l}</text>)}
           {labels.map((_, i) => <rect key={i} x={x(i) - (W - L - R) / Math.max(1, n - 1) / 2} y={0} width={(W - L - R) / Math.max(1, n - 1)} height={H} fill="transparent" onMouseEnter={() => setHov(i)} onTouchStart={() => setHov(i)} />)}
