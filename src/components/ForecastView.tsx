@@ -1,3 +1,4 @@
+import Empty from "@/components/Empty";
 import { forecast, blnLabel, addMonth, type FProd } from "@/lib/forecast";
 import { q } from "@/lib/db";
 import { todayWIB, tgl } from "@/lib/period";
@@ -28,7 +29,7 @@ export default async function ForecastView({ clientId, sp, base, staff, share }:
     const p = new URLSearchParams(Object.entries(sp).filter(([, v]) => v) as [string, string][]); p.set("fb", L.join(",")); return base + "?" + p.toString();
   };
   const title = months.length === 1 ? blnLabel(months[0]) : `${blnLabel(months[0])}–${blnLabel(months[months.length - 1])}`;
-  if (!F.last) return <div className="card"><h2>Forecast</h2><p className="muted">Belum ada data penjualan harian untuk klien ini.</p></div>;
+  if (!F.last) return <div className="card"><h2>Forecast</h2><Empty title="Belum ada data penjualan harian untuk klien ini." up={staff && !share} file={<>ekspor pesanan atau statistik toko harian (Shopee &amp; TikTok).</>} /></div>;
 
   const tot = F.M.reduce((a, m) => a + m.fc, 0), lo = F.M.reduce((a, m) => a + m.lo, 0), hi = F.M.reduce((a, m) => a + m.hi, 0);
   const lyT = F.M.every((m) => m.ly !== null) ? F.M.reduce((a, m) => a + (m.ly ?? 0), 0) : null;

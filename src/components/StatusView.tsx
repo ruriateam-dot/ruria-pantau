@@ -1,3 +1,4 @@
+import Empty from "@/components/Empty";
 import { q } from "@/lib/db";
 import { todayWIB, addDays, type Range } from "@/lib/period";
 import type { Store } from "@/lib/data";
@@ -17,7 +18,7 @@ export default async function StatusView({ R, stores, share, staff }: { R: Range
   const ids = stores.filter((s) => s.platform !== "CPAS").map((s) => s.id);
   if (!ids.length) return <div className="card"><p className="muted">Belum ada toko.</p></div>;
   const O = await q<O>("select store_id, order_id, status, alasan, retur, gmv, metode, date_format(batas_kirim, '%Y-%m-%d') batas_kirim from orders where store_id in (?) and tanggal between ? and ?", [ids, R.from, R.to]);
-  if (!O.length) return <div className="card"><h2>Status pesanan</h2><p className="muted">Belum ada data status pesanan untuk periode ini. Status tercatat dari file pesanan (Shopee: Pesanan Saya → Ekspor; TikTok: Pesanan → Semua pesanan → Ekspor) yang diupload sejak fitur ini aktif, juga saat file lama diupload ulang.</p></div>;
+  if (!O.length) return <div className="card"><h2>Status pesanan</h2><Empty title="Belum ada data status pesanan untuk periode ini." up={staff && !share} file={<>file pesanan (Shopee: Pesanan Saya → Ekspor; TikTok: Pesanan → Semua pesanan → Ekspor).</>} /></div>;
   const FE = await q<F>("select f.* from order_fees f join orders o on o.store_id = f.store_id and o.order_id = f.order_id where o.store_id in (?) and o.tanggal between ? and ?", [ids, R.from, R.to]);
   const fee = new Map(FE.map((f) => [f.store_id + "|" + f.order_id, f]));
   // rasio dana cair ÷ GMV pesanan dari pesanan yang sudah cair (per toko, 120 hari terakhir), dipakai untuk memperkirakan pesanan yang belum cair

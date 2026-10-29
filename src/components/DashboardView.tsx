@@ -22,6 +22,7 @@ import SaldoIklan, { type SaldoRow } from "@/components/SaldoIklan";
 const SALDO_STORES = ["cahaya-cabydut-tiktok", "cahaya-qaira-tiktok", "jf-just-fluff-shopee", "cahaya-cabydut-cpas", "cahaya-qaira-cpas", "cahaya-pepisun-cpas", "pascal-pascal-shopee", "pascal-ruang-mebel-shopee"];
 import { shortName } from "@/lib/nama";
 import { Kpi, Insight, Bars, LineChart, Share, Spark } from "@/components/ui";
+import Empty from "@/components/Empty";
 import { clientsFor, loadClient, freshness, produkSku, storeLast, storePeriods, adsMeta, type SP, type Sale, type Ad, type Live, type Store } from "@/lib/data";
 import { resolvePeriod, buckets, fmt, pct, jm, tgl, addDays, dayDiff, todayWIB, type Range } from "@/lib/period";
 
@@ -88,7 +89,7 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
     else if (tab === "affiliate") {
       const has = (await q<{ n: number }>("select count(*) n from aff_files where client_id = ?", [c.id]))[0].n > 0;
       body = has ? <Affiliate key={c.id} client={c.id} nama={c.nama} user={profile ? "u" + profile.id : "klien"} readOnly={!!share || !isAdmin} token={share ? token : undefined} />
-        : <div className="card"><h2>Affiliate · {c.nama}</h2><p className="muted">Ruang kerja affiliate untuk klien ini belum disiapkan. Kirim ke Claude ekspor data affiliate (TikTok: Affiliate → Kreator / Performa; Shopee: Affiliate Marketing Solution → Laporan kreator) untuk periode yang ingin dipantau, nanti disiapkan seperti ruang kerja Just Fluff.</p></div>;
+        : <div className="card"><h2>Affiliate · {c.nama}</h2><Empty title="Ruang kerja affiliate belum ada datanya." up={isAdmin && !share} file={<>TikTok: Affiliate → pesanan affiliate &amp; Transaction Analysis; Shopee: laporan validasi komisi &amp; Affiliate Marketing Solution → performa.</>} /></div>;
     }
     else if (tab === "ringkas") body = await RingkasTab({ R, c, stores: st, sales: D.sales, ads: D.ads, live: D.live });
     else if (tab === "status") {
@@ -112,7 +113,7 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
     <header className="dh">
       <div className="wrap top ctitle">
         {share ? <><span className="brandc"><RuriaWord height={20} /></span><b>Report</b><span className="muted">{c?.nama} · tampilan klien, hanya lihat</span></>
-          : <h1>{tab === "sum" ? "Dashboard" : c?.nama}</h1>}
+          : tab === "sum" ? <h1>Dashboard</h1> : <div><nav className="crumb small muted" aria-label="Breadcrumb"><a href={base + "?m=sum"}>Dashboard</a> › <span>{c?.nama}</span> › <span>{tabName}</span></nav><h1>{tabName} · {c?.nama}</h1></div>}
       </div>
       {tab !== "forecast" && <div className="wrap fbar"><Filters base={base} clients={share ? clients : []} hideClient={!share || clients.length < 2} brands={tab === "sum" ? [] : brands} platforms={tab === "sum" ? [] : platforms} label={R.label} />{tab !== "affiliate" && <ExportBar title={title} client={tab === "sum" ? null : c?.id ?? null} token={token} />}</div>}
       {tab !== "sum" && tabs}
@@ -339,7 +340,7 @@ function IklanTab({ R, stores, ads, sales, meta = [], share = false }: { R: Rang
   const nameS = (id: string) => { const s = SM.get(id)!; return `${s.platform} · ${s.brand}`; };
   const all = ads.filter((a) => ids.has(a.store_id));
   const A = all.filter((a) => porsi(a, R.from, R.to) > 0), PA = all.filter((a) => porsi(a, R.pf, R.pt) > 0);
-  if (!A.length) return <p className="note">Belum ada data iklan untuk {R.label.toLowerCase()} pada pilihan ini.</p>;
+  if (!A.length) return <Empty title={`Belum ada data iklan untuk ${R.label.toLowerCase()} pada pilihan ini.`} up={!share} file={<>laporan iklan harian (Shopee: Iklan Shopee → Data Keseluruhan → Unduh; TikTok: Ads Manager / GMV Max → Ekspor).</>} />;
   type Ag = { s: number; g: number; o: number; dl: number; kl: number; kr: number; mt: boolean };
   const camp = (xs: Ad[], a: string, b: string) => { const C = new Map<string, Ag & { id: string; k: string }>(); xs.forEach((x) => { const w = porsi(x, a, b), key = x.store_id + "\u0001" + x.kampanye; const c = C.get(key) ?? { id: x.store_id, k: x.kampanye, s: 0, g: 0, o: 0, dl: 0, kl: 0, kr: 0, mt: false }; c.s += x.biaya * w; c.g += x.gmv * w; c.o += x.pesanan * w;
     const m = MM.get(x.store_id + "|" + x.dari + "|" + x.sampai + "|" + nk(x.kampanye)); if (m) { c.mt = true; c.dl += (+(m.dilihat ?? 0)) * w; c.kl += (+(m.klik ?? 0)) * w; c.kr += (+(m.keranjang ?? 0)) * w; } C.set(key, c); }); return C; };
@@ -533,7 +534,7 @@ function prodStats(rows: Prod[], stores: Store[], PM: Map<string, { dl: number; 
 function ProdukSection({ R, ps, err }: { R: Range; ps: PStats; err?: string }) {
   if (err) return <div className="card"><h2>Analisa produk</h2><p className="err">Data produk gagal dimuat: {err}</p></div>;
   if (!ps.st.length) return (
-    <div className="card"><h2>Analisa produk</h2><p className="muted">Belum ada data penjualan per produk untuk pilihan ini. Data produk berasal dari ekspor pesanan (Shopee &quot;Pesanan Saya → Ekspor&quot;, TikTok &quot;Pesanan → Ekspor&quot;).</p></div>);
+    <div className="card"><h2>Analisa produk</h2><Empty title="Belum ada data penjualan per produk untuk pilihan ini." up={false} file={<>ekspor pesanan (Shopee: Pesanan Saya → Ekspor; TikTok: Pesanan → Ekspor).</>} /></div>);
   const L = (t: string, xs: PRow[], f: (r: PRow) => string, cls: string) => <div className="act"><h3><span className={"pill " + cls}>{xs.length}</span> {t}</h3>{xs.length ? <ul>{xs.slice(0, 6).map((r) => <li key={r.grup} title={r.nama}><b>{shortName(r.nama)}</b> <span className="muted small">{f(r)}</span></li>)}{xs.length > 6 && <li className="muted small">+{xs.length - 6} lainnya (filter status di tabel)</li>}</ul> : <p className="muted small">Tidak ada.</p>}</div>;
   return (<>
     <h2 style={{ margin: "8px 0 0" }}>Analisa produk per SKU</h2>

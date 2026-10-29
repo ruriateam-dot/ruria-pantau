@@ -474,3 +474,7 @@ tr[data-pgh]{display:none!important}
 .pgr button:disabled{color:#f0a58a;cursor:default}
 .pgr .pgn i{font-style:normal;margin:0 10px;color:#888}
 .pgr select{border:1px solid #ddd;border-radius:8px;padding:6px 10px;background:#fff;font:inherit;width:auto}
+
+.sl.on{background:#fff1e8!important;color:#c2410c!important;box-shadow:inset 3px 0 0 #f97316;font-weight:600}
+.crumb{margin-bottom:2px}.crumb a{color:inherit;text-decoration:none}.crumb a:hover{text-decoration:underline}
+.empty{padding:28px 20px;text-align:center;border:1px dashed #f2c3a8;border-radius:12px;background:#fffaf6}.empty b{display:block;margin-bottom:6px}
