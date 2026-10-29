@@ -439,3 +439,8 @@ h2.sec{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--m
 .ucl th.ckc .fn{font-weight:500;color:var(--fg);opacity:.75;word-break:break-all;max-width:150px;margin:2px auto 0}
 .ckc em{display:block;font-style:normal;font-size:9.5px;color:var(--bad);word-break:break-all;max-width:150px;margin:2px auto 0;line-height:1.2}
 .ckc span.per{display:block;font-weight:700;color:var(--bad);font-size:10.5px}
+/* Kartu metrik: grup berjajar dalam satu baris dan kartu melebar mengisi layar; turun baris bila layar sempit */
+.grps{display:flex;flex-wrap:wrap;gap:0 18px;margin:0 -14px}
+.grp{min-width:min(100%,360px);padding:0 14px}
+.grp .mbg{margin:6px -14px 14px;border-left:1px solid var(--line)}
+.grp:first-child .mbg{border-left:0}

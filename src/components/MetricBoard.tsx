@@ -24,11 +24,11 @@ export default function MetricBoard({ metrics, labels, sub, init, dec = 1 }: { m
   const step = Math.max(1, Math.ceil(n / 8));
   return (
     <div className="card mb">
-      {[...new Set(metrics.map((m) => m.g ?? ""))].map((grp) => <div key={grp}>{grp && <h3 className="mbgh">{grp}</h3>}<div className="mbg">{metrics.filter((m) => (m.g ?? "") === grp).map((m) => { const i = sel.indexOf(m.k), d = m.d !== undefined ? (m.d != null && isFinite(m.d) ? m.d : null) : m.p != null && m.p !== 0 && isFinite(m.p) ? ((m.v - m.p) / Math.abs(m.p)) * 100 : null, good = d == null ? true : m.inv ? d <= 0 : d >= 0;
+      <div className="grps">{[...new Set(metrics.map((m) => m.g ?? ""))].map((grp) => { const nG = metrics.filter((m) => (m.g ?? "") === grp).length; return <div key={grp} className="grp" style={{ flex: nG }}>{grp && <h3 className="mbgh">{grp}</h3>}<div className="mbg" style={{ gridTemplateColumns: `repeat(${nG}, minmax(0, 1fr))` }}>{metrics.filter((m) => (m.g ?? "") === grp).map((m) => { const i = sel.indexOf(m.k), d = m.d !== undefined ? (m.d != null && isFinite(m.d) ? m.d : null) : m.p != null && m.p !== 0 && isFinite(m.p) ? ((m.v - m.p) / Math.abs(m.p)) * 100 : null, good = d == null ? true : m.inv ? d <= 0 : d >= 0;
         return <button type="button" key={m.k} className={"mbc" + (i >= 0 ? " on" : "")} style={i >= 0 ? { borderTopColor: COL[i] } : undefined} onClick={() => toggle(m.k)} aria-pressed={i >= 0}>
           <span className="mbl">{m.l}</span><b>{fmtV(m.f, m.v, dec)}</b>
           <span className={"mbd " + (d == null ? "muted" : good ? "up" : "dn")}>{d == null ? (m.note ?? sub) : `${d >= 0 ? "▲" : "▼"} ${Math.abs(d).toFixed(dec).replace(".", ",")}% ${sub}`}</span>
-        </button>; })}</div></div>)}
+        </button>; })}</div></div>; })}</div>
       <div className="mbch" onMouseLeave={() => setHov(null)}>
         <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Tren metrik">
           {[0, 1, 2, 3].map((k) => <line key={k} x1={L} x2={W - R} y1={T + (k * (H - T - B)) / 3} y2={T + (k * (H - T - B)) / 3} stroke="var(--line)" />)}
