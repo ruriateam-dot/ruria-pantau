@@ -462,3 +462,6 @@ td.n.up,td.n.dn{font-weight:600}td.n.up{background:color-mix(in srgb,var(--good)
 .rkbar{height:8px;border-radius:99px;background:var(--bg);overflow:hidden;margin:4px 0}.rkbar i{display:block;height:100%;background:var(--good)}
 /* ikon penjelasan istilah */
 .ii{display:inline-grid;place-items:center;width:14px;height:14px;border-radius:50%;background:var(--bg);color:var(--muted);font-size:9.5px;font-weight:800;font-style:normal;margin-left:4px;vertical-align:1px;cursor:help}
+/* Tombol sekunder di seluruh situs: jelas bisa diklik */
+button.ghost{border:1.5px solid var(--accent);color:var(--accent-ink);background:var(--panel)}
+button.ghost:hover{background:color-mix(in srgb,var(--accent) 10%,var(--panel))}

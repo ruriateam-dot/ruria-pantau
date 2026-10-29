@@ -157,7 +157,7 @@ function renderSummary(){
       <div class="stat"><b>${nf.format(cSH)}</b><span>dari ${nf.format(nSH)} affiliate Shopee P1–P3 sudah dihubungi</span><span class="muted">+${nf.format(sSH)} P4–P5 tidak perlu dihubungi</span></div>
       <div class="stat"><b>${cAG}</b><span>dari ${nAG} agency/jaringan P1–P3 sudah dihubungi</span><span class="muted">+${sAG} P4–P5 tidak perlu dihubungi</span></div>
       <div class="stat hot"><b>${dueTT+dueSH+dueAG}</b><span>perlu di-follow-up: belum ada respon dan sudah ≥3 hari</span>
-        ${dueTT+dueSH ? `<button class="btn sm" id="go-due">Lihat daftarnya</button>` : ''}</div>
+        ${dueTT+dueSH ? `<button class="btn sm" id="go-due">Lihat daftarnya →</button>` : ''}</div>
     </div>
     <div class="grid">
       <div class="tscroll"><table class="mini"><thead><tr><th>Status</th><th class="num">TikTok</th><th class="num">Shopee</th><th class="num">Agency</th></tr></thead><tbody>
@@ -325,7 +325,8 @@ const liveKind = r => r.k === 'tt' ? (r.live >= 5 ? 'rutin' : r.live >= 1 ? 'per
 const liveChip = r => { const k = liveKind(r); if (!k) return '';
   const t = k === 'rutin' ? `LIVE rutin · ${r.live} sesi` : k === 'pernah' ? `Pernah LIVE · ${r.live} sesi` : 'Shopee Live';
   return ` <span class="chip live-${k}" title="${k === 'shlive' ? 'Penjualan paling banyak lewat Shopee Live' : 'Jumlah sesi LIVE yang menampilkan produk JustFluff, Mei–21 Okt'}">${t}</span>`; };
-const dbRows = () => S.dbpl === 'TikTok' ? TT : S.dbpl === 'Shopee' ? SH : TT.concat(SH);
+const tokoOk = r => { if (!S.dbtoko) return true; const [pl, br] = S.dbtoko.split('|'); return (pl === 'TikTok' ? r.k === 'tt' : r.k === 'sh') && String(r.cat || '').includes(br); };
+const dbRows = () => (S.dbpl === 'TikTok' ? TT : S.dbpl === 'Shopee' ? SH : TT.concat(SH)).filter(tokoOk);
 const dbF = () => S.dbpl === 'Shopee' ? S.f.shopee : S.f.tiktok;
 function dbDefs(){
   const d = sortDefs('tiktok');
@@ -449,6 +450,9 @@ function renderDb(){
   <details class="srcnote"><summary class="note">Sumber data <i class="ii">i</i></summary>  <p class="note">GMV kotor, bersih dan batal/retur: periode Mei–21 Okt. <b>TikTok</b>: GMV kotor dari laporan performa kreator; bersih dan batal/retur dihitung dari porsi order gagal tiap kreator di export pesanan (Mei–Sep). <b>Shopee</b>: GMV bersih = omzet tanpa pesanan batal (validasi komisi Mei–Jul, AMS Agu–Okt); batal hanya bisa dihitung untuk Agu–Okt. <sup>*</sup> = perkiraan: TikTok memakai rata-rata 36% order gagal karena kreator tidak punya data order sendiri; Shopee berarti batal Mei–Jul tidak tercatat. Efektivitas sampel dihitung dari GMV bersih. <span class="chip ag">Agency/Platform</span> = kumpulan banyak kreator, data tidak bisa dirinci.</p></details>`;
   const np = document.getElementById('navplat');
   if (np) { np.innerHTML = `<span class="seg" role="radiogroup" aria-label="Platform">${[['','Semua',TT.length+SH.length],['TikTok','TikTok',TT.length],['Shopee','Shopee',SH.length]].map(([p,l,n]) => `<button class="db-pl${(S.dbpl||'')===p?' on':''}" data-pl="${p}" role="radio" aria-checked="${(S.dbpl||'')===p}">${p ? `<i class="pdot ${p==='TikTok'?'tt':'sh'}"></i>` : ''}${l} <span class="n">${nf.format(n)}</span></button>`).join('')}</span>`;
+    if (D.BRANDS && D.BRANDS.length > 1) { const opts = ['Shopee','TikTok'].flatMap(pl => D.BRANDS.map(b => [pl + '|' + b, pl + ' · ' + b]));
+      np.insertAdjacentHTML('beforeend', `<select class="tokosel${S.dbtoko ? ' act' : ''}" aria-label="Toko"><option value="">Toko: Semua toko</option>${opts.map(([v, l]) => `<option value="${esc(v)}"${S.dbtoko === v ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`);
+      np.querySelector('.tokosel').onchange = e => { S.dbtoko = e.target.value; const f = dbF(); f.page = 0; saveFilters(); render(); }; }
     np.querySelectorAll('button.db-pl').forEach(b => b.onclick = () => { S.dbpl = b.dataset.pl; saveFilters(); render(); }); }
   view.querySelectorAll('.pcs button.pc').forEach(b => b.onclick = () => { f.pr = String(f.pr) === b.dataset.p ? '' : b.dataset.p; f.page = 0; saveFilters(); render(); });
   const bind = (id, key, ev='change', get = el => el.value) => { const el = document.getElementById(W+'-'+id); el.addEventListener(ev, () => { f[key] = get(el); f.page = 0; saveFilters(); rerenderSoon(); }); };
@@ -971,7 +975,7 @@ function todayPanel(){
   const sl = window.__syncLast;
   const syncTxt = sl ? `Sinkron terakhir ke spreadsheet: ${new Date(sl.at).toLocaleString('id-ID', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit', timeZone:'Asia/Jakarta'})} WIB · ${nf.format(Number(sl.disalin)||0)} sampel disalin · ${nf.format(Number(sl.status_diperbarui)||0)} status diperbarui · ${nf.format(Number(sl.gagal)||0)} gagal` : 'Status sinkron spreadsheet belum terbaca (jadwal tiap hari ±16.30 WIB).';
   const syncBad = sl && (Number(sl.gagal) > 0 || (Date.now() - new Date(sl.at)) > 36 * 3600e3);
-  const btn = (id, n, lbl, sub) => `<div class="stat${n ? ' hot' : ''}"><b>${nf.format(n)}</b><span>${lbl}</span>${sub ? `<span class="muted">${sub}</span>` : ''}${n ? `<button class="btn sm" id="${id}">Lihat daftarnya</button>` : ''}</div>`;
+  const btn = (id, n, lbl, sub) => `<div class="stat${n ? ' hot' : ''}"><b>${nf.format(n)}</b><span>${lbl}</span>${sub ? `<span class="muted">${sub}</span>` : ''}${n ? `<button class="btn sm" id="${id}">Lihat daftarnya →</button>` : ''}</div>`;
   return `<section class="panel"><h2>Kerja hari ini</h2>
     <div class="stat-row">
       ${btn('td-due', due, 'perlu di-follow-up (belum respon ≥3 hari)')}
