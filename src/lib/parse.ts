@@ -92,7 +92,7 @@ function shopeeExtra(sheets: Record<string, Sheet>, file: string): SP | undefine
 
 /* ---------- TikTok: Key metrics / Overview My Business Performance ---------- */
 function tiktokStats(rows: Sheet, file = ""): Parsed | null {
-  const hi = hdr(rows, (H) => /^(Tanggal|Jam|Waktu|Per Jam|Per Hari|Date|Time)$/i.test(H[0]) && H.some((c) => c === "GMV" || /^Nilai Bruto Barang Dagangan/.test(c)) && H.includes("Pesanan")
+  const hi = hdr(rows, (H) => /^(Tanggal|Jam|Waktu|Per Jam|Per Hari|Date|Time|Hari)$/i.test(H[0]) && H.some((c) => c === "GMV" || /^Nilai Bruto Barang Dagangan/.test(c)) && H.includes("Pesanan")
     && H.some((c) => c === "Pengunjung" || c === "Kunjungan halaman Toko") && !H.some((c) => /durasi|host|person/i.test(c)));
   if (hi < 0) return null;
   const H = rows[hi].map(S);
@@ -183,7 +183,7 @@ function shopeeAds(rows: Sheet): Parsed | null {
 
 /* ---------- Iklan TikTok (Campaign overview per hari) ---------- */
 function tiktokAds(rows: Sheet, file = ""): Parsed | null {
-  const hi = hdr(rows, (H) => /^(Per Hari|Per Jam|Tanggal|Jam|Waktu)$/i.test(H[0]) && H.includes("Biaya") && H.some((c) => /^Penghasilan bruto/.test(c)));
+  const hi = hdr(rows, (H) => /^(Per Hari|Per Jam|Tanggal|Jam|Waktu|Time|Date|Hari)$/i.test(H[0]) && H.includes("Biaya") && H.some((c) => /^Penghasilan bruto/.test(c)));
   if (hi < 0) return null;
   const H = rows[hi].map(S), iC = H.indexOf("Biaya"), iG = col(H, /^Penghasilan bruto/), iO = col(H, /^Pesanan SKU/);
   // Ekspor "Kemarin" berisi baris per jam: dijumlah per tanggal
