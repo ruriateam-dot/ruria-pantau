@@ -607,3 +607,5 @@ div.rk:has(> .rkc){display:grid;width:auto;height:auto;place-items:stretch;borde
 @keyframes skm{0%{background-position:200% 0}100%{background-position:-200% 0}}
 @media(max-width:760px){.sk-row{grid-template-columns:1fr 1fr}}
 .pbtn2 .ptx small.pwarn{color:var(--warn);font-weight:600}
+.pand details{border-top:1px solid var(--line);padding:8px 2px}.pand details:first-child{border-top:0}.pand summary{cursor:pointer}.pand p{margin:6px 0 0 14px}
+.ksec{margin:18px 0 8px;font-size:14px;color:var(--accent);border-top:1px solid var(--line);padding-top:12px}

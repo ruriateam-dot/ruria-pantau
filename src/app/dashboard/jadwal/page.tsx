@@ -1,3 +1,4 @@
+import { clientsFor } from "@/lib/data";
 import AppShell from "@/components/AppShell";
 import { requireUser, allowedClients, canWork } from "@/lib/auth";
 import { q } from "@/lib/db";
@@ -14,7 +15,7 @@ export default async function JadwalPage({ searchParams }: { searchParams: Promi
   const sp = await searchParams;
   const staff = canWork(me);
   const ok = await allowedClients(me);
-  const clients = ok.length ? await q<{ id: string; nama: string }>("select id, nama from clients where id in (?) and find_in_set('live', modul) order by nama", [ok]) : [];
+  const clients = (await clientsFor(ok)).filter((c) => c.modul.includes("live")).map((c) => ({ id: c.id, nama: c.brand ?? c.nama }));
   // Periode: minggu (default), bulan, atau rentang pilihan sendiri
   const D = /^\d{4}-\d{2}-\d{2}$/, t0 = todayWIB();
   const mode = sp.v === "bulan" || sp.v === "kustom" ? sp.v : "minggu";

@@ -28,9 +28,8 @@ export default async function UploadPage() {
     <main className="wrap dv tim">
       <p className="muted">Pilih klien dan toko, lalu masukkan file dari Seller Centre. Jenis file dikenali otomatis. Data di tanggal yang sama akan diperbarui, bukan dobel.</p>
       <Uploader clients={clients} stores={stores} />
-      <div className="card"><h2>File yang dibutuhkan per tab</h2>
-        <div className="tw"><table><thead><tr><th>Tab</th><th>File</th><th>Cara ambil</th></tr></thead>
-          <tbody>{PANDUAN.map((r) => <tr key={r[0]}><td>{r[0]}</td><td>{r[1]}</td><td className="muted">{r[2]}</td></tr>)}</tbody></table></div>
+      <div className="card"><h2>Panduan file <span className="muted small">· klik untuk cara mengambil</span></h2>
+        <div className="pand">{[...PANDUAN, ["Affiliate · Shopee", "AMSAffiliatePerformance…csv + SellerOnlinePaymentValidationReport…csv", "Affiliate Marketing Solution → Laporan kinerja; Keuangan → Validasi tagihan affiliate. Mingguan."], ["Affiliate · TikTok", "Transaction_Analysis_Creator_List…xlsx + affiliate_orders…xlsx", "Affiliate → Analisis transaksi → daftar affiliate; Affiliate → Pesanan. Mingguan."], ["Penghasilan", "Income.sudah_dilepas…xlsx (Shopee) · income_…xlsx (TikTok)", "Keuangan → Penghasilan Saya / Transaksi. Setiap jadwal pesanan."], ["Stok", "mass_update_sales_info…zip (Shopee)", "Produk Saya → Ubah Massal → Info penjualan. Mingguan."]].map((r) => <details key={r[0]}><summary><b>{r[0]}</b> <span className="muted small">{r[1]}</span></summary><p className="muted small">{r[2]}</p></details>)}</div>
         <p className="muted small">Agar status &quot;Aman&quot;, unggah data sampai kemarin (H-1) setiap hari.</p>
       </div>
       <div className="card"><h2>Riwayat upload terbaru</h2>

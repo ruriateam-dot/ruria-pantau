@@ -29,6 +29,8 @@ export default function Jadwal({ mode, week, bulan, from, to, gFrom, gTo, today,
   const [cf, setCf] = useState(from), [ct, setCt] = useState(to);
   const color = useMemo(() => Object.fromEntries(hosts.map((h, i) => [h.id, PAL[i % PAL.length]])), [hosts]);
   const cname = (id: string) => clients.find((c) => c.id === id)?.nama ?? id;
+  const BC = ["#2F3E9E", "#0E7490", "#7C3AED", "#B45309", "#BE185D", "#15803D", "#475569"];
+  const ccol = (id: string) => BC[Math.max(0, clients.findIndex((c) => c.id === id)) % BC.length];
   const list = shifts.filter((s) => !brand || s.client_id === brand);
   const run = (p: Promise<{ ok: boolean; msg: string }>, close = false) => start(async () => { const r = await p; setMsg(r); if (r.ok) { if (close) dlg.current?.close(); router.refresh(); } });
   const open = (s: Partial<S>) => { setEdit(s); setMsg(null); dlg.current?.showModal(); };
@@ -61,8 +63,8 @@ export default function Jadwal({ mode, week, bulan, from, to, gFrom, gTo, today,
       if (!inP(d)) return <section key={d} className="jday out" aria-hidden="true"><header><span className="muted small">{tg(d)}</span></header></section>;
       return <section key={d} className={"jday" + (d === today ? " today" : "")} aria-label={`${HARI[i % 7]} ${tg(d)}`}>
         <header><b>{HARI[i % 7]}</b><span className="muted small">{tg(d)}</span></header>
-        {it.map((s) => <button type="button" key={s.id} className="shift" style={{ borderLeftColor: color[s.host_id] }} onClick={() => canEdit && open(s)} disabled={!canEdit}>
-          <b>{s.mulai}–{s.selesai}</b><span>{s.host}</span><span className="muted small">{cname(s.client_id)} · {s.platform.replace("+", " + ")}</span>{s.catatan && <span className="muted small">{s.catatan}</span>}
+        {it.map((s) => <button type="button" key={s.id} className="shift" style={{ borderLeftColor: ccol(s.client_id) }} onClick={() => canEdit && open(s)} disabled={!canEdit}>
+          <b>{s.mulai}–{s.selesai}</b><span>{s.host}</span><span className="small" style={{ color: ccol(s.client_id), fontWeight: 600 }}>{cname(s.client_id)}</span><span className="muted small">{s.platform.replace("+", " + ")}</span>{s.catatan && <span className="muted small">{s.catatan}</span>}
         </button>)}
         {!it.length && <p className="muted small jempty">Belum ada jadwal</p>}
         {canEdit && <button type="button" className="ghost jadd" onClick={() => open({ tanggal: d, mulai: "19:00", selesai: "22:00", platform: "Shopee+TikTok", client_id: brand || clients[0].id })}>+</button>}
