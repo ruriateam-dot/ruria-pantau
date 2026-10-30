@@ -15,7 +15,7 @@ export default function Affiliate({ me, client, user, nama, readOnly = false, to
     let off = false; const urls: string[] = [];
     const add = (src: string) => new Promise<void>((ok, no) => { const s = document.createElement("script"); s.src = src; s.onload = () => ok(); s.onerror = () => no(); s.dataset.aff = "1"; document.body.appendChild(s); });
     (async () => {
-      if (!w().__affInit) await add("/aff/shim.js?v=3");
+      if (!w().__affInit) await add("/aff/shim.js?v=4");
       if (off) return;
       w().__affInit!(client, user, token);
       const b: Brand = await fetch(w().AFF_SRC("brand.json")).then((r) => (r.ok ? r.json() : null)).catch(() => null) ?? { nama: client === "jf" ? "Just Fluff" : nama };
@@ -38,7 +38,7 @@ export default function Affiliate({ me, client, user, nama, readOnly = false, to
     return () => { off = true; (el as unknown as { _mo?: MutationObserver })._mo?.disconnect(); w().__affGen++; document.querySelectorAll("script[data-aff]").forEach((s) => { if (s.getAttribute("src")?.startsWith("blob:")) s.remove(); }); urls.forEach((u) => { if (u.startsWith("blob:")) URL.revokeObjectURL(u); }); };
   }, [client, user, nama, readOnly, token]);
   return <>
-    <link rel="stylesheet" href="/aff/aff.css?v=23" />
+    <link rel="stylesheet" href="/aff/aff.css?v=24" />
     {readOnly && <p className="note">Tampilan baca saja: data affiliate dan database affiliate bisa dilihat, perubahan hanya dilakukan oleh tim Ruria.</p>}
     <div id="aff-root" ref={ref} className={[readOnly && "ro", token && "share"].filter(Boolean).join(" ") || undefined} />
     {note && (typeof note === "string" ? <p className="muted small fnote">{note}</p> : <div className="fnote muted small"><b>Sumber data</b><table><tbody>{note.map(([a, b, c]) => <tr key={a}><td>{a}</td><td>{b}{c && <span> · {c}</span>}</td></tr>)}</tbody></table></div>)}

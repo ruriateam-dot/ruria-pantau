@@ -27,7 +27,7 @@ window.__affInit = function (client, user, token) {
       update: function (data) { return post({ op: "update", coll: c, id: id, data: data }); },
       delete: function () { return post({ op: "delete", coll: c, id: id }); },
       get: function () { return api({ coll: c, id: id }).then(function (r) { return mkDoc(id, r.data); }); },
-      onSnapshot: function (cb, err) { return sub(function () { return api({ coll: c, id: id }).then(function (r) { cb(mkDoc(id, r.data)); }); }, err); }
+      onSnapshot: function (cb, err) { var last = null; return sub(function () { return api({ coll: c, id: id }).then(function (r) { var k = JSON.stringify(r.data); if (k === last) return; last = k; cb(mkDoc(id, r.data)); }); }, err); }
     };
   }
   function coll(path, o) {
@@ -38,13 +38,13 @@ window.__affInit = function (client, user, token) {
       orderBy: function (f, dir) { return coll(path, Object.assign({}, o, { f: f, dir: dir })); },
       limit: function (n) { return coll(path, Object.assign({}, o, { n: n })); },
       get: function () { return api({ coll: path }).then(function (r) { return snapColl(r, o); }); },
-      onSnapshot: function (cb, err) { return sub(function () { return api({ coll: path }).then(function (r) { cb(snapColl(r, o)); }); }, err); }
+      onSnapshot: function (cb, err) { var last = null; return sub(function () { return api({ coll: path }).then(function (r) { var k = JSON.stringify(r); if (k === last) return; last = k; cb(snapColl(r, o)); }); }, err); }
     };
   }
   var iv = setInterval(function () {
     if (window.__affGen !== gen) { clearInterval(iv); subs.clear(); return; }
     if (!document.hidden) subs.forEach(function (s) { s.run(); });
-  }, 20000);
+  }, 45000);
   var db = { collection: coll, doc: doc };
   var downloads = { save: function (o) {
     var u = URL.createObjectURL(o.data instanceof Blob ? o.data : new Blob([o.data]));
