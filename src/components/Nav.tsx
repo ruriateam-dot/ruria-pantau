@@ -1,5 +1,5 @@
 "use client";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
 /* Satu tanda "sedang memuat" untuk semua perpindahan di dashboard */
@@ -7,6 +7,8 @@ export function useNav() {
   const router = useRouter();
   const [pending, start] = useTransition();
   useEffect(() => { window.dispatchEvent(new CustomEvent("nav-pending", { detail: pending })); }, [pending]);
+  // komponen pemicu bisa hilang saat halaman baru tampil; tanpa ini tanda "Memuat data" tertinggal
+  useEffect(() => () => { window.dispatchEvent(new CustomEvent("nav-pending", { detail: false })); }, []);
   return { pending, go: (url: string) => start(() => router.push(url, { scroll: false })) };
 }
 
@@ -17,6 +19,8 @@ export function LoadingBar() {
     window.addEventListener("nav-pending", h);
     return () => window.removeEventListener("nav-pending", h);
   }, []);
+  const path = usePathname(), sp = useSearchParams();
+  useEffect(() => { setOn(false); }, [path, sp]);
   useEffect(() => { document.body.classList.toggle("is-loading", on); }, [on]);
   return on ? (
     <>
