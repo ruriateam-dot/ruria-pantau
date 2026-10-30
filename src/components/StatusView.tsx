@@ -98,7 +98,7 @@ export default async function StatusView({ R, stores, share, staff }: { R: Range
         {!unpaid.length && !late.length && !returProses.length && !cod.length && <p className="muted">Tidak ada pesanan bermasalah di periode ini.</p>}
       </div>}
     </div>
-    <div className="card"><h3>Potongan platform · pesanan periode ini yang dananya sudah cair</h3>
+    <div className="card" id="potongan"><h3>Potongan platform · pesanan periode ini yang dananya sudah cair</h3>
       {!FE.length ? <p className="muted">Belum ada rincian potongan untuk pesanan periode ini. Upload Laporan Penghasilan Shopee (Keuangan → Penghasilan Saya) dan penghasilan TikTok (Keuangan → Transaksi) setiap 5 hari.</p> : <>
         <p>Total potongan <b>{rp(pot)}</b> ({pc(pot, FS.subtotal)} dari harga produk) · dana cair <b>{rp(FS.dana)}</b> dari {nf(FE.length)} pesanan.</p>
         {!share && <div className="wf">

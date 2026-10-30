@@ -82,7 +82,7 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
       for (const x of PP) for (const r of x.d as unknown as [string, string, number, number, number | null, number | null, number | null, number | null, number | null][]) {
         const k = String(r[1]).trim().toLowerCase(), m = PM.get(k) ?? { dl: 0, kl: 0, kr: 0, pg: 0 }; m.dl += (r[4] ?? 0) * x.w; m.kl += (r[5] ?? 0) * x.w; m.pg += (r[6] ?? 0) * x.w; m.kr += (r[7] ?? 0) * x.w; PM.set(k, m); }
       const PS = prodStats(prod, ts, PM);
-      body = <><TokoTab R={R} stores={ts} sales={D.sales} last={SL} prod={PS} live={D.live} ads={D.ads} plat={sp.p} scN={scN} scP={scP} fr={fr} /><ProdukSection R={R} ps={PS} err={prodErr} />{(!(viewKlien && c.tab_klien) || c.tab_klien.includes("status")) && <><h2 className="secth" id="status">Status pesanan, batal &amp; retur</h2><StatusView R={R} stores={ts} share={!!share} staff={isAdmin && !share} /></>}</>;
+      body = <><nav className="jump" aria-label="Lompat ke bagian"><a href="#top">Ringkas</a><a href="#produk">Produk</a><a href="#status">Status pesanan</a><a href="#potongan">Potongan</a></nav><span id="top" /><TokoTab R={R} stores={ts} sales={D.sales} last={SL} prod={PS} live={D.live} ads={D.ads} plat={sp.p} scN={scN} scP={scP} fr={fr} /><ProdukSection R={R} ps={PS} err={prodErr} />{(!(viewKlien && c.tab_klien) || c.tab_klien.includes("status")) && <><h2 className="secth" id="status">Status pesanan, batal &amp; retur</h2><p className="note small">Angka di bagian ini <b>dihitung dari file pesanan yang diupload</b>, jadi bisa lebih kecil dari GMV di atas (yang berasal dari statistik toko). Kalau selisihnya besar, berarti file pesanan untuk periode ini belum lengkap.</p><StatusView R={R} stores={ts} share={!!share} staff={isAdmin && !share} /></>}</>;
     }
     else if (tab === "iklan") {
       // Saldo iklan hanya untuk tim (tidak tampil di link klien)
@@ -556,6 +556,9 @@ function prodStats(rows: Prod[], stores: Store[], PM: Map<string, { dl: number; 
     next: [...(stop.length ? [`Cek stok & listing SKU yang berhenti terjual (lihat "Perlu tindakan").`] : []), ...(naik.length ? [`Tambah stok dan exposure ${nm(naik[0])} selagi naik.`] : [])] };
 }
 function ProdukSection({ R, ps, err }: { R: Range; ps: PStats; err?: string }) {
+  return <div id="produk">{ProdukSection0({ R, ps, err })}</div>;
+}
+function ProdukSection0({ R, ps, err }: { R: Range; ps: PStats; err?: string }) {
   if (err) return <div className="card"><h2>Analisa produk</h2><p className="err">Data produk gagal dimuat: {err}</p></div>;
   if (!ps.st.length) return (
     <div className="card"><h2>Analisa produk</h2><Empty title="Belum ada data penjualan per produk untuk pilihan ini." up={false} file={<>ekspor pesanan (Shopee: Pesanan Saya → Ekspor; TikTok: Pesanan → Ekspor).</>} /></div>);

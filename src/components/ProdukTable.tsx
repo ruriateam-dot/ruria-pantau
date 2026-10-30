@@ -26,18 +26,18 @@ export default function ProdukTable({ rows, tokoName }: { rows: PRow[]; tokoName
       <span className="muted small">{F.length} SKU</span>
     </div>
     <div className="tbl"><table className="ptab">
-      <thead><tr><th>#</th><th>SKU induk</th><th>Produk</th><th className="n">GMV</th><th className="n">Qty</th><th className="n">Harga rata²</th>{hasSC && <><th className="n" title="Shopee, laporan bulanan">Dilihat</th><th className="n">Klik</th><th className="n">CTR</th><th className="n">Keranjang</th></>}<th className="n">Δ GMV</th><th className="n">Porsi</th><th className="n">Kumulatif</th><th>Status</th></tr></thead>
+      <thead><tr><th className="o">#</th><th className="o">SKU induk</th><th>Produk</th><th className="n">GMV</th><th className="n o">Qty</th><th className="n o">Harga rata²</th>{hasSC && <><th className="n o" title="Shopee, laporan bulanan">Dilihat</th><th className="n o">Klik</th><th className="n o">CTR</th><th className="n o">Keranjang</th></>}<th className="n">Δ GMV</th><th className="n o">Porsi</th><th className="n o">Kumulatif</th><th>Status</th></tr></thead>
       <tbody>{F.slice(0, n).map((r) => {
         const isOpen = open.has(r.grup), code = r.kode?.[0] ?? (r.grup.startsWith("NAMA:") ? "–" : r.grup);
         return (
           <Fragment key={r.grup}>
             <tr className={"prow" + (isOpen ? " open" : "")} data-rank={rows.indexOf(r) + 1} onClick={() => toggle(r.grup)} tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(r.grup); } }} aria-expanded={isOpen}>
-              <td>{(() => { const k = rows.indexOf(r) + 1; return r.gmv > 0 ? <span className={"rk" + (k <= 3 ? " r" + k : "")}>{k}</span> : "–"; })()}</td>
-              <td><span className="chev" aria-hidden="true">{isOpen ? "▾" : "▸"}</span> <b>{code}</b>{r.kode && r.kode.length > 1 && <div className="muted small">+{r.kode.length - 1} kode lain</div>}</td>
-              <td className="wrapcell" title={r.nama}>{shortName(r.nama)}<div className="muted small">{r.tokoLabel}</div></td>
-              <td className="n">{fmt(r.gmv)}</td><td className="n">{r.qty.toLocaleString("id")}</td><td className="n">{r.qty ? fmt(r.gmv / r.qty) : "–"}</td>{hasSC && <><td className="n">{r.sc ? Math.round(r.sc.dl).toLocaleString("id") : "–"}</td><td className="n">{r.sc ? Math.round(r.sc.kl).toLocaleString("id") : "–"}</td><td className="n">{r.sc && r.sc.dl ? ((r.sc.kl / r.sc.dl) * 100).toFixed(2).replace(".", ",") + "%" : "–"}</td><td className="n">{r.sc ? Math.round(r.sc.kr).toLocaleString("id") : "–"}</td></>}
+              <td className="o">{(() => { const k = rows.indexOf(r) + 1; return r.gmv > 0 ? <span className={"rk" + (k <= 3 ? " r" + k : "")}>{k}</span> : "–"; })()}</td>
+              <td className="o"><span className="chev" aria-hidden="true">{isOpen ? "▾" : "▸"}</span> <b>{code}</b>{r.kode && r.kode.length > 1 && <div className="muted small">+{r.kode.length - 1} kode lain</div>}</td>
+              <td className="wrapcell" title={r.nama}><span className="chev pm" aria-hidden="true">{isOpen ? "▾ " : "▸ "}</span>{shortName(r.nama)}<div className="muted small">{r.tokoLabel}</div></td>
+              <td className="n">{fmt(r.gmv)}</td><td className="n o">{r.qty.toLocaleString("id")}</td><td className="n o">{r.qty ? fmt(r.gmv / r.qty) : "–"}</td>{hasSC && <><td className="n o">{r.sc ? Math.round(r.sc.dl).toLocaleString("id") : "–"}</td><td className="n o">{r.sc ? Math.round(r.sc.kl).toLocaleString("id") : "–"}</td><td className="n o">{r.sc && r.sc.dl ? ((r.sc.kl / r.sc.dl) * 100).toFixed(2).replace(".", ",") + "%" : "–"}</td><td className="n o">{r.sc ? Math.round(r.sc.kr).toLocaleString("id") : "–"}</td></>}
               <td className={"n " + (r.ch >= 0 ? "up" : "dn")}>{r.prev ? `${r.ch >= 0 ? "+" : ""}${r.ch.toFixed(0).replace(".", ",")}%` : "–"}</td>
-              <td className="n">{r.share.toFixed(1).replace(".", ",")}%</td><td className="n muted">{r.gmv ? r.cum.toFixed(0).replace(".", ",") + "%" : "–"}</td>
+              <td className="n o">{r.share.toFixed(1).replace(".", ",")}%</td><td className="n muted o">{r.gmv ? r.cum.toFixed(0).replace(".", ",") + "%" : "–"}</td>
               <td><span className={"pill " + PILL[r.status][0]}>{PILL[r.status][1]}</span></td>
             </tr>
             {isOpen && (

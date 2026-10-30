@@ -587,3 +587,7 @@ div.rk:has(> .rkc){display:grid;width:auto;height:auto;place-items:stretch;borde
 .ckc .oldg{display:block;font-size:10px;color:var(--muted)}.oldd{margin-top:12px}.oldd>summary{cursor:pointer;font-weight:600;color:var(--accent)}
 .slpt{display:block;font-size:10.5px;color:var(--muted);font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.slt{min-width:0}
 .h1pt{display:block;font-size:12px;font-weight:400;color:var(--muted);margin-top:2px}
+.jump{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}.jump a{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:4px 12px;font-size:12px;color:var(--fg);text-decoration:none}.jump a:hover{border-color:var(--accent);color:var(--accent)}
+#top,#produk,#status,#potongan{scroll-margin-top:170px}
+.ptab .chev.pm{display:none}
+@media(max-width:640px){.ptab .o{display:none}.ptab .chev.pm{display:inline}table.ptab.mcard td.o{display:none!important}}
