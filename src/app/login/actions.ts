@@ -34,3 +34,20 @@ export async function logout() {
   await endSession();
   redirect("/login");
 }
+
+/* Lupa password: kirim link atur ulang ke email terdaftar. Jawaban selalu sama supaya tidak membocorkan email mana yang terdaftar. */
+export async function lupaPassword(_prev: string | null, form: FormData): Promise<string | null> {
+  const email = String(form.get("email") || "").trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return "Isi email yang valid.";
+  const r = await q<{ id: number; nama: string; peran: string }>("select id, nama, peran from users where email = ?", [email]);
+  if (r[0]) {
+    const recent = await q<{ n: number }>("select count(*) n from activity_log where aksi = 'minta reset password' and user_id = ? and waktu > now() - interval 15 minute", [r[0].id]).catch(() => [{ n: 0 }]);
+    if (!+recent[0].n) {
+      const { passwordLink, sendInvite } = await import("@/lib/mail");
+      const link = await passwordLink(r[0].id);
+      const err = await sendInvite(email, r[0].nama, link, "Ada yang (lewat halaman Lupa password)", false);
+      await logAct({ id: r[0].id, nama: r[0].nama, peran: r[0].peran }, "minta reset password", null, err ? `gagal kirim: ${err}` : email);
+    }
+  }
+  return "OK";
+}

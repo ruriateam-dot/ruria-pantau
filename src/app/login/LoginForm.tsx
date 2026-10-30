@@ -16,6 +16,7 @@ export default function LoginForm({ setup }: { setup: boolean }) {
         {setup && <p className="muted small">Minimal 10 karakter. Gunakan password yang tidak dipakai di tempat lain.</p>}
         {error && <p className="err" role="alert">{error}</p>}
         <button type="submit" disabled={pending}>{pending ? "Memproses…" : setup ? "Buat akun admin" : "Masuk"}</button>
+        {!setup && <p className="small" style={{ textAlign: "center", margin: "4px 0 0" }}><a href="/lupa-password">Lupa password?</a></p>}
       </form>
     </main>
   );
