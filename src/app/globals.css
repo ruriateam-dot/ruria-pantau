@@ -613,3 +613,7 @@ div.rk:has(> .rkc){display:grid;width:auto;height:auto;place-items:stretch;borde
 main.dv{grid-template-columns:minmax(0,1fr)!important}main.dv>*{min-width:0}.grid2c>*,.rk2>*,.two>*{min-width:0}
 .skel-side{gap:10px!important}.sk-nav{height:22px;margin:0}.sk-nav:first-child{height:30px;margin-bottom:14px}
 @media(max-width:900px){.skel-side{display:none!important}}
+/* badge peringkat bulat dengan angka di tengah */
+span.rk{display:inline-flex!important;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;font-size:12px;font-weight:700;line-height:1;text-align:center;padding:0;flex:none}
+td.rkc0,th.rkc0{width:44px;min-width:0!important;text-align:center!important;white-space:nowrap}
+.card .tbl td:first-child:has(> span.rk){min-width:0}
