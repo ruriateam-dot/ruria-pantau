@@ -38,7 +38,7 @@ export default function Affiliate({ me, client, user, nama, readOnly = false, to
     return () => { off = true; (el as unknown as { _mo?: MutationObserver })._mo?.disconnect(); w().__affGen++; document.querySelectorAll("script[data-aff]").forEach((s) => { if (s.getAttribute("src")?.startsWith("blob:")) s.remove(); }); urls.forEach((u) => { if (u.startsWith("blob:")) URL.revokeObjectURL(u); }); };
   }, [client, user, nama, readOnly, token]);
   return <>
-    <link rel="stylesheet" href="/aff/aff.css?v=22" />
+    <link rel="stylesheet" href="/aff/aff.css?v=23" />
     {readOnly && <p className="note">Tampilan baca saja: data affiliate dan database affiliate bisa dilihat, perubahan hanya dilakukan oleh tim Ruria.</p>}
     <div id="aff-root" ref={ref} className={[readOnly && "ro", token && "share"].filter(Boolean).join(" ") || undefined} />
     {note && (typeof note === "string" ? <p className="muted small fnote">{note}</p> : <div className="fnote muted small"><b>Sumber data</b><table><tbody>{note.map(([a, b, c]) => <tr key={a}><td>{a}</td><td>{b}{c && <span> · {c}</span>}</td></tr>)}</tbody></table></div>)}
