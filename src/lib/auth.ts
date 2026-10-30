@@ -10,6 +10,8 @@ export type Peran = "superadmin" | "admin" | "klien";
 export type User = { id: number; email: string; nama: string; peran: Peran };
 export const PERAN_LABEL: Record<string, string> = { superadmin: "Superadmin", admin: "Admin Ruria", klien: "Tim klien" };
 export const isStaff = (u: { peran: string } | null | undefined) => u?.peran === "superadmin" || u?.peran === "admin";
+/* Hak kerja (input data, follow-up, sampel, saldo, jadwal): tim Ruria & tim klien, tetap dibatasi ke klien yang boleh diakses */
+export const canWork = (u: { peran: string } | null | undefined) => isStaff(u) || u?.peran === "klien";
 
 export async function getUser(): Promise<User | null> {
   const t = (await cookies()).get(COOKIE)?.value;
@@ -40,6 +42,11 @@ export async function requireUser() {
 export async function requireAdmin() {
   const u = await getUser();
   return isStaff(u) ? u : null;
+}
+
+export async function requireWorker() {
+  const u = await getUser();
+  return canWork(u) ? u : null;
 }
 
 export async function startSession(userId: number) {

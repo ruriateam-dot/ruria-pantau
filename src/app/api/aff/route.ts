@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { randomBytes } from "crypto";
-import { getUser, allowedClients, isStaff } from "@/lib/auth";
+import { getUser, allowedClients, canWork } from "@/lib/auth";
 import { q, exec } from "@/lib/db";
 import { logAct } from "@/lib/log";
 
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
   if (!b) return bad("Data tidak valid");
   const g = await guard(b.c ?? null); if (g.err) return g.err;
   // Tim klien hanya bisa melihat; perubahan hanya oleh tim Ruria (log aktivitas tetap boleh tercatat)
-  if (!isStaff(g.u) && !/^jf_log/.test(b.coll ?? "")) return bad("Akun klien hanya bisa melihat data affiliate", 403);
+  if (!canWork(g.u) && !/^jf_log/.test(b.coll ?? "")) return bad("Akun klien hanya bisa melihat data affiliate", 403);
   if (!okPath(b.coll)) return bad("Koleksi tidak valid");
   const body = JSON.stringify(b.data ?? {});
   const d = b.data as Record<string, unknown> | undefined;

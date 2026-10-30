@@ -1,5 +1,5 @@
 import AppShell from "@/components/AppShell";
-import { requireUser, allowedClients, isStaff } from "@/lib/auth";
+import { requireUser, allowedClients, canWork } from "@/lib/auth";
 import { q } from "@/lib/db";
 import { logAct } from "@/lib/log";
 import { todayWIB, addDays } from "@/lib/period";
@@ -12,7 +12,7 @@ const monday = (d: string) => { const w = new Date(d + "T00:00:00Z").getUTCDay()
 export default async function JadwalPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const me = await requireUser();
   const sp = await searchParams;
-  const staff = isStaff(me);
+  const staff = canWork(me);
   const ok = await allowedClients(me);
   const clients = ok.length ? await q<{ id: string; nama: string }>("select id, nama from clients where id in (?) and find_in_set('live', modul) order by nama", [ok]) : [];
   // Periode: minggu (default), bulan, atau rentang pilihan sendiri

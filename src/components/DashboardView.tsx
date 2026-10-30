@@ -1,4 +1,4 @@
-import { isStaff, type User } from "@/lib/auth";
+import { canWork, type User } from "@/lib/auth";
 import { q } from "@/lib/db";
 import Filters from "@/components/Filters";
 import { Tabs, LoadingBar } from "@/components/Nav";
@@ -36,7 +36,7 @@ const TABS: [string, string][] = [["sum", "Dashboard"], ["lapor", "Laporan"], ["
 export default async function DashboardView({ sp, profile, clients: all, base, share, shareLabel, token }: { sp: SPv; profile: User | null; clients: Cl[]; base: string; share?: boolean; shareLabel?: string; token?: string }) {
   // Tampilan klien tanpa login: tanpa tab Semua Klien & Affiliate
   const clients = all;
-  const isAdmin = isStaff(profile);
+  const isAdmin = canWork(profile);
   const c = clients.find((x) => x.id === sp.c) ?? clients[0];
   let tab = sp.m ?? (share ? "lapor" : sp.c ? "toko" : "sum");
   if (tab === "status") tab = "toko";

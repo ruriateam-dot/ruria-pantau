@@ -1,7 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { q, exec } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, requireWorker, allowedClients } from "@/lib/auth";
 import { logAct } from "@/lib/log";
 
 type R = { ok: boolean; msg: string };
@@ -40,7 +40,8 @@ async function conflict(s: Shift) {
 }
 
 export async function saveShift(s: Shift): Promise<R> {
-  const me = await requireAdmin(); if (!me) return { ok: false, msg: "Hanya admin." };
+  const me = await requireWorker(); if (!me) return { ok: false, msg: "Silakan login dulu." };
+  if (!(await allowedClients(me)).includes(s.client_id)) return { ok: false, msg: "Akun ini tidak punya akses ke brand tersebut." };
   if (!D.test(s.tanggal) || !T.test(s.mulai) || !T.test(s.selesai)) return { ok: false, msg: "Tanggal atau jam tidak valid." };
   if (s.mulai === s.selesai) return { ok: false, msg: "Jam mulai dan selesai tidak boleh sama." };
   if (!PF.includes(s.platform)) return { ok: false, msg: "Platform tidak valid." };
@@ -57,7 +58,9 @@ export async function saveShift(s: Shift): Promise<R> {
 }
 
 export async function deleteShift(id: number): Promise<R> {
-  const me = await requireAdmin(); if (!me) return { ok: false, msg: "Hanya admin." };
+  const me = await requireWorker(); if (!me) return { ok: false, msg: "Silakan login dulu." };
+  const own = (await q<{ client_id: string }>("select client_id from live_schedule where id = ?", [id]))[0];
+  if (own && !(await allowedClients(me)).includes(own.client_id)) return { ok: false, msg: "Akun ini tidak punya akses ke brand tersebut." };
   const x = (await q<{ client_id: string; tanggal: string; mulai: string; selesai: string; nama: string }>("select l.client_id, l.tanggal, l.mulai, l.selesai, h.nama from live_schedule l join hosts h on h.id = l.host_id where l.id = ?", [id]))[0];
   await exec("delete from live_schedule where id = ?", [id]);
   if (x) await logAct(me, "hapus jadwal live", x.client_id, `${x.nama} · ${x.tanggal} ${x.mulai}–${x.selesai}`);
@@ -66,7 +69,10 @@ export async function deleteShift(id: number): Promise<R> {
 
 /* Salin jadwal satu minggu ke minggu berikutnya (yang bentrok dilewati) */
 export async function copyWeek(fromMonday: string, client: string | null): Promise<R> {
-  const me = await requireAdmin(); if (!me) return { ok: false, msg: "Hanya admin." };
+  const me = await requireWorker(); if (!me) return { ok: false, msg: "Silakan login dulu." };
+  const ok = await allowedClients(me);
+  if (client && !ok.includes(client)) return { ok: false, msg: "Akun ini tidak punya akses ke brand tersebut." };
+  if (!client && me.peran === "klien") { if (ok.length !== 1) return { ok: false, msg: "Pilih brand dulu sebelum menyalin minggu." }; client = ok[0]; }
   if (!D.test(fromMonday)) return { ok: false, msg: "Minggu tidak valid." };
   const rows = await q<Shift & { tanggal: string }>(
     `select client_id, date_format(tanggal + interval 7 day, '%Y-%m-%d') tanggal, mulai, selesai, host_id, platform, catatan from live_schedule
