@@ -10,7 +10,9 @@ export function Kpi({ l, v, d, sub, invert }: { l: string; v: string; d?: number
   );
 }
 
-export function Insight({ sum, ana, next, src }: { sum: string[]; ana: string[]; next: string[]; src: string }) {
+export function Insight({ sum, ana, next, src, show = false }: { sum: string[]; ana: string[]; next: string[]; src: string; show?: boolean }) {
+  // Ringkasan sekarang digabung ke kotak kesimpulan di atas halaman (Verdict)
+  if (!show) return null;
   return (
     <details className="ins" open>
       <summary><b>Ringkasan, analisa & langkah berikutnya</b> <span className="muted">{src}</span></summary>

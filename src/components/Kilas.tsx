@@ -36,30 +36,39 @@ export function hitung(R: Range, stores: Store[], sales: Sale[], ads: Ad[], live
   return { cmp, nm, G, Gp, S, Sp, roas, roasP, nol, boros, bad, badS, best, naik, L: L.length, LG: lg(L), LGp: lg(Lp), Lp: Lp.length };
 }
 
-export function Verdict({ tab, k, R, href }: { tab: string; k: KilasData; R: Range; href: (m: string) => string }) {
-  let tone: Tone = "good", title = "", sub = "", link: [string, string] | null = null;
+export function Verdict({ tab, k, R, href, lag }: { tab: string; k: KilasData; R: Range; href: (m: string) => string; lag?: string | null }) {
+  let tone: Tone = "good", title = "", link: [string, string] | null = null;
+  const pts: string[] = [];
   const dG = k.cmp && k.Gp ? pct(k.G, k.Gp) : null;
+  const top = k.naik[0], low = k.naik[k.naik.length - 1];
   if (tab === "iklan") {
     if (!k.S) return null;
     tone = k.badS > k.S * 0.15 ? "bad" : k.bad.length ? "warn" : "good";
     title = `ROAS ${rs(k.roas)}${k.cmp && k.roasP ? ` (${k.roas >= k.roasP ? "naik" : "turun"} dari ${rs(k.roasP)})` : ""}` + (k.bad.length ? `, ${k.bad.length} iklan perlu dicek.` : ", semua iklan wajar.");
-    sub = k.bad.length ? `Biaya ${fmt(k.badS)} di iklan boros / tanpa penjualan${k.bad[0] ? `, terbesar di ${k.nm.get(k.bad[0].id)}` : ""}.` : `Biaya ${fmt(k.S)} · ${R.label.toLowerCase()}.`;
+    pts.push(`Biaya iklan ${fmt(k.S)}${k.cmp && k.Sp ? ` (${pc(pct(k.S, k.Sp))})` : ""}.`);
+    if (k.best[0]) pts.push(`Paling efisien: ${k.best[0].k.slice(0, 50)} (${k.nm.get(k.best[0].id)}), ROAS ${rs(k.best[0].g / k.best[0].s)}.`);
+    if (k.bad.length) { pts.push(`Langkah: evaluasi ${k.bad.length} iklan boros / tanpa penjualan (${fmt(k.badS)})${k.bad[0] ? `, terbesar di ${k.nm.get(k.bad[0].id)}` : ""}.`); }
+    else if (k.best.length) pts.push(`Langkah: pertimbangkan tambah budget ${k.best.length} iklan dengan ROAS tertinggi.`);
   } else if (tab === "live") {
     if (!k.L) return null;
     const d = k.cmp && k.LGp ? pct(k.LG, k.LGp) : null;
     tone = d == null || d >= 0 ? "good" : d < -20 ? "bad" : "warn";
     title = `GMV live ${fmt(k.LG)} dari ${k.L} sesi${d != null ? `, ${pc(d)} ${R.sub}` : ""}.`;
-    sub = `${fmt(k.LG / k.L)} per sesi${k.Lp ? ` (sebelumnya ${fmt(k.LGp / k.Lp)})` : ""}.`;
+    pts.push(`${fmt(k.LG / k.L)} per sesi${k.Lp ? ` (sebelumnya ${fmt(k.LGp / k.Lp)} dari ${k.Lp} sesi)` : ""}.`);
+    if (d != null && d < 0) pts.push("Langkah: bandingkan jadwal & host di tabel di bawah untuk sesi yang turun.");
   } else {
     if (!k.G) return null;
     tone = dG != null && dG < -10 ? "bad" : (dG != null && dG < 0) || k.bad.length ? "warn" : "good";
     title = `GMV ${fmt(k.G)}${dG != null ? `, ${pc(dG)} ${R.sub}` : ""}` + (k.bad.length ? `, tapi ${k.bad.length} iklan boros.` : ".");
-    const top = k.naik[0];
-    sub = [k.S ? `ROAS iklan ${rs(k.roas)}` : "", top && pct(top.n, top.o) > 0 ? `pertumbuhan terbaik ${k.nm.get(top.id)} (${pc(pct(top.n, top.o))})` : ""].filter(Boolean).join(" · ");
-    if (k.bad.length) link = [href("iklan"), `Lihat ${k.bad.length} iklan →`];
+    if (top && pct(top.n, top.o) > 0) pts.push(`${k.nm.get(top.id)} tumbuh paling cepat (${pc(pct(top.n, top.o))}).`);
+    if (low && low !== top && pct(low.n, low.o) < 0) pts.push(`${k.nm.get(low.id)} melemah (${pc(pct(low.n, low.o))}).`);
+    if (k.S) pts.push(`ROAS iklan ${rs(k.roas)}${k.cmp && k.roasP ? ` (sebelumnya ${rs(k.roasP)})` : ""}.`);
+    if (k.bad.length) link = [href("iklan"), `evaluasi ${k.bad.length} iklan boros →`];
   }
   const ic = tone === "good" ? "✅" : tone === "warn" ? "⚠️" : "⛔";
-  return <div className={"verdict v-" + tone} role="status"><span className="vic" aria-hidden>{ic}</span><div><b>{title}</b>{sub && <><br /><span className="muted small">{sub}</span></>} {link && <a href={link[0]}>{link[1]}</a>}</div></div>;
+  return <div className={"verdict v-" + tone} role="status"><span className="vic" aria-hidden>{ic}</span><div><b>{title}</b>
+    {(pts.length > 0 || link) && <ul className="vpts">{pts.slice(0, 3).map((x) => <li key={x}>{x}</li>)}{link && <li>Langkah: <a href={link[0]}>{link[1]}</a></li>}</ul>}
+    {lag && <div className="vlag">⚠ {lag}</div>}</div></div>;
 }
 
 export function LaporanKlien({ k, R, nama, last, tem: tm, lang: lg, waktu }: { k: KilasData; R: Range; nama: string; last?: string | null; tem?: string | null; lang?: string | null; waktu?: string | null }) {

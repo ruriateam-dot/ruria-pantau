@@ -104,6 +104,13 @@ document.getElementById('n-tiktok').textContent = nf.format(TT.length);
 document.getElementById('n-db').textContent = nf.format(TT.length + SH.length);
 document.getElementById('n-shopee').textContent = nf.format(SH.length);
 
+function foldNotes(){
+  const ns = [...view.querySelectorAll('p.note')].filter(p => !p.closest('details, .drawer, #kerja-box, .pager, .bar'));
+  if (!ns.length) return;
+  const d = document.createElement('details'); d.className = 'notes';
+  d.innerHTML = '<summary>Cara membaca tabel &amp; aturan prioritas</summary>';
+  ns[0].before(d); ns.forEach(p => d.appendChild(p));
+}
 function render(){
   { const np = document.getElementById('navplat'); if (np) np.innerHTML = ''; }
   { const mw = document.getElementById('meet-wrap'); if (mw) { mw.hidden = S.tab !== 'ringkasan'; if (mw.hidden) mw.innerHTML = ''; } }
@@ -114,6 +121,7 @@ function render(){
   else if (S.tab === 'db') { renderDb(); appendAgency(S.dbpl === 'TikTok' ? 'tiktok' : S.dbpl === 'Shopee' ? 'shopee' : 'semua'); }
   else if (S.tab === 'log') renderLog();
   else if (S.tab === 'weekly') renderWeekly();
+  if (S.tab === 'db' || S.tab === 'tiktok' || S.tab === 'shopee') foldNotes();
 }
 let rTimer = null;
 function rerenderSoon(){ clearTimeout(rTimer); rTimer = setTimeout(() => { const a = document.activeElement; const keep = a && a.id && view.contains(a) ? {id:a.id, s:a.selectionStart, e:a.selectionEnd} : null; render(); if (keep) { const el = document.getElementById(keep.id); if (el) { el.focus(); try { el.setSelectionRange(keep.s, keep.e); } catch(e){} } } if (S.open) refreshDrawerMeta(); }, 120); }

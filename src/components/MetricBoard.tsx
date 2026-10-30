@@ -35,13 +35,12 @@ export default function MetricBoard({ metrics, labels, sub, init, dec = 1, fresh
   const step = Math.max(1, Math.ceil(n / 8));
   return (
     <div className="card mb">
-      {fresh?.w && <p className="fresh w" style={{ margin: "0 0 8px" }}>⚠ {fresh.w}. Angka periode ini belum lengkap untuk toko tersebut.</p>}
+      {fresh && <p className={"mbfr" + (fresh.w ? " w" : "")}>{fresh.w ? "⚠ sebagian data tertinggal" : fresh.l}</p>}
       <div className="grps">{[...new Set(metrics.map((m) => m.g ?? ""))].map((grp) => { const nG = metrics.filter((m) => (m.g ?? "") === grp).length; return <div key={grp} className="grp" style={{ flex: nG }}>{grp && <h3 className="mbgh">{grp}</h3>}<div className="mbg" style={{ gridTemplateColumns: `repeat(${nG}, minmax(0, 1fr))` }}>{metrics.filter((m) => (m.g ?? "") === grp).map((m) => { const i = sel.indexOf(m.k), d = m.d !== undefined ? (m.d != null && isFinite(m.d) ? m.d : null) : m.p != null && m.p !== 0 && isFinite(m.p) ? ((m.v - m.p) / Math.abs(m.p)) * 100 : null, good = d == null ? true : m.inv ? d <= 0 : d >= 0;
         return <button type="button" key={m.k} className={"mbc" + (i >= 0 ? " on" : "")} style={i >= 0 ? { borderTopColor: COL[i] } : undefined} onClick={() => toggle(m.k)} aria-pressed={i >= 0}>
           <span className="mbl">{m.l}{(GLOS[m.l] || m.ex) && <span role="button" tabIndex={0} className="ii" aria-label={"Penjelasan " + m.l} aria-expanded={pop === m.k} onClick={(e) => { e.stopPropagation(); setPop(pop === m.k ? null : m.k); }} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); setPop(pop === m.k ? null : m.k); } }}>i</span>}</span>
           {pop === m.k && <span className="mpop" role="note"><b>{m.l}</b><br />{GLOS[m.l]}{m.ex && <><br /><br /><b>{m.ex}</b></>}{fresh?.src && <><br /><br />Sumber: {fresh.src}.</>}{fresh?.w && <><br />Belum lengkap: {fresh.w}.</>}</span>}<b>{fmtV(m.f, m.v, dec)}</b>
           <span className={"mbd " + (d == null ? "muted" : good ? "up" : "dn")}>{d == null ? (m.note ?? sub) : `${d >= 0 ? "▲" : "▼"} ${Math.abs(d).toFixed(dec).replace(".", ",")}% ${sub}`}</span>
-          {fresh && <span className={"fresh" + (fresh.w ? " w" : "")}>{fresh.w ? "⚠ sebagian data tertinggal" : fresh.l}</span>}
         </button>; })}</div></div>; })}</div>
       <div className="mbch" onMouseLeave={() => setHov(null)}>
         <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Tren metrik">

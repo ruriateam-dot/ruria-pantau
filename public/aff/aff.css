@@ -341,3 +341,14 @@
 :root:not([data-theme="dark"]) #aff-root{--sunk:#F1F5F9;--tt:#111111;--sh:#EE4D2D;
   --p1:#DCFCE7;--p1-ink:#15803D;--p2:#E0E4F7;--p2-ink:#2F3E9E;--p3:#E2E8F0;--p3-ink:#334155;--p4:#F1F5F9;--p4-ink:#556377;
   --ok:#15803D;--ok-soft:#F0FDF4;--warn:#B45309;--warn-soft:#FFFBEB;--bad:#B91C1C;--bad-soft:#FEF2F2;--agency:#EDE9FE;--agency-ink:#5B21B6}
+#aff-root details.notes{background:var(--panel,#fff);border:1px dashed var(--line,#E2E8F0);border-radius:10px;padding:8px 12px;margin:0 0 12px}#aff-root details.notes>summary{cursor:pointer;font-weight:600;color:var(--accent,#2F3E9E);font-size:13px}#aff-root details.notes[open]>summary{margin-bottom:6px}
+/* 5A · komponen disamakan dengan dashboard (tabel & tombol) */
+#aff-root th{font-size:12px!important;text-transform:none!important;letter-spacing:0!important;font-weight:500!important;color:var(--muted)!important;background:var(--panel,#fff)!important;border-bottom:1px solid var(--line)!important}
+#aff-root td{border-bottom:1px solid var(--line)}
+#aff-root th,#aff-root td{padding:8px 10px}
+#aff-root .btn{font:600 13px var(--f-body)!important;border-radius:8px!important;border:1px solid var(--line)!important;background:var(--panel,#fff)!important;color:var(--fg)!important;min-height:34px}
+#aff-root .btn:hover{border-color:var(--accent)!important;color:var(--accent)!important}
+#aff-root .btn.pri{background:var(--accent)!important;border-color:var(--accent)!important;color:#fff!important}
+#aff-root .btn.pri:hover{background:var(--accent-ink,#26328A)!important;color:#fff!important}
+#aff-root .btn.sm{min-height:28px;font-size:12px!important}
+#aff-root h1,#aff-root h2,#aff-root .stat b{font-family:inherit}
