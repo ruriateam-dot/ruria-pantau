@@ -519,3 +519,13 @@ tr[data-pgh]{display:none!important}
 .pill,.chip-b,.fchip{min-height:24px}
 button,.btn{min-height:32px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+/* HP: header & filter tidak menempel, chip satu baris bisa digeser */
+@media(max-width:760px){
+  .dh,.fbar{position:static!important}
+  .fbar{padding-top:4px;padding-bottom:4px}
+  .filters{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:2px}
+  .filters::-webkit-scrollbar{display:none}
+  .filters>*{flex:0 0 auto}
+  .fgrp{flex-wrap:nowrap}
+  .filters select,.filters .pwrap{flex:0 0 auto!important}
+}
