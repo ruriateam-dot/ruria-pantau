@@ -13,7 +13,7 @@ export const GLOS: Record<string, string> = {
   "Tingkat konversi": "Pesanan dibagi pengunjung toko.",
   AOV: "Average order value: rata-rata nilai per pesanan.",
 };
-const COL = ["var(--accent)", "var(--aqua)", "#7c5cff", "#e0a100"];
+const COL = ["var(--accent)", "#0E7490", "#7C3AED", "#B45309"];
 const fmtV = (f: Metric["f"], n: number, dec = 1) => {
   if (!isFinite(n)) return "–";
   if (f === "rp") return n >= 1e9 ? `Rp${(n / 1e9).toFixed(2).replace(".", ",")} M` : n >= 1e6 ? `Rp${(n / 1e6).toFixed(1).replace(".", ",")} jt` : `Rp${Math.round(n / 1e3)} rb`;

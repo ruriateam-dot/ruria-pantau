@@ -12,7 +12,7 @@ const add = (d: string, n: number) => { const x = new Date(d + "T00:00:00Z"); x.
 const tg = (d: string) => `${+d.slice(8)} ${BLN[+d.slice(5, 7) - 1]}`;
 const dur = (a: string, b: string) => { let m = (+b.slice(0, 2) * 60 + +b.slice(3)) - (+a.slice(0, 2) * 60 + +a.slice(3)); if (m <= 0) m += 1440; return m / 60; };
 const jm = (h: number) => `${Math.floor(h)}j${Math.round((h % 1) * 60) ? ` ${Math.round((h % 1) * 60)}m` : ""}`;
-const PAL = ["#D16D3D", "#0aa9b5", "#7c5cc4", "#2f9e5b", "#c2417a", "#b7791f", "#3d7bd1", "#8a6b52"];
+const PAL = ["#2F3E9E", "#0aa9b5", "#7c5cc4", "#2f9e5b", "#c2417a", "#b7791f", "#3d7bd1", "#8a6b52"];
 
 export default function Jadwal({ mode, week, bulan, from, to, gFrom, gTo, today, shifts, hosts, clients, canEdit }: { mode: string; week: string; bulan: string; from: string; to: string; gFrom: string; gTo: string; today: string; shifts: S[]; hosts: H[]; clients: C[]; canEdit: boolean }) {
   const router = useRouter();

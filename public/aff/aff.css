@@ -321,18 +321,23 @@
 }
 #aff-root details.srcnote summary{cursor:pointer;list-style:none}#aff-root .ii{display:inline-grid;place-items:center;width:14px;height:14px;border-radius:50%;background:var(--sunk);color:var(--muted);font-size:9.5px;font-weight:800;font-style:normal;margin-left:4px;cursor:help;text-transform:none}
 /* Tombol sekunder jelas bisa diklik: border oranye, berubah warna saat disorot */
-#aff-root .btn:not(.pri){border:1.5px solid #c86f45;color:#a4502a;background:var(--surface,#fff)}
-#aff-root .btn:not(.pri):hover{background:#fdf1ea}
+#aff-root .btn:not(.pri){border:1.5px solid #3D4DB8;color:#26328A;background:var(--surface,#fff)}
+#aff-root .btn:not(.pri):hover{background:#EEF0FB}
 #aff-root .btn:disabled{opacity:.55;cursor:not-allowed}
 /* Dropdown toko */
 #aff-root .navplat{display:flex;gap:8px;align-items:center}
 #aff-root .tokosel{border:1px solid var(--line);border-radius:10px;padding:7px 10px;font:600 13px var(--f-body);background:var(--surface,#fff);color:var(--ink)}
-#aff-root .tokosel.act{border-color:#c86f45;color:#a4502a}
+#aff-root .tokosel.act{border-color:#3D4DB8;color:#26328A}
 #aff-root .brand h1{display:none}
 
 #aff-root.share .noshare{display:none!important}
 
-#aff-root .hist-btn{margin-left:auto;background:#fff!important;color:var(--accent,#D16D3D)!important;border:1px solid var(--accent,#D16D3D)!important;border-radius:8px;padding:4px 12px;font-size:12px}
-#aff-root .panel.todo{border:2px solid var(--accent,#D16D3D);background:#fffaf6}
-#aff-root :where(a,button,select,input,textarea,[tabindex]):focus-visible{outline:2px solid var(--accent,#D16D3D);outline-offset:2px}
+#aff-root .hist-btn{margin-left:auto;background:#fff!important;color:var(--accent,#2F3E9E)!important;border:1px solid var(--accent,#2F3E9E)!important;border-radius:8px;padding:4px 12px;font-size:12px}
+#aff-root .panel.todo{border:2px solid var(--accent,#2F3E9E);background:#FAFBFF}
+#aff-root :where(a,button,select,input,textarea,[tabindex]):focus-visible{outline:2px solid var(--accent,#2F3E9E);outline-offset:2px}
 #aff-root .chip.pl-tt{background:#111;color:#fff}
+
+/* Palet A · Netral + Indigo */
+:root:not([data-theme="dark"]) #aff-root{--sunk:#F1F5F9;--tt:#111111;--sh:#EE4D2D;
+  --p1:#DCFCE7;--p1-ink:#15803D;--p2:#E0E4F7;--p2-ink:#2F3E9E;--p3:#E2E8F0;--p3-ink:#334155;--p4:#F1F5F9;--p4-ink:#556377;
+  --ok:#15803D;--ok-soft:#F0FDF4;--warn:#B45309;--warn-soft:#FFFBEB;--bad:#B91C1C;--bad-soft:#FEF2F2;--agency:#EDE9FE;--agency-ink:#5B21B6}
