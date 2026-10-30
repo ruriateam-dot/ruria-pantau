@@ -217,7 +217,7 @@ export async function runFix(): Promise<string> {
 }
 
 /* File yang dikirim ke Claude lalu dimasukkan lewat pembaruan otomatis (sama seperti upload tim). Tiap entri dijalankan sekali. */
-type UP = { id: string; store: string; client: string; kind: "ads" | "hapus-iklan"; file: string; dari: string; sampai: string; rows: [string, string, string, number, number, number][] };
+type UP = { id: string; store: string; client: string; kind: "ads" | "hapus-iklan" | "live"; file: string; dari: string; sampai: string; rows: (string | number | null)[][] };
 export async function uplPending(): Promise<string[]> {
   const u = await requireAdmin(); if (!u) return [];
   const L = upl as unknown as UP[]; if (!L.length) return [];
@@ -228,6 +228,16 @@ export async function runUpl(id: string): Promise<string> {
   const u = await requireAdmin(); if (!u) return NO;
   const x = (upl as unknown as UP[]).find((e) => e.id === id); if (!x) return "Selesai";
   try {
+    if (x.kind === "live") {
+      if (!(await q("select id from clients where id = ?", [x.client])).length) return "Selesai";
+      // sama seperti upload laporan live: sesi di tanggal & brand yang sama diganti
+      const dates = [...new Set(x.rows.map((r) => String(r[0])))], brands = [...new Set(x.rows.map((r) => String(r[7])))];
+      await exec("delete from live_sessions where client_id = ? and tanggal in (?) and brand in (?)", [x.client, dates, brands]);
+      await bulk("insert into live_sessions (client_id, brand, tanggal, jam_mulai, durasi_jam, gmv_shopee, gmv_tiktok, host, penonton, diupload_oleh)", x.rows.map((r) => [x.client, r[7], r[0], r[1], r[2], r[3], r[4], r[5], r[6], u.id]));
+      await exec("insert into uploads (client_id, jenis, nama_file, dari, sampai, baris, oleh) values (?, ?, ?, ?, ?, ?, ?)", [x.client, "data-otomatis:upl:" + x.id, x.file, x.dari, x.sampai, x.rows.length, u.id]);
+      await exec("insert into uploads (client_id, jenis, nama_file, dari, sampai, baris, oleh) values (?, 'live', ?, ?, ?, ?, ?)", [x.client, x.file, x.dari, x.sampai, x.rows.length, u.id]).catch(() => undefined);
+      return "Selesai";
+    }
     if (!(await q("select id from stores where id = ?", [x.store])).length) return "Selesai";
     if (x.kind === "ads") {
       // file mencakup seluruh periode: baris lama yang beririsan (termasuk rekap bulanan) diganti
