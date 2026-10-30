@@ -44,9 +44,12 @@ export default function ExportBar({ title, client, token }: { title: string; cli
     const old = document.title; document.title = `Ruria Report - ${title}`;
     window.print(); setTimeout(() => (document.title = old), 500);
   }
+  const [open, setOpen] = useState(false);
   return <div className="xbar">
-    <button type="button" className="ghost" onClick={excel} disabled={busy}>{busy ? "Menyiapkan…" : "Unduh Excel"}</button>
-    <button type="button" className="ghost" onClick={pdf}>Cetak / PDF</button>
+    <div className="xdd"><button type="button" className="ghost" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)} disabled={busy}>{busy ? "Menyiapkan…" : <><span className="xlbl">Unduh</span><span className="xdots" aria-hidden="true">⋯</span> ▾</>}</button>
+      {open && <div className="xmenu" role="menu" onMouseLeave={() => setOpen(false)}>
+        <button type="button" role="menuitem" onClick={() => { setOpen(false); excel(); }}>Excel (.xlsx)</button>
+        <button type="button" role="menuitem" onClick={() => { setOpen(false); pdf(); }}>Cetak / PDF</button></div>}</div>
     <div className="ptitle" aria-hidden="true"><b>Ruria Report</b> · {title}</div>
   </div>;
 }
