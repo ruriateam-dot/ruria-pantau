@@ -48,7 +48,8 @@ const kontakHtml = (k, r, tp) => { const n = waNum(k); if (!n) return `<small cl
 const hasPhone = row => { const k = fuOf(row)?.kontak; if (!k) return false; return (String(k).match(/\+?\d[\d\s.\-()]{7,}\d/g) || []).some(m => { const d = m.replace(/\D/g, ''); return d.length >= 9 && d.length <= 15; }); };
 const RO = () => !!document.getElementById('aff-root')?.classList.contains('ro');
 const kerjaTxt = r => { const f = fuOf(r); const p = [dispStatus(r)]; if (f?.respon) p.push(f.respon); if (f?.tglLast) p.push('dihubungi ' + fdate(f.tglLast)); return p.join(' · '); };
-const aksiTd = r => RO() ? `<td class="aksi">${esc(kerjaTxt(r))}</td>` : `<td class="aksi">${esc(r.aksi)}</td>`;
+const aksiShort = a => { const t = String(a || '').replace(/^P\d:\s*/, ''); const i = t.indexOf(', '); const x = i > 0 ? t.slice(i + 2) : t; return x.charAt(0).toUpperCase() + x.slice(1); };
+const aksiTd = r => RO() ? `<td class="aksi">${esc(kerjaTxt(r))}</td>` : `<td class="aksi" title="${esc(r.aksi)}">${esc(aksiShort(r.aksi))} <i class="ii" aria-label="${esc(r.aksi)}">i</i></td>`;
 const aksiLbl = () => RO() ? 'Status kerja Ruria' : 'Saran aksi';
 const dispStatus = row => (row.pr >= 4 && statusOf(row) === 'Belum dihubungi') ? NOCONTACT : statusOf(row);
 const STAT_ALL = () => [...STAT, NOCONTACT];
@@ -466,6 +467,8 @@ function renderDb(){
   <details class="srcnote"><summary class="note">Sumber data <i class="ii">i</i></summary>  <p class="note">GMV kotor, bersih dan batal & retur: periode Mei–21 Okt. <b>TikTok</b>: GMV kotor dari laporan performa affiliate; bersih dan batal & retur dihitung dari porsi batal & retur tiap affiliate di export pesanan (Mei–Sep). <b>Shopee</b>: GMV bersih = omzet tanpa pesanan batal (validasi komisi Mei–Jul, AMS Agu–Okt); batal hanya bisa dihitung untuk Agu–Okt. <sup>*</sup> = perkiraan: TikTok memakai rata-rata 36% batal & retur karena affiliate tidak punya data order sendiri; Shopee berarti batal Mei–Jul tidak tercatat. Efektivitas sampel dihitung dari GMV bersih. <span class="chip ag">Agency/Platform</span> = kumpulan banyak affiliate, data tidak bisa dirinci.</p></details>`;
   const np = document.getElementById('navplat');
   if (np) { np.innerHTML = `<span class="seg" role="radiogroup" aria-label="Platform">${[['','Semua',TT.length+SH.length],['TikTok','TikTok',TT.length],['Shopee','Shopee',SH.length]].map(([p,l,n]) => `<button class="db-pl${(S.dbpl||'')===p?' on':''}" data-pl="${p}" role="radio" aria-checked="${(S.dbpl||'')===p}">${p ? `<i class="pdot ${p==='TikTok'?'tt':'sh'}"></i>` : ''}${l} <span class="n">${nf.format(n)}</span></button>`).join('')}</span>`;
+    np.insertAdjacentHTML('beforeend', `<span class="seg tipe" role="group" aria-label="Tipe"><button class="on" type="button" data-tp="aff">Affiliate</button><button type="button" data-tp="ag">Agency &amp; jaringan</button></span>`);
+    np.querySelectorAll('.tipe button').forEach(b => b.onclick = () => { if (b.dataset.tp === 'ag') { const bx = document.getElementById('agbox'); if (bx) { bx.open = true; S.f.agency.open = true; bx.scrollIntoView({behavior:'smooth', block:'start'}); } } else window.scrollTo({top:0, behavior:'smooth'}); });
     if (D.BRANDS && D.BRANDS.length > 1) { const opts = ['Shopee','TikTok'].flatMap(pl => D.BRANDS.map(b => [pl + '|' + b, pl + ' · ' + b]));
       np.insertAdjacentHTML('beforeend', `<select class="tokosel${S.dbtoko ? ' act' : ''}" aria-label="Toko"><option value="">Toko: Semua toko</option>${opts.map(([v, l]) => `<option value="${esc(v)}"${S.dbtoko === v ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`);
       np.querySelector('.tokosel').onchange = e => { S.dbtoko = e.target.value; const f = dbF(); f.page = 0; saveFilters(); render(); }; }
@@ -491,7 +494,7 @@ function appendAgency(which){
   const pl = which === 'tiktok' ? 'TikTok' : which === 'shopee' ? 'Shopee' : '';
   if (S.f.agency.tab !== which) { S.f.agency.tab = which; S.f.agency.pl = pl; }
   const nPl = [...AGA, ...AGB].filter(r => !pl || agPl(r).includes(pl)).length;
-  const box = document.createElement('details'); box.className = 'panel agbox'; box.open = !!S.f.agency.open;
+  const box = document.createElement('details'); box.className = 'panel agbox'; box.open = !!S.f.agency.open; box.id = 'agbox';
   box.innerHTML = `<summary><h2 style="display:inline">Agency &amp; jaringan affiliate</h2> <span class="muted">· ${nPl} ${pl ? 'yang punya akun ' + pl : 'agency dan jaringan, TikTok &amp; Shopee'}</span></summary><div id="agency-host" style="display:flex;flex-direction:column;gap:14px;margin-top:12px"></div>`;
   view.append(box);
   box.addEventListener('toggle', () => { S.f.agency.open = box.open; });
@@ -569,11 +572,11 @@ function openDrawer(r){
   <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="dtitle">
     <div class="dhead"><div><h2 id="dtitle">${esc(title)}</h2>${link}</div><button class="btn sm x" id="dclose">Tutup</button></div>
     <div class="dbody">
-      ${detailHtml(r)}
       <div style="display:flex;flex-direction:column;gap:10px">
-        <h3>Catatan follow-up</h3>
+        <h3>Follow-up</h3>
         ${ro ? `<div class="banner">${dbState==='wait'?'Catatan follow-up sedang dimuat…':'Catatan follow-up hanya bisa dibaca di tampilan ini.'}</div>` : ''}
         <form class="fu" id="fuform">
+          <label class="full">Template WhatsApp<select id="fu-watpl">${opt('', 'Pilih template…', WA_SEL)}${Object.entries(WATPL).map(([k, v]) => opt(k, v[0], WA_SEL)).join('')}</select></label>
           <label class="full">${r.k==='ag'?'PIC / Kontak agency':'Kontak (WA/email)'}<input type="text" id="fu-kontak" value="${esc(f.kontak||'')}" placeholder="mis. 0812xxxx atau email">${waNum(f.kontak) ? `<span>${kontakHtml(f.kontak)}</span>` : ''}</label>
           <label>Tgl pertama dihubungi<input type="date" id="fu-tgl1" value="${esc(f.tgl1||'')}"></label>
           <label>Terakhir dihubungi<input type="date" id="fu-tglLast" value="${esc(f.tglLast||'')}"></label>
@@ -589,8 +592,10 @@ function openDrawer(r){
           </div>
         </form>
       </div>
+      <details class="dsec"><summary>Data penjualan &amp; sampel</summary>${detailHtml(r)}</details>
     </div>
   </aside>`;
+  { const ws = document.getElementById('fu-watpl'), hs = document.getElementById('watpl'); if (ws && hs) ws.onchange = () => { hs.value = ws.value; hs.dispatchEvent(new Event('change')); const ki = document.getElementById('fu-kontak'), sp = ki && ki.nextElementSibling; if (sp && waNum(ki.value)) sp.innerHTML = kontakHtml(ki.value, r); }; }
   const form = document.getElementById('fuform');
   if (ro) form.querySelectorAll('input,select,textarea,button').forEach(el => el.disabled = true);
   document.getElementById('dclose').onclick = closeDrawer;
@@ -1195,6 +1200,8 @@ const syncDot = document.getElementById('syncdot'), syncTxt = document.getElemen
   const today = new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
   $('tgl_request').value = today; $('tgl_acc').value = today;
   $('tgl_request').closest('label').insertAdjacentHTML('beforebegin', '<label>Toko <span class="req">*</span><select id="toko" required></select></label>');
+  { const grid = $('tgl_request').closest('.grid'); const opt = ['id_pesanan', 'kode', 'ekspedisi', 'kategori', 'status_upload'].map((id) => $(id) && $(id).closest('label')).filter(Boolean);
+    if (grid && opt.length) { const d = document.createElement('details'); d.className = 'step2'; d.innerHTML = '<summary>Langkah 2 · detail pengiriman (opsional, bisa diisi nanti)</summary><div class="grid"></div>'; grid.after(d); opt.forEach((l) => d.querySelector('.grid').appendChild(l)); } }
   const escT = (x) => String(x).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const fillToko = () => { const BR = (window.AFF_BRANDS && window.AFF_BRANDS.length) ? window.AFF_BRANDS : [window.AFF_NAMA || 'Toko']; const cur = $('toko').value.split(' · ')[1]; $('toko').innerHTML = (BR.length > 1 ? '<option value="">Pilih toko…</option>' : '') + BR.map(b => `<option${b === cur ? ' selected' : ''}>${escT(platform + ' · ' + b)}</option>`).join(''); };
   window.__fillToko = fillToko;
