@@ -578,3 +578,8 @@ html:not([data-theme="dark"]),html:not([data-theme="dark"]) body{background:#F6F
 /* perbaikan: .rk dipakai juga untuk badge peringkat */
 div.rk:has(> .rkc){display:grid;width:auto;height:auto;place-items:stretch;border-radius:0;background:none;font-weight:inherit;font-size:inherit;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
 @media (max-width:900px){div.rk:has(> .rkc){grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* perbaikan QA */
+.upl .drop{position:relative}.upl .drop input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;margin:0}
+.card .tbl td:first-child{white-space:normal;min-width:160px}
+.mbch svg text{font-size:11px}
