@@ -158,8 +158,8 @@ async function RingkasTab({ R, c, stores, sales, ads, live }: { R: Range; c: Cl;
   const lv = (a: string, b: string) => live.filter((x) => x.tanggal >= a && x.tanggal <= b);
   const G = gm(R.from, R.to), Gp = gm(R.pf, R.pt), A = ad(R.from, R.to), Ap = ad(R.pf, R.pt), roas = A.s ? A.g / A.s : null, roasP = Ap.s ? Ap.g / Ap.s : null;
   const L = lv(R.from, R.to), LG = L.reduce((t, x) => t + +x.gmv_shopee + +x.gmv_tiktok, 0); const LGp = lv(R.pf, R.pt).reduce((t, x) => t + +x.gmv_shopee + +x.gmv_tiktok, 0);
-  let aff = 0, affP = 0;
-  try { const af = await q<{ a: number; b: number }>("select sum(case when tanggal between ? and ? and gagal = 0 then nilai - retur else 0 end) a, sum(case when tanggal between ? and ? and gagal = 0 then nilai - retur else 0 end) b from aff_orders where store_id in (?)", [R.from, R.to, R.pf, R.pt, [...ids]]); aff = +(af[0]?.a ?? 0); affP = +(af[0]?.b ?? 0); } catch { /* tabel affiliate belum ada */ }
+  let aff = 0, affP = 0, affLast: string | null = null;
+  try { const af = await q<{ a: number; b: number }>("select sum(case when tanggal between ? and ? and gagal = 0 then nilai - retur else 0 end) a, sum(case when tanggal between ? and ? and gagal = 0 then nilai - retur else 0 end) b, date_format(max(tanggal), '%Y-%m-%d') d from aff_orders where store_id in (?)", [R.from, R.to, R.pf, R.pt, [...ids]]) as unknown as { a: number; b: number; d: string | null }[]; aff = +(af[0]?.a ?? 0); affP = +(af[0]?.b ?? 0); affLast = af[0]?.d ?? null; } catch { /* tabel affiliate belum ada */ }
   const act = await q<{ aksi: string; n: number }>("select aksi, count(*) n from activity_log where client_id = ? and waktu >= now() - interval 7 day group by aksi", [c.id]).catch(() => []);
   const nAct = (re: RegExp) => act.filter((x) => re.test(x.aksi)).reduce((t, x) => t + +x.n, 0);
   const done = [nAct(/^affiliate/) ? `${nAct(/^affiliate/)} catatan follow-up affiliate diperbarui` : "", nAct(/upload|impor/) ? `${nAct(/upload|impor/)} file data diperbarui` : "", nAct(/saldo/) ? `${nAct(/saldo/)} kali saldo iklan dicatat` : ""].filter(Boolean);
@@ -170,7 +170,10 @@ async function RingkasTab({ R, c, stores, sales, ads, live }: { R: Range; c: Cl;
       <div className="card rkc"><span className="muted small">GMV · {R.label}</span><b>{fmt(G)}</b>{ch(G, Gp)}</div>
       <div className="card rkc"><span className="muted small">ROAS iklan</span><b>{roas != null ? roas.toFixed(2).replace(".", ",") : "–"}</b>
         {c.target_roas ? <><div className="rkbar"><i style={{ width: `${Math.min(100, ((roas ?? 0) / c.target_roas) * 100)}%` }} /></div><span className={"small " + ((roas ?? 0) >= c.target_roas ? "up" : "dn")}>target {c.target_roas} · {(roas ?? 0) >= c.target_roas ? "tercapai" : "di bawah target"}</span></> : roas != null && roasP != null ? <span className={roas >= roasP ? "up small" : "dn small"}>{roas >= roasP ? "▲" : "▼"} dari {roasP.toFixed(2).replace(".", ",")}</span> : null}</div>
-      <div className="card rkc"><span className="muted small">Kontribusi affiliate</span><b>{G ? ((aff / G) * 100).toFixed(2).replace(".", ",") + "%" : "–"}</b><span className="small muted">{fmt(aff)} dari affiliate</span>{ch(aff, affP)}</div>
+      {(() => { const part = affLast != null && affLast < R.to, none = affLast == null || affLast < R.from, Gd = part && !none ? gm(R.from, affLast!) : G;
+        return <div className="card rkc"><span className="muted small">Kontribusi affiliate</span><b>{none ? "–" : Gd ? ((aff / Gd) * 100).toFixed(2).replace(".", ",") + "%" : "–"}</b>
+          <span className="small muted">{none ? (affLast ? `data affiliate baru s.d. ${tgl(affLast)}` : "belum ada data affiliate") : `${fmt(aff)} dari affiliate`}</span>
+          {part && !none ? <span className="small" style={{ color: "var(--warn)" }}>⚠ data affiliate s.d. {tgl(affLast!)}; porsi dihitung sampai tanggal itu, tanpa perbandingan</span> : !none && ch(aff, affP)}</div>; })()}
       <div className="card rkc"><span className="muted small">Livestream</span><b>{fmt(LG)}</b><span className="small muted">{L.length} sesi{L.length ? ` · ${fmt(LG / L.length)}/sesi` : ""}</span>{ch(LG, LGp)}</div>
     </div>
     <div className="rk2">
