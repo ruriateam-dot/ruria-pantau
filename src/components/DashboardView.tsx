@@ -524,6 +524,30 @@ function LiveTab({ R, live, brand, plat, jadwal, fr, lag }: { lag?: string | nul
         { g: "Konversi", k: "z", l: "Sesi tanpa penjualan", f: "pct", v: zr, p: cm && b.n ? (b.z / b.n) * 100 : null, inv: true, s: c.map((x) => (x.n ? (x.z / x.n) * 100 : 0)) },
       ];
       return <MetricBoard metrics={M} labels={B.map((x) => x.l)} sub={R.sub} init={["g", "gj"]} fresh={fr} />; })()}
+    {(() => { // Per toko (brand × platform) + insight host per brand
+      const brs = [...new Set(cur.map((x) => x.brand || "Tanpa brand"))];
+      const T = brs.flatMap((bn) => (["Shopee", "TikTok"] as const).filter((pl) => !plat || plat === pl).map((pl) => { const k = pl === "Shopee" ? "gmv_shopee" : "gmv_tiktok";
+        const xs = cur.filter((x) => (x.brand || "Tanpa brand") === bn), ps = prev.filter((x) => (x.brand || "Tanpa brand") === bn);
+        const g = xs.reduce((t, x) => t + +x[k], 0), gp = ps.reduce((t, x) => t + +x[k], 0), j = xs.reduce((t, x) => t + +x.durasi_jam, 0);
+        return { bn, pl, g, gp, j, n: xs.filter((x) => +x[k] > 0 || x.durasi_jam > 0).length }; })).filter((r) => r.g > 0 || r.gp > 0).sort((x, y) => y.g - x.g);
+      if (T.length < 2) return null;
+      const tot = T.reduce((t, r) => t + r.g, 0) || 1, cmpT = R.key !== "all";
+      // insight: toko tumbuh/melemah, brand paling efisien, host lebih cocok di brand lain
+      const P: string[] = [];
+      const gr = T.filter((r) => cmpT && r.gp >= 500_000).map((r) => ({ ...r, d: pct(r.g, r.gp) })).sort((x, y) => y.d - x.d);
+      if (gr.length > 1) { const u = gr[0], w = gr[gr.length - 1]; if (u.d > 0) P.push(`${u.pl} · ${u.bn} tumbuh paling cepat (+${u.d.toFixed(0)}%).`); if (w.d < 0) P.push(`${w.pl} · ${w.bn} paling melemah (${w.d.toFixed(0)}%).`); }
+      const BR = brs.map((bn) => { const xs = cur.filter((x) => (x.brand || "Tanpa brand") === bn); const a2 = agg(xs); return { bn, gj: a2.j ? a2.g / a2.j : 0, j: a2.j }; }).filter((x) => x.j >= 3).sort((x, y) => y.gj - x.gj);
+      if (BR.length > 1 && BR[0].gj > BR[BR.length - 1].gj * 1.5) P.push(`Per jam live, ${BR[0].bn} paling produktif (${fmt(BR[0].gj)}/jam) dan ${BR[BR.length - 1].bn} paling rendah (${fmt(BR[BR.length - 1].gj)}/jam). Pertimbangkan menambah jam live ${BR[0].bn}.`);
+      const HB = hs.map((h) => { const by = brs.map((bn) => { const xs = h.v.filter((x) => (x.brand || "Tanpa brand") === bn); const a2 = agg(xs); return { bn, gj: a2.j >= 3 ? a2.g / a2.j : null, j: a2.j }; }).filter((x) => x.gj != null) as { bn: string; gj: number; j: number }[]; return { k: h.k, by: by.sort((x, y) => y.gj - x.gj) }; });
+      const mv = HB.filter((h) => h.by.length > 1 && h.by[0].gj > h.by[h.by.length - 1].gj * 1.5 && h.by[h.by.length - 1].j >= 6).sort((x, y) => (y.by[0].gj - y.by[y.by.length - 1].gj) - (x.by[0].gj - x.by[x.by.length - 1].gj)).slice(0, 2);
+      mv.forEach((h) => { const hi = h.by[0], lo = h.by[h.by.length - 1]; P.push(`${h.k} jauh lebih efektif di ${hi.bn} (${fmt(hi.gj)}/jam) daripada ${lo.bn} (${fmt(lo.gj)}/jam, ${jm(lo.j)}). Pertimbangkan memindahkan sebagian jam ${h.k} dari ${lo.bn} ke ${hi.bn}.`); });
+      const BRavg = Object.fromEntries(BR.map((x) => [x.bn, x.gj]));
+      const one = HB.filter((h) => h.by.length === 1).map((h) => { const b0 = h.by[0], alt = BR.find((x) => x.bn !== b0.bn && x.gj > (BRavg[b0.bn] ?? 0) * 1.4); return alt && b0.gj < (BRavg[b0.bn] ?? 0) * 0.8 ? `${h.k} hanya live di ${b0.bn} dengan ${fmt(b0.gj)}/jam, di bawah rata-rata brand itu (${fmt(BRavg[b0.bn])}/jam). Coba jadwalkan ${h.k} di ${alt.bn} (rata-rata ${fmt(alt.gj)}/jam) untuk perbandingan.` : null; }).filter(Boolean) as string[];
+      P.push(...one.slice(0, 1));
+      return <div className="card"><h2>Per toko</h2><div className="tbl"><table><thead><tr><th>Toko</th><th className="n">GMV live</th><th>Porsi</th><th className="n">Sesi</th><th className="n">Durasi</th><th className="n">GMV/jam</th><th className="n">{R.sub.replace(/^vs /, "vs ")}</th></tr></thead>
+        <tbody>{T.map((r) => { const d = cmpT && r.gp ? pct(r.g, r.gp) : null; return <tr key={r.pl + r.bn}><td><b>{r.pl} · {r.bn}</b></td><td className="n">{fmt(r.g)}</td><td><span className="pbar" style={{ width: Math.max(2, (r.g / tot) * 120) }} /> {Math.round((r.g / tot) * 100)}%</td><td className="n">{r.n}</td><td className="n">{jm(r.j)}</td><td className="n">{r.j ? fmt(r.g / r.j) : "–"}</td><td className={"n " + (d == null ? "" : d >= 0 ? "up" : "dn")}>{d == null ? "–" : `${d >= 0 ? "+" : ""}${d.toFixed(0)}%`}</td></tr>; })}</tbody></table></div>
+        {P.length > 0 && <div className="tins"><b>Insight per toko &amp; host</b><ul>{P.map((x) => <li key={x}>{x}</li>)}</ul></div>}
+        <p className="muted small">Sesi yang tayang bersamaan di Shopee &amp; TikTok dihitung di kedua toko, jadi durasi per toko bisa lebih besar dari total. Saran pindah host hanya muncul bila host punya minimal 3 jam live di tiap brand.</p></div>; })()}
     <div className="card"><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}><h2>GMV per jam · host × sesi</h2><span className="hmlg">Rendah <i className="hmc l0" /><i className="hmc l1" /><i className="hmc l2" /><i className="hmc l3" /><i className="hmc l4" /> Tinggi</span></div><div className="tbl"><div className="hm">
       <div />{SLOTS.map((s) => <div key={s[2]} className="hmh"><b>{s[2]}</b><span>{s[3]}</span></div>)}
       {hs.slice(0, 10).map((h, i) => [<div key={h.k} className="hmn">{h.k}</div>, ...cells[i].map((c, j) => c.g === null ? <div key={j} className="hmc none">Tidak live</div> : <div key={j} className={"hmc l" + Math.min(4, Math.floor((c.g / mx) * 5))}><b>{fk(c.g)}</b><span>Rp{fk(c.v.g)} · {jm(c.v.j)}</span></div>)])}
