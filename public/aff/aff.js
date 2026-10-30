@@ -69,7 +69,7 @@ const tipeChip = t => t === 'Agency/Platform' ? `<span class="chip ag">Agency/Pl
 const statClass = s => ({'Sudah dihubungi':'s-act','Setuju':'s-ok','Produk dikirim':'s-ok','Sudah posting':'s-ok','Menolak':'s-bad','Tidak respon':'s-warn','Tidak perlu dihubungi (P4–P5)':'s-skip'}[s] || '');
 const statChip = s => `<span class="chip ${statClass(s)}">${esc(s)}</span>`;
 const lastCell = row => { const f = fuOf(row); if (!f || !f.tglLast) return '<span class="muted">–</span>'; const h = daysSince(f.tglLast); const late = needsFU(row);
-  return `<span class="${late?'late':''}">${esc(fdate(f.tglLast))}</span><br><small class="muted">${h===0?'hari ini':h+' hari lalu'}</small>`; };
+  return `<span class="${late?'late':''}">${esc(fdate(f.tglLast))}</span><br><small class="muted">${h===0?'hari ini':h+' hari lalu'}${f.oleh ? ' · ' + esc(f.oleh) : ''}</small>${f.tim ? `<span class="timtag ${f.tim === 'Klien' ? 'k' : 'r'}">${esc(f.tim)}</span>` : ''}`; };
 
 /* ---------- state ---------- */
 const S = {
@@ -614,6 +614,7 @@ async function refreshDrawerMeta(){
   let who = '';
   if (f.by && userApi) { try { const ps = await userApi.profiles([f.by]); who = (ps && ps[f.by] && ps[f.by].name) || ''; } catch(e){} }
   const d = new Date(f.updatedAt);
+  if (f.oleh) who = f.oleh + (f.tim ? ' (tim ' + f.tim + ')' : '');
   el.textContent = 'Terakhir disimpan ' + d.toLocaleString('id-ID',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) + (who ? ' oleh ' + who : '');
 }
 function closeDrawer(){ S.open = null; root.innerHTML = ''; if (lastFocus && document.contains(lastFocus)) lastFocus.focus(); }
@@ -624,7 +625,7 @@ function toast(msg){ const t = document.createElement('div'); t.className = 'toa
 async function saveFU(r){
   if (!db) return;
   const v = id => document.getElementById(id).value;
-  const body = { key: String(r.key), kontak: v('fu-kontak').trim(), tgl1: v('fu-tgl1'), tglLast: v('fu-tglLast'), respon: v('fu-respon'), status: v('fu-status'), next: v('fu-next'), ket: v('fu-ket').trim(), updatedAt: new Date().toISOString() };
+  const body = { key: String(r.key), kontak: v('fu-kontak').trim(), tgl1: v('fu-tgl1'), tglLast: v('fu-tglLast'), respon: v('fu-respon'), status: v('fu-status'), next: v('fu-next'), ket: v('fu-ket').trim(), updatedAt: new Date().toISOString(), oleh: (window.AFF_ME && window.AFF_ME.nama) || PIC || '', tim: (window.AFF_ME && window.AFF_ME.tim) || '' };
   const bebas = body.status === 'Belum dihubungi' || body.respon === 'Tidak tertarik' || body.respon === 'Akun/nomor tidak aktif';
   if (!body.next && !bebas) { toast('Isi tanggal follow-up berikutnya dulu.'); document.getElementById('fu-next').focus(); return; }
   if (me) body.by = me;
@@ -652,7 +653,7 @@ async function markSampleSent(plat, user){
   if (!r || !db) return false;
   const f = fuOf(r) || {};
   if (f.status === 'Produk dikirim' || f.status === 'Sudah posting') return true;
-  const body = Object.assign({key:String(r.key), kontak:'', tgl1:'', tglLast:'', respon:'', ket:''}, f, {status:'Produk dikirim', updatedAt:new Date().toISOString()});
+  const body = Object.assign({key:String(r.key), kontak:'', tgl1:'', tglLast:'', respon:'', ket:''}, f, {status:'Produk dikirim', updatedAt:new Date().toISOString(), oleh: (window.AFF_ME && window.AFF_ME.nama) || PIC || '', tim: (window.AFF_ME && window.AFF_ME.tim) || ''});
   if (me) body.by = me;
   const id = docId(r.key); FU[r.k][id] = body; rerenderSoon();
   try { await db.collection(COLL[r.k]).doc(id).set(body); logFollowup(r, f, body, 'otomatis dari input sampel'); } catch(e) {}
@@ -688,11 +689,11 @@ const wibDay = (d = new Date()) => new Date(d.getTime() + 7*3600e3).toISOString(
 async function myId(){ if (me) return me; if (userApi) { try { me = await userApi.id(); } catch(e){} } return me; }
 async function logActivity(e){
   if (!db) return;
-  try { const sv = JSON.parse(localStorage.getItem('jf-pic2') || 'null'); if (!sv || sv.day !== wibDay()) { PIC = ''; drawPic(); } } catch(err) {}
+  if (!(window.AFF_ME && window.AFF_ME.nama)) { try { const sv = JSON.parse(localStorage.getItem('jf-pic2') || 'null'); if (!sv || sv.day !== wibDay()) { PIC = ''; drawPic(); } } catch(err) {} }
   if (!PIC) { toast('Pilih nama petugas di kanan atas supaya aktivitas tercatat atas namamu.'); picSel.classList.add('need'); }
   const uid = await myId(); if (!uid) return;
   const now = new Date();
-  const entry = Object.assign({at: now.toISOString(), day: wibDay(now), by: uid, pic: PIC || ''}, e);
+  const entry = Object.assign({at: now.toISOString(), day: wibDay(now), by: uid, pic: PIC || '', tim: (window.AFF_ME && window.AFF_ME.tim) || ''}, e);
   try {
     await db.doc('jf_log/' + uid).set({last: entry.at});
     await db.collection('jf_log/' + uid + '/entries').add(entry);
@@ -728,11 +729,13 @@ async function resolveNames(ids){
   try { const ps = await userApi.profiles(ids); ids.forEach(id => { NAMES[id] = (ps && ps[id] && ps[id].name) || ''; }); if (S.tab === 'log') rerenderSoon(); } catch(e) {}
 }
 const nameOf = id => NAMES[id] || (id === me ? 'Kamu' : 'Anggota tim ' + String(id).slice(-4));
-const whoOf = e => e.pic || (nameOf(e.by) + ' (petugas belum dipilih)');
+const whoOf = e => (e.pic || (nameOf(e.by) + ' (petugas belum dipilih)')) + (e.tim ? ' · ' + e.tim : '');
 /* ---------- petugas ---------- */
 let PIC = ''; let TEAM = ['Mita', 'Shakun'];
 try { const sv = JSON.parse(localStorage.getItem('jf-pic2') || 'null'); if (sv && sv.day === wibDay()) PIC = sv.pic || ''; } catch(e) {}
+if (window.AFF_ME && window.AFF_ME.nama) PIC = window.AFF_ME.nama;
 const picSel = document.getElementById('pic');
+if (window.AFF_ME && window.AFF_ME.nama) { const pb = document.getElementById('picbox'); if (pb) pb.hidden = true; }
 function drawPic(){
   const names = [...new Set([...TEAM, ...(PIC && !TEAM.includes(PIC) ? [PIC] : [])])];
   picSel.replaceChildren(new Option('Pilih nama…', ''), ...names.map(n => new Option(n, n)));
@@ -1223,7 +1226,7 @@ const syncDot = document.getElementById('syncdot'), syncTxt = document.getElemen
       chip.className = 'chip ' + (r.synced ? 'ok' : 'wait');
       chip.textContent = r.synced ? 'Sudah di sheet' : 'Menunggu sinkron';
       const meta = document.createElement('div'); meta.className = 'meta';
-      meta.textContent = [r.toko ? r.platform + ' · ' + r.toko : r.platform, 'ACC ' + fmtTgl(r.tgl_acc), r.sku, r.id_pesanan ? 'ID ' + r.id_pesanan : 'ID belum diisi', r.synced && r.sheet ? r.sheet + (r.sheet_row ? ' baris ' + r.sheet_row : '') : ''].filter(Boolean).join(' · ');
+      meta.textContent = [r.oleh ? 'diinput ' + r.oleh + (r.tim ? ' (tim ' + r.tim + ')' : '') : '', r.toko ? r.platform + ' · ' + r.toko : r.platform, 'ACC ' + fmtTgl(r.tgl_acc), r.sku, r.id_pesanan ? 'ID ' + r.id_pesanan : 'ID belum diisi', r.synced && r.sheet ? r.sheet + (r.sheet_row ? ' baris ' + r.sheet_row : '') : ''].filter(Boolean).join(' · ');
       row.append(b, chip, meta);
       const sel = document.createElement('select'); sel.className = 'stsel'; sel.setAttribute('aria-label', 'Status posting ' + r.username);
       ['', 'BELUM POSTING', 'STILL ON GOING', 'ON PENDING', 'SESUAI'].forEach((o) => sel.append(new Option(o || 'Status posting: belum dicek', o)));
@@ -1272,7 +1275,7 @@ const syncDot = document.getElementById('syncdot'), syncTxt = document.getElemen
       username: v('username').replace(/^@+/, ''), produk: v('produk'), sku: v('sku').toUpperCase().replace(/\s+/g, ''),
       id_pesanan: v('id_pesanan') || null, kode_permintaan: platform === 'Shopee' ? (v('kode') || null) : null,
       ekspedisi: v('ekspedisi') || null, ongkir, kategori: v('kategori') || null, status_upload: v('status_upload') || null,
-      created_at: new Date().toISOString(), synced: false,
+      created_at: new Date().toISOString(), synced: false, oleh: (window.AFF_ME && window.AFF_ME.nama) || '', tim: (window.AFF_ME && window.AFF_ME.tim) || '',
     };
     if (exception) { if (isBlocked(platform, v('username'))) data.pengecualian_blokir = true; else data.pengecualian_syarat_roi = true; }
     $('submit').disabled = true;

@@ -353,3 +353,4 @@
 #aff-root .btn.sm{min-height:28px;font-size:12px!important}
 #aff-root h1,#aff-root h2,#aff-root .stat b{font-family:inherit}
 #aff-root header.top{position:static!important}
+#aff-root .timtag{display:inline-block;margin-left:4px;font-size:10px;font-weight:700;border-radius:4px;padding:0 5px;vertical-align:middle}#aff-root .timtag.r{background:#EEF0FB;color:#2F3E9E}#aff-root .timtag.k{background:#ECFDF5;color:#047857}

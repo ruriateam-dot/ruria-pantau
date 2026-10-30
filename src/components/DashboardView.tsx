@@ -1,4 +1,4 @@
-import { canWork, type User } from "@/lib/auth";
+import { canWork, isStaff, type User } from "@/lib/auth";
 import { q } from "@/lib/db";
 import Filters from "@/components/Filters";
 import { Tabs, LoadingBar } from "@/components/Nav";
@@ -103,7 +103,7 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
     }
     else if (tab === "affiliate") {
       const has = (await q<{ n: number }>("select count(*) n from aff_files where client_id = ?", [c.id]))[0].n > 0;
-      body = has ? <Affiliate key={c.id} client={c.id} nama={c.nama} user={profile ? "u" + profile.id : "klien"} readOnly={!!share || !isAdmin} token={share ? token : undefined} />
+      body = has ? <Affiliate key={c.id} me={profile && !share ? { nama: profile.nama || profile.email, tim: isStaff(profile) ? "Ruria" : "Klien" } : undefined} client={c.id} nama={c.nama} user={profile ? "u" + profile.id : "klien"} readOnly={!!share || !isAdmin} token={share ? token : undefined} />
         : <div className="card"><h2>Affiliate · {c.nama}</h2><Empty title="Ruang kerja affiliate belum ada datanya." up={isAdmin && !share} file={<>TikTok: Affiliate → pesanan affiliate &amp; Transaction Analysis; Shopee: laporan validasi komisi &amp; Affiliate Marketing Solution → performa.</>} /></div>;
     }
     else if (tab === "lapor") {
