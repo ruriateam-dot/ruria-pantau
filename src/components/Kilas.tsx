@@ -63,7 +63,7 @@ export function Verdict({ tab, k, R, href, lag }: { tab: string; k: KilasData; R
     if (top && pct(top.n, top.o) > 0) pts.push(`${k.nm.get(top.id)} tumbuh paling cepat (${pc(pct(top.n, top.o))}).`);
     if (low && low !== top && pct(low.n, low.o) < 0) pts.push(`${k.nm.get(low.id)} melemah (${pc(pct(low.n, low.o))}).`);
     if (k.S) pts.push(`ROAS iklan ${rs(k.roas)}${k.cmp && k.roasP ? ` (sebelumnya ${rs(k.roasP)})` : ""}.`);
-    if (k.bad.length) link = [href("iklan"), `evaluasi ${k.bad.length} iklan boros →`];
+    if (k.bad.length) link = [href("iklan") + "#st=boros", `evaluasi ${k.bad.length} iklan boros →`];
   }
   const ic = tone === "good" ? "✅" : tone === "warn" ? "⚠️" : "⛔";
   return <div className={"verdict v-" + tone} role="status"><span className="vic" aria-hidden>{ic}</span><div><b>{title}</b>

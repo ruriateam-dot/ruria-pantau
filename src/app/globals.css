@@ -591,3 +591,5 @@ div.rk:has(> .rkc){display:grid;width:auto;height:auto;place-items:stretch;borde
 #top,#produk,#status,#potongan{scroll-margin-top:170px}
 .ptab .chev.pm{display:none}
 @media(max-width:640px){.ptab .o{display:none}.ptab .chev.pm{display:inline}table.ptab.mcard td.o{display:none!important}}
+.saldo-lain{margin:-4px 0 14px}.saldo-lain>summary{cursor:pointer;color:var(--accent);font-weight:600;font-size:13px;padding:4px 0}
+.qf{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 10px}.qf a.pill{text-decoration:none;font-size:12px;padding:3px 10px}

@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { shortName } from "@/lib/nama";
 
 export type CRow = { k: string; toko: string; platform: string; tipe: string; nama: string; s: number; g: number; o: number; r: number; dr: number | null; st: string; dl?: number | null; kl?: number | null };
@@ -11,6 +11,7 @@ export default function IklanTable({ rows, lite }: { rows: CRow[]; lite?: boolea
   const [toko, setToko] = useState(""), [tipe, setTipe] = useState(""), [st, setSt] = useState(""), [cari, setCari] = useState(""), [n, setN] = useState(STEP);
   const opt = (k: keyof CRow) => [...new Set(rows.map((r) => String(r[k])))].sort();
   const F = useMemo(() => { const c = cari.trim().toLowerCase(); return rows.filter((r) => (!toko || r.toko === toko) && (!tipe || r.tipe === tipe) && (!st || r.st === st) && (!c || r.nama.toLowerCase().includes(c))); }, [rows, toko, tipe, st, cari]);
+  useEffect(() => { const h = () => { const m = location.hash.match(/^#st=(\w*)$/); if (m) { setSt(m[1]); document.getElementById("daftar-iklan")?.scrollIntoView({ behavior: "smooth", block: "start" }); } }; h(); addEventListener("hashchange", h); return () => removeEventListener("hashchange", h); }, []);
   const set = (f: (v: string) => void) => (e: { target: { value: string } }) => { f(e.target.value); setN(STEP); };
   return (<>
     <div className="pfil">

@@ -95,7 +95,8 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
         const yd = addDays(todayWIB(), -1), d30 = addDays(yd, -29);
         const AR = acc.length ? await q<{ store_id: string; dari: string; sampai: string; biaya: number }>("select store_id, date_format(dari, '%Y-%m-%d') dari, date_format(sampai, '%Y-%m-%d') sampai, biaya from ads where store_id in (?) and sampai >= ? and dari <= ?", [acc.map((x) => x.id), d30, yd]) : [];
         for (const r of rowsS) r.avg = AR.filter((x) => x.store_id === r.id).reduce((t, x) => t + (+x.biaya * porsi({ ...x, dari: x.dari, sampai: x.sampai } as unknown as Ad, d30, yd)) / 30, 0);
-        saldo = rowsS.length ? <SaldoIklan rows={rowsS} canEdit={isAdmin} /> : null;
+        const isi = rowsS.filter((r) => r.saldo != null), kosong = rowsS.filter((r) => r.saldo == null);
+        saldo = rowsS.length ? <>{isi.length > 0 && <SaldoIklan rows={isi} canEdit={isAdmin} />}{kosong.length > 0 && <details className="saldo-lain"><summary>+ catat saldo akun lain ({kosong.map((r) => r.nama).join(", ")})</summary><SaldoIklan rows={kosong} canEdit={isAdmin} /></details>}</> : null;
       }
       const AM = await adsMeta(st.map((s) => s.id), R.pf < R.from ? R.pf : R.from, R.to);
       body = <>{saldo}<IklanTab R={R} stores={st} ads={D.ads} sales={D.sales} meta={AM} share={!!share} fr={fr} /></>;
@@ -424,12 +425,11 @@ function IklanTab({ R, stores, ads, sales, meta = [], share = false, fr }: { fr?
     {per.length > 0 && <div className="card"><h2>Per toko</h2><div className="tbl"><table><thead><tr><th>Toko</th><th className="n">Biaya</th><th className="n">GMV iklan</th><th className="n">Pesanan</th><th className="n">ROAS</th><th className="n">Δ ROAS</th><th className="n">Biaya / omzet</th></tr></thead>
       <tbody>{per.map((x) => <tr key={x.st.id}><td>{x.st.platform} · {x.st.brand}</td><td className="n">{fmt2(x.s)}</td><td className="n">{fmt2(x.g)}</td><td className="n">{x.o.toLocaleString("id")}</td><td className="n">{x.r.toFixed(2).replace(".", ",")}</td>
         <td className={"n " + (x.rp == null || !cmp ? "" : x.r >= x.rp ? "up" : "dn")}>{x.rp == null || !cmp ? "–" : `${x.r - x.rp >= 0 ? "+" : ""}${(x.r - x.rp).toFixed(2).replace(".", ",")}`}</td><td className="n">{x.bo != null ? x.bo.toFixed(2).replace(".", ",") + "%" : "–"}</td></tr>)}</tbody></table></div></div>}
-    {(boros.length + scale.length + nol.length) > 0 && <div className="card"><h2>Perlu tindakan</h2><div className="acts">
-      {L("Boros", boros, (r) => `${fmt2(r.s)} · ROAS ${r.r.toFixed(2).replace(".", ",")}`, "bad", `Biaya ≥3% total, ROAS < ${(roas * 0.6).toFixed(2).replace(".", ",")}`)}
-      {L("Bisa di-scale", scale, (r) => `${fmt2(r.s)} · ROAS ${r.r.toFixed(2).replace(".", ",")}`, "good", `ROAS ≥ ${(roas * 1.3).toFixed(2).replace(".", ",")}, biaya masih kecil`)}
-      {L("Tanpa penjualan", nol, (r) => `${fmt2(r.s)} · 0 pesanan`, "bad", "Biaya ≥ Rp100 rb, 0 pesanan")}
-    </div><p className="muted small">Patokan memakai ROAS rata-rata periode ini ({roas.toFixed(2).replace(".", ",")}), sampai KPI tiap klien diisi.</p></div>}
-    <div className="card"><h2>Daftar iklan</h2><IklanTable rows={rows} lite={share} /></div>
+    <div className="card" id="daftar-iklan"><h2>Daftar iklan</h2>
+      {(boros.length + scale.length + nol.length) > 0 && <div className="qf"><span className="muted small">Filter cepat:</span>
+        {boros.length > 0 && <a href="#st=boros" className="pill bad">Boros ({boros.length})</a>}{nol.length > 0 && <a href="#st=nol" className="pill bad">Tanpa penjualan ({nol.length})</a>}{scale.length > 0 && <a href="#st=scale" className="pill good">Bisa di-scale ({scale.length})</a>}<a href="#st=" className="pill mute">Semua</a>
+        <span className="muted small" title={`Boros: biaya ≥3% total & ROAS < ${(roas * 0.6).toFixed(2).replace(".", ",")} · Bisa di-scale: ROAS ≥ ${(roas * 1.3).toFixed(2).replace(".", ",")} & biaya kecil · Tanpa penjualan: biaya ≥ Rp100 rb, 0 pesanan`}>ⓘ patokan: ROAS rata-rata {roas.toFixed(2).replace(".", ",")}</span></div>}
+      <IklanTable rows={rows} lite={share} /></div>
   </>);
 }
 
