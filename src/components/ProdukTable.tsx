@@ -27,7 +27,7 @@ export default function ProdukTable({ rows, tokoName }: { rows: PRow[]; tokoName
     </div>
     <div className="tbl"><table className="ptab">
       <thead><tr><th className="o">#</th><th className="o">SKU induk</th><th>Produk</th><th className="n">GMV</th><th className="n o">Qty</th><th className="n o">Harga rata²</th>{hasSC && <><th className="n o" title="Shopee, laporan bulanan">Dilihat</th><th className="n o">Klik</th><th className="n o">CTR</th><th className="n o">Keranjang</th></>}<th className="n">Δ GMV</th><th className="n o">Porsi</th><th className="n o">Kumulatif</th><th>Status</th></tr></thead>
-      <tbody>{F.slice(0, n).map((r) => {
+      <tbody>{F.map((r) => {
         const isOpen = open.has(r.grup), code = r.kode?.[0] ?? (r.grup.startsWith("NAMA:") ? "–" : r.grup);
         return (
           <Fragment key={r.grup}>
@@ -54,6 +54,5 @@ export default function ProdukTable({ rows, tokoName }: { rows: PRow[]; tokoName
         );
       })}</tbody>
     </table></div>
-    {F.length > n && <button type="button" className="btn ghost small" style={{ marginTop: 10 }} onClick={() => setN(n + 25)}>Tampilkan 25 lagi ({F.length - n} tersisa)</button>}
   </>);
 }

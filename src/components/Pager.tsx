@@ -21,7 +21,7 @@ function apply(tb: TB) {
   if (hs.length) { table.classList.add("mcard"); for (const r of Array.from(tb.rows)) { let i = 0; for (const td of Array.from(r.cells)) { if (!td.hasAttribute("data-l") && hs[i]) td.setAttribute("data-l", hs[i]); i += td.colSpan || 1; } } }
   const G = groups(tb), sz = getSz();
   const host = (() => { const p = table.parentElement; if (p && p.children.length === 1 && /auto|scroll/.test(getComputedStyle(p).overflowX)) return p; return table; })();
-  if (G.length <= SIZES[0]) { G.flat().forEach((r) => r.removeAttribute("data-pgh")); tb._bar?.remove(); tb._bar = undefined; return; }
+  if (G.length <= SIZES[0] || G.length <= sz) { G.flat().forEach((r) => r.removeAttribute("data-pgh")); tb._bar?.remove(); tb._bar = undefined; return; }
   const tot = Math.ceil(G.length / sz); tb._pg = Math.min(Math.max(1, tb._pg ?? 1), tot);
   const pg = tb._pg;
   G.forEach((g, i) => { const hide = i < (pg - 1) * sz || i >= pg * sz; g.forEach((r) => hide ? r.setAttribute("data-pgh", "") : r.removeAttribute("data-pgh")); });

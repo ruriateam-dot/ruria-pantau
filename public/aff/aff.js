@@ -308,7 +308,7 @@ function renderList(which){
     <button class="btn sm" id="${which}-dir" aria-label="Balik urutan">${dir === 'asc' ? '▲ ' + SORT_TXT[sd.t][1] : '▼ ' + SORT_TXT[sd.t][0]}</button>
     <span class="count">${nf.format(list.length)} dari ${nf.format(rows.length)} ${isTT?'affiliate':'affiliate'} · klik judul kolom untuk mengurutkan, klik baris untuk mencatat</span>
   </div>
-  <div class="tscroll"><table>
+  <div class="tscroll"><table class="nopg">
     <thead><tr>${th('pr','Prio')}${th('u', isTT?'Username':'Affiliate')}<th>Tipe</th>${th('okt',mLbl,'num')}${th('tot',tLbl,'num')}${th('bln','Bulan aktif','num')}${th('sn','Sampel (all time)','num')}${th('sroi','Efektivitas sampel (all time)','num')}<th>${aksiLbl()}</th>${th('st','Status')}${th('resp','Respon')}${th('last','Terakhir dihubungi')}</tr></thead>
     <tbody>${slice.length ? slice.map((r,i) => `<tr class="click" tabindex="0" data-i="${f.page*PAGE+i}">
       <td>${prioChip(r.pr)}</td>
@@ -320,9 +320,9 @@ function renderList(which){
       <td>${esc(fuOf(r)?.respon || '') || '<span class="muted">–</span>'}</td>
       <td>${lastCell(r)}</td></tr>`).join('') : `<tr><td colspan="12" class="muted">Tidak ada yang cocok dengan filter ini.</td></tr>`}</tbody>
   </table></div>
-  <div class="pager"><span>Halaman ${f.page+1} dari ${pages}</span><span class="legend"><span class="chip ag">Agency/Platform</span> = kumpulan banyak affiliate, data tidak bisa dirinci</span><span class="btns">
-    <button class="btn sm" id="${which}-prev"${f.page===0?' disabled':''}>Sebelumnya</button>
-    <button class="btn sm" id="${which}-next"${f.page>=pages-1?' disabled':''}>Berikutnya</button></span></div>`;
+  <div class="pager pgr"><span class="pgi">${nf.format(list.length ? f.page*PAGE+1 : 0)}–${nf.format(Math.min(list.length, f.page*PAGE+PAGE))} dari ${nf.format(list.length)}</span><span class="legend"><span class="chip ag">Agency/Platform</span> = kumpulan banyak affiliate, data tidak bisa dirinci</span><span class="btns">
+    <button class="btn sm" id="${which}-prev"${f.page===0?' disabled':''}>‹</button><span class="pgn">${f.page+1}<i>/</i>${pages}</span>
+    <button class="btn sm" id="${which}-next"${f.page>=pages-1?' disabled':''}>›</button></span></div>`;
   const bind = (id, key, ev='change', get = el => el.value) => { const el = document.getElementById(which+'-'+id); el.addEventListener(ev, () => { f[key] = get(el); f.page = 0; saveFilters(); rerenderSoon(); }); };
   bind('q','q','input'); bind('pr','pr'); bind('tipe','tipe'); bind('st','st'); bind('resp','resp'); bind('kontak','kontak'); bind('samp','samp'); bind('jual','jual'); bind('due','due','change', el => el.checked); bind('p5','p5','change', el => el.checked);
   const setSort = key => { if (f.sort === key) f.dir = (dir === 'asc' ? 'desc' : 'asc'); else { f.sort = key; f.dir = ''; } f.page = 0; saveFilters(); render(); };
@@ -448,7 +448,7 @@ function renderDb(){
     <button class="btn sm" id="${W}-dir" aria-label="Balik urutan">${dir === 'asc' ? '▲ ' + SORT_TXT[sd.t][1] : '▼ ' + SORT_TXT[sd.t][0]}</button>
     <span class="count">${nf.format(list.length)} dari ${nf.format(rows.length)} akun · GMV kotor ${rpShort(tot('gk'))} · bersih ${rpShort(tot('gb'))} · batal & retur ${rpShort(tot('gx'))}</span>${(() => { const h = D.DIHITUNG || {}; const f = d => d ? fdate(d) : null; const t = [h.sd_tiktok && `TikTok s.d. ${f(h.sd_tiktok)}`, h.sd_shopee && `Shopee s.d. ${f(h.sd_shopee)}`].filter(Boolean); return t.length ? `<span class="count" style="margin-left:8px">· prioritas & GMV 30 hari dihitung dari data ${t.join(', ')}</span>` : ''; })()}
   </div>
-  <div class="tscroll"><table>
+  <div class="tscroll"><table class="nopg">
     <thead><tr>${th('pr','Prio')}${th('u','Username')}<th>Tipe</th>${th('okt','GMV 30 hari terakhir','num')}${th('gb','GMV bersih','num')}${th('bln','Bulan aktif','num')}${th('sn','Sampel (all time)','num')}${th('sroi','Efektivitas sampel (all time)','num')}<th>${aksiLbl()}</th>${th('st','Status')}${th('resp','Respon')}${th('last','Terakhir dihubungi')}</tr></thead>
     <tbody>${slice.length ? slice.map((r,i) => `<tr class="click" tabindex="0" data-i="${f.page*PAGE+i}">
       <td>${prioChip(r.pr)}</td>
@@ -461,9 +461,9 @@ function renderDb(){
       <td>${esc(fuOf(r)?.respon || '') || '<span class="muted">–</span>'}</td>
       <td>${lastCell(r)}</td></tr>`).join('') : `<tr><td colspan="12" class="muted">Tidak ada yang cocok dengan filter ini.</td></tr>`}</tbody>
   </table></div>
-  <div class="pager"><span>Halaman ${f.page+1} dari ${pages}</span><span class="btns">
-    <button class="btn sm" id="${W}-prev"${f.page===0?' disabled':''}>Sebelumnya</button>
-    <button class="btn sm" id="${W}-next"${f.page>=pages-1?' disabled':''}>Berikutnya</button></span></div>
+  <div class="pager pgr"><span class="pgi">${nf.format(list.length ? f.page*PAGE+1 : 0)}–${nf.format(Math.min(list.length, f.page*PAGE+PAGE))} dari ${nf.format(list.length)}</span><span class="btns">
+    <button class="btn sm" id="${W}-prev"${f.page===0?' disabled':''}>‹</button><span class="pgn">${f.page+1}<i>/</i>${pages}</span>
+    <button class="btn sm" id="${W}-next"${f.page>=pages-1?' disabled':''}>›</button></span></div>
   <details class="srcnote"><summary class="note">Sumber data <i class="ii">i</i></summary>  <p class="note">GMV kotor, bersih dan batal & retur: periode Mei–21 Okt. <b>TikTok</b>: GMV kotor dari laporan performa affiliate; bersih dan batal & retur dihitung dari porsi batal & retur tiap affiliate di export pesanan (Mei–Sep). <b>Shopee</b>: GMV bersih = omzet tanpa pesanan batal (validasi komisi Mei–Jul, AMS Agu–Okt); batal hanya bisa dihitung untuk Agu–Okt. <sup>*</sup> = perkiraan: TikTok memakai rata-rata 36% batal & retur karena affiliate tidak punya data order sendiri; Shopee berarti batal Mei–Jul tidak tercatat. Efektivitas sampel dihitung dari GMV bersih. <span class="chip ag">Agency/Platform</span> = kumpulan banyak affiliate, data tidak bisa dirinci.</p></details>`;
   const np = document.getElementById('navplat');
   if (np) { np.innerHTML = `<span class="seg" role="radiogroup" aria-label="Platform">${[['','Semua',TT.length+SH.length],['TikTok','TikTok',TT.length],['Shopee','Shopee',SH.length]].map(([p,l,n]) => `<button class="db-pl${(S.dbpl||'')===p?' on':''}" data-pl="${p}" role="radio" aria-checked="${(S.dbpl||'')===p}">${p ? `<i class="pdot ${p==='TikTok'?'tt':'sh'}"></i>` : ''}${l} <span class="n">${nf.format(n)}</span></button>`).join('')}</span>`;
