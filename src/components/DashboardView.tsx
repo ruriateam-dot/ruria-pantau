@@ -23,6 +23,7 @@ const SALDO_STORES = ["cahaya-cabydut-tiktok", "cahaya-qaira-tiktok", "jf-just-f
 import { shortName } from "@/lib/nama";
 import { Kpi, Insight, Bars, LineChart, Share, Spark } from "@/components/ui";
 import Empty from "@/components/Empty";
+import { hitung, Verdict, LaporanKlien } from "@/components/Kilas";
 import { clientsFor, loadClient, freshness, produkSku, storeLast, storePeriods, adsMeta, type SP, type Sale, type Ad, type Live, type Store } from "@/lib/data";
 import { resolvePeriod, buckets, fmt, pct, jm, tgl, addDays, dayDiff, todayWIB, type Range } from "@/lib/period";
 
@@ -50,12 +51,18 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
 
   let body: React.ReactNode = <p className="muted">Belum ada klien yang bisa diakses akun ini. Minta admin menambahkan akses.</p>;
   let brands: string[] = [], platforms: string[] = [];
+  let kilas: React.ReactNode = null;
   if (c) {
     const from = R.pf < R.from ? R.pf : R.from;
     const D = await loadClient(c.id, from, R.to);
     brands = [...new Set(D.stores.map((s) => s.brand))];
     platforms = [...new Set(D.stores.map((s) => s.platform))].filter((p) => p !== "CPAS" || tab === "iklan");
     const st = D.stores.filter((s) => (!sp.b || s.brand === sp.b) && (!sp.p || s.platform === sp.p));
+    if (["toko", "ringkas", "iklan", "live"].includes(tab)) {
+      const K = hitung(R, st, D.sales, D.ads, D.live);
+      kilas = <>{share && (tab === "ringkas" || tab === "toko") && <LaporanKlien k={K} R={R} nama={c.nama} last={lastData ? tgl(lastData) : null} />}
+        {!(share && (tab === "ringkas" || tab === "toko")) && <Verdict tab={tab} k={K} R={R} href={(m) => base + qs({ m })} />}</>;
+    }
     if (tab === "sum") body = await SumTab(R, clients, (id) => base + qs({ c: id, m: "toko", b: "", p: "" }), isAdmin && !share, (id) => base + qs({ c: id, m: "iklan", b: "", p: "" }));
     else if (tab === "toko") {
       const ts = st.filter((s) => s.platform !== "CPAS");
@@ -122,7 +129,7 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
   const lag = lastData ? dayDiff(lastData, addDays(todayWIB(), -1)) : 0;
   // Peringatan data terlambat hanya untuk yang login (tim Ruria & tim klien), tidak tampil di link klien
   const warn = !share && tab !== "sum" && tab !== "affiliate" && lastData && lag > 3 ? <p className="note warnnote">Data {tab === "iklan" ? "iklan" : tab === "live" ? "live" : "penjualan"} klien ini baru sampai <b>{tgl(lastData)} {lastData.slice(0, 4)}</b> (tertinggal {lag} hari). Periode dihitung sampai tanggal itu supaya data yang belum diupload tidak terbaca sebagai penurunan.</p> : null;
-  const main = <main className="wrap dv">{isAdmin && <AutoImport />}{isAdmin && !share && tab === "sum" && <><JadwalUpload /><UploadChecklist clientIds={clients.map((x) => x.id)} /></>}{warn}{body}</main>;
+  const main = <main className="wrap dv">{isAdmin && <AutoImport />}{isAdmin && !share && tab === "sum" && <><JadwalUpload /><UploadChecklist clientIds={clients.map((x) => x.id)} /></>}{kilas}{warn}{body}</main>;
   if (share || !profile) return <><LoadingBar />{head}{main}</>;
   return <AppShell user={profile} active={tab === "sum" ? undefined : c?.id} keep={{ m: tab, per: sp.per }}>{head}{main}</AppShell>;
 }
@@ -134,7 +141,7 @@ async function RingkasTab({ R, c, stores, sales, ads, live }: { R: Range; c: Cl;
   const ad = (a: string, b: string) => ads.filter((x) => x.dari <= b && x.sampai >= a).reduce((t, x) => { const w = porsi(x, a, b); t.s += +x.biaya * w; t.g += +x.gmv * w; return t; }, { s: 0, g: 0 });
   const lv = (a: string, b: string) => live.filter((x) => x.tanggal >= a && x.tanggal <= b);
   const G = gm(R.from, R.to), Gp = gm(R.pf, R.pt), A = ad(R.from, R.to), Ap = ad(R.pf, R.pt), roas = A.s ? A.g / A.s : null, roasP = Ap.s ? Ap.g / Ap.s : null;
-  const L = lv(R.from, R.to), LG = L.reduce((t, x) => t + +x.gmv_shopee + +x.gmv_tiktok, 0);
+  const L = lv(R.from, R.to), LG = L.reduce((t, x) => t + +x.gmv_shopee + +x.gmv_tiktok, 0); const LGp = lv(R.pf, R.pt).reduce((t, x) => t + +x.gmv_shopee + +x.gmv_tiktok, 0);
   let aff = 0, affP = 0;
   try { const af = await q<{ a: number; b: number }>("select sum(case when tanggal between ? and ? and gagal = 0 then nilai - retur else 0 end) a, sum(case when tanggal between ? and ? and gagal = 0 then nilai - retur else 0 end) b from aff_orders where store_id in (?)", [R.from, R.to, R.pf, R.pt, [...ids]]); aff = +(af[0]?.a ?? 0); affP = +(af[0]?.b ?? 0); } catch { /* tabel affiliate belum ada */ }
   const act = await q<{ aksi: string; n: number }>("select aksi, count(*) n from activity_log where client_id = ? and waktu >= now() - interval 7 day group by aksi", [c.id]).catch(() => []);
@@ -148,7 +155,7 @@ async function RingkasTab({ R, c, stores, sales, ads, live }: { R: Range; c: Cl;
       <div className="card rkc"><span className="muted small">ROAS iklan</span><b>{roas != null ? roas.toFixed(2).replace(".", ",") : "–"}</b>
         {c.target_roas ? <><div className="rkbar"><i style={{ width: `${Math.min(100, ((roas ?? 0) / c.target_roas) * 100)}%` }} /></div><span className={"small " + ((roas ?? 0) >= c.target_roas ? "up" : "dn")}>target {c.target_roas} · {(roas ?? 0) >= c.target_roas ? "tercapai" : "di bawah target"}</span></> : roas != null && roasP != null ? <span className={roas >= roasP ? "up small" : "dn small"}>{roas >= roasP ? "▲" : "▼"} dari {roasP.toFixed(2).replace(".", ",")}</span> : null}</div>
       <div className="card rkc"><span className="muted small">Kontribusi affiliate</span><b>{G ? ((aff / G) * 100).toFixed(2).replace(".", ",") + "%" : "–"}</b><span className="small muted">{fmt(aff)} dari affiliate</span>{ch(aff, affP)}</div>
-      <div className="card rkc"><span className="muted small">Livestream</span><b>{fmt(LG)}</b><span className="small muted">{L.length} sesi{L.length ? ` · ${fmt(LG / L.length)}/sesi` : ""}</span></div>
+      <div className="card rkc"><span className="muted small">Livestream</span><b>{fmt(LG)}</b><span className="small muted">{L.length} sesi{L.length ? ` · ${fmt(LG / L.length)}/sesi` : ""}</span>{ch(LG, LGp)}</div>
     </div>
     <div className="rk2">
       <div className="card"><h2>Per toko</h2><div className="tbl"><table><thead><tr><th>Toko</th><th className="n">GMV</th><th className="n">{R.sub}</th><th className="n">Porsi</th></tr></thead>
@@ -372,7 +379,7 @@ function IklanTab({ R, stores, ads, sales, meta = [], share = false }: { R: Rang
   const L = (t: string, xs: CRow[], f: (r: CRow) => string, cls: string, hint: string) => <div className="act"><h3><span className={"pill " + cls}>{xs.length}</span> {t}</h3><p className="muted small" style={{ margin: "-4px 0 8px" }}>{hint}</p>{xs.length ? <ul>{xs.slice(0, 5).map((r) => <li key={r.k} title={r.nama}><b>{shortName(r.nama)}</b> <span className="muted small">{r.toko} · {f(r)}</span></li>)}{xs.length > 5 && <li className="muted small">+{xs.length - 5} lainnya (filter status di tabel)</li>}</ul> : <p className="muted small">Tidak ada.</p>}</div>;
   return (<>
     <p className="note">Data iklan: {ket}.</p>
-    <div className="ichart"><Insight src="Data asli" sum={[`Biaya iklan ${fmt2(S)}${om ? ` (${(S / om * 100).toFixed(2).replace(".", ",")}% dari omzet toko)` : ""}, ROAS ${roas.toFixed(2).replace(".", ",")}${cmp ? ` (${roas >= roasP ? "naik" : "turun"} dari ${roasP.toFixed(2).replace(".", ",")} ${R.sub})` : ""}.`, ...(per.length > 1 ? [`Biaya terbesar: ${per[0].st.brand} · ${per[0].st.platform} (${fmt2(per[0].s)}, ROAS ${per[0].r.toFixed(2).replace(".", ",")}).`] : [])]}
+    <div className="ichart"><Insight src="Data asli" sum={[`Biaya iklan ${fmt2(S)}${om ? ` (${(S / om * 100).toFixed(2).replace(".", ",")}% dari GMV toko)` : ""}, ROAS ${roas.toFixed(2).replace(".", ",")}${cmp ? ` (${roas >= roasP ? "naik" : "turun"} dari ${roasP.toFixed(2).replace(".", ",")} ${R.sub})` : ""}.`, ...(per.length > 1 ? [`Biaya terbesar: ${per[0].st.brand} · ${per[0].st.platform} (${fmt2(per[0].s)}, ROAS ${per[0].r.toFixed(2).replace(".", ",")}).`] : [])]}
       ana={[...(boros.length ? [`${boros.length} kampanye boros menyerap ${fmt2(sumB)} (${(sumB / S * 100).toFixed(0)}% biaya) dengan ROAS di bawah ${(roas * 0.6).toFixed(2).replace(".", ",")}.`] : []), ...(nol.length ? [`${nol.length} kampanye keluar biaya tanpa pesanan (${fmt2(nol.reduce((a, r) => a + r.s, 0))}).`] : []), ...(scale.length ? [`${scale.length} kampanye efisien (ROAS ≥ ${(roas * 1.3).toFixed(2).replace(".", ",")}) masih berbiaya kecil.`] : [])]}
       next={[...(boros.length ? [`Pangkas atau turunkan bid ${boros.length} kampanye boros, hemat sampai ${fmt2(sumB * 0.5)}.`] : []), ...(nol.length ? [`Matikan atau ganti produk di ${nol.length} kampanye tanpa penjualan.`] : []), ...(scale.length ? [`Naikkan budget ${Math.min(5, scale.length)} kampanye "bisa di-scale" 20–30%, evaluasi 3 hari.`] : [])]} />
     {(() => { const B0 = buckets(R.from, R.to), PB0 = dayDiff(R.from, R.to) >= 13 ? buckets(R.pf, R.pt) : null;
@@ -389,13 +396,13 @@ function IklanTab({ R, stores, ads, sales, meta = [], share = false }: { R: Rang
           const dl = cs.reduce((t, x) => t + x.dl, 0), kl = cs.reduce((t, x) => t + x.kl, 0), kr = cs.reduce((t, x) => t + x.kr, 0), dlP = ps.reduce((t, x) => t + x.dl, 0), klP = ps.reduce((t, x) => t + x.kl, 0), krP = ps.reduce((t, x) => t + x.kr, 0);
           const nt = "Shopee saja, laporan bulanan";
           return [{ g: "Jangkauan (Shopee)", k: "dl", l: "Iklan dilihat", f: "n", v: dl, p: cmp && dlP ? dlP : null, s: c.map(() => NaN), note: nt },
-            { g: "Jangkauan (Shopee)", k: "kl", l: "Jumlah klik", f: "n", v: kl, p: cmp && klP ? klP : null, s: c.map(() => NaN), note: nt },
+            { g: "Jangkauan (Shopee)", k: "kl", l: "Klik", f: "n", v: kl, p: cmp && klP ? klP : null, s: c.map(() => NaN), note: nt },
             { g: "Jangkauan (Shopee)", k: "ctr", l: "Persentase klik", f: "pct", v: dl ? (kl / dl) * 100 : NaN, p: cmp && dlP ? (klP / dlP) * 100 : null, s: c.map(() => NaN), note: nt },
             { g: "Jangkauan (Shopee)", k: "kr", l: "Tambah ke keranjang", f: "n", v: kr, p: cmp && krP ? krP : null, s: c.map(() => NaN), note: nt }] as Metric[]; })()),
-        { g: "Efisiensi", k: "bo", l: "Biaya iklan / omzet", f: "pct", v: om ? (S / om) * 100 : NaN, p: cmp && omP ? (Sp / omP) * 100 : null, inv: true, s: c.map((x) => (x.om ? (x.s / x.om) * 100 : 0)), ps: pv?.map((x) => (x.om ? (x.s / x.om) * 100 : 0)) },
+        { g: "Efisiensi", k: "bo", l: "Biaya iklan / GMV toko", f: "pct", v: om ? (S / om) * 100 : NaN, p: cmp && omP ? (Sp / omP) * 100 : null, inv: true, s: c.map((x) => (x.om ? (x.s / x.om) * 100 : 0)), ps: pv?.map((x) => (x.om ? (x.s / x.om) * 100 : 0)) },
       ];
       return <MetricBoard metrics={M} labels={B0.map((b) => b.l)} sub={R.sub} init={["s", "r"]} dec={2} />; })()}</div>
-    {G > om && om > 0 && <p className="muted small" style={{ marginTop: -6 }}>GMV atribusi iklan bisa lebih besar dari omzet toko: platform menghitung pesanan dalam beberapa hari setelah klik (satu pesanan bisa tercatat di lebih dari satu kampanye) dan belum mengurangi pembatalan sebelum pesanan dikirim.</p>}
+    {G > om && om > 0 && <p className="muted small" style={{ marginTop: -6 }}>GMV atribusi iklan bisa lebih besar dari GMV toko: platform menghitung pesanan dalam beberapa hari setelah klik (satu pesanan bisa tercatat di lebih dari satu kampanye) dan belum mengurangi pembatalan sebelum pesanan dikirim.</p>}
     {monthly && <p className="muted small">Laporan bulanan Shopee dibagi rata per hari, jadi angka hariannya perkiraan.</p>}
     {per.length > 0 && <div className="card"><h2>Per toko</h2><div className="tbl"><table><thead><tr><th>Toko</th><th className="n">Biaya</th><th className="n">GMV iklan</th><th className="n">Pesanan</th><th className="n">ROAS</th><th className="n">Δ ROAS</th><th className="n">Biaya / omzet</th></tr></thead>
       <tbody>{per.map((x) => <tr key={x.st.id}><td>{x.st.platform} · {x.st.brand}</td><td className="n">{fmt2(x.s)}</td><td className="n">{fmt2(x.g)}</td><td className="n">{x.o.toLocaleString("id")}</td><td className="n">{x.r.toFixed(2).replace(".", ",")}</td>

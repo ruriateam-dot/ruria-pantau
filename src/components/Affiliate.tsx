@@ -26,7 +26,7 @@ export default function Affiliate({ client, user, nama, readOnly = false, token 
       const ww = window as unknown as { AFF_HPP?: Record<string, number>; AFF_HPP_DEFAULT?: number; AFF_ROI_MIN?: number };
       (window as unknown as { AFF_NAMA?: string }).AFF_NAMA = b.nama;
       ww.AFF_HPP = b.hpp ? Object.fromEntries(Object.entries(b.hpp).map(([k, v]) => [k.toUpperCase().trim(), v])) : undefined; ww.AFF_HPP_DEFAULT = b.hpp_default; ww.AFF_ROI_MIN = b.roi_min ?? (client === "jf" ? 10 : 5);
-      const js = fix(await fetch("/aff/aff.js?v=25").then((r) => r.text()));
+      const js = fix(await fetch("/aff/aff.js?v=26").then((r) => r.text()));
       const u = URL.createObjectURL(new Blob([js], { type: "text/javascript" })); urls.push(u);
       if (!off) await add(u);
       if (readOnly) {
@@ -38,7 +38,7 @@ export default function Affiliate({ client, user, nama, readOnly = false, token 
     return () => { off = true; (el as unknown as { _mo?: MutationObserver })._mo?.disconnect(); w().__affGen++; document.querySelectorAll("script[data-aff]").forEach((s) => { if (s.getAttribute("src")?.startsWith("blob:")) s.remove(); }); urls.forEach((u) => { if (u.startsWith("blob:")) URL.revokeObjectURL(u); }); };
   }, [client, user, nama, readOnly, token]);
   return <>
-    <link rel="stylesheet" href="/aff/aff.css?v=14" />
+    <link rel="stylesheet" href="/aff/aff.css?v=15" />
     {readOnly && <p className="note">Tampilan baca saja: data affiliate dan database kreator bisa dilihat, perubahan hanya dilakukan oleh tim Ruria.</p>}
     <div id="aff-root" ref={ref} className={[readOnly && "ro", token && "share"].filter(Boolean).join(" ") || undefined} />
     {note && (typeof note === "string" ? <p className="muted small fnote">{note}</p> : <div className="fnote muted small"><b>Sumber data</b><table><tbody>{note.map(([a, b, c]) => <tr key={a}><td>{a}</td><td>{b}{c && <span> · {c}</span>}</td></tr>)}</tbody></table></div>)}

@@ -331,3 +331,6 @@
 #aff-root .brand h1{display:none}
 
 #aff-root.share .noshare{display:none!important}
+
+#aff-root .hist-btn{margin-left:auto;background:#fff!important;color:var(--accent,#D16D3D)!important;border:1px solid var(--accent,#D16D3D)!important;border-radius:8px;padding:4px 12px;font-size:12px}
+#aff-root .panel.todo{border:2px solid var(--accent,#D16D3D);background:#fffaf6}

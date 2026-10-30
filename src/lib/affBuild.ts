@@ -212,7 +212,7 @@ export async function rebuildAff(clientId: string): Promise<string> {
   // Ringkasan per bulan
   const per = (pl: string, f: (o: O) => number, uniq?: (o: O) => string) => months.map((m) => { const xs = O.filter((o) => o.platform === pl && o.tanggal.startsWith(m)); return uniq ? new Set(xs.map(uniq)).size : Math.round(xs.reduce((s, o) => s + f(o), 0)); });
   const MT = doT ? { cols: M, rows: [["GMV affiliate (kotor)", per("T", (o) => +o.nilai), "rp"], ["Tidak memenuhi syarat / retur", per("T", (o) => (+o.gagal ? +o.nilai : 0)), "rp"], ["Pesanan", per("T", () => 0, (o) => o.order_id), "n"], ["Kreator yang jualan", per("T", () => 0, (o) => o.kreator.toLowerCase()), "nt"], ["Perkiraan komisi", per("T", (o) => +o.komisi), "rp"]] } : OLD?.M?.tt;
-  const MS = doS ? { cols: M, rows: [["Omzet affiliate", per("S", (o) => (+o.gagal ? 0 : +o.nilai - +o.retur)), "rp"], ["Pesanan", per("S", () => 0, (o) => (+o.gagal ? "" : o.order_id)), "n"], ["Affiliate yang jualan", per("S", () => 0, (o) => o.kreator.toLowerCase()), "nt"], ["Estimasi komisi", per("S", (o) => (+o.gagal ? 0 : +o.komisi)), "rp"]] } : OLD?.M?.sh;
+  const MS = doS ? { cols: M, rows: [["GMV affiliate", per("S", (o) => (+o.gagal ? 0 : +o.nilai - +o.retur)), "rp"], ["Pesanan", per("S", () => 0, (o) => (+o.gagal ? "" : o.order_id)), "n"], ["Affiliate yang jualan", per("S", () => 0, (o) => o.kreator.toLowerCase()), "nt"], ["Estimasi komisi", per("S", (o) => (+o.gagal ? 0 : +o.komisi)), "rp"]] } : OLD?.M?.sh;
 
   // Kalau hanya satu platform dihitung ulang, bulan platform lain tetap memakai susunan lama
   const D = { ...(OLD ?? {}), tip: TIP, tipArti: TIP_ARTI, tt: TT, sh: SH, A, B, C, M: { tt: MT, sh: MS }, X: OLD?.X ?? [], HAL: OLD?.HAL ?? null,

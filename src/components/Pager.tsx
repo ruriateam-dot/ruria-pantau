@@ -16,6 +16,9 @@ function groups(tb: TB): HTMLTableRowElement[][] {
 
 function apply(tb: TB) {
   const table = tb.parentElement as HTMLTableElement | null; if (!table || table.closest(".nopg,.fnote")) return;
+  // Label kolom untuk tampilan kartu di HP
+  const hs = Array.from(table.tHead?.rows[0]?.cells ?? []).map((c) => (c.textContent ?? "").trim());
+  if (hs.length) { table.classList.add("mcard"); for (const r of Array.from(tb.rows)) { let i = 0; for (const td of Array.from(r.cells)) { if (!td.hasAttribute("data-l") && hs[i]) td.setAttribute("data-l", hs[i]); i += td.colSpan || 1; } } }
   const G = groups(tb), sz = getSz();
   const host = (() => { const p = table.parentElement; if (p && p.children.length === 1 && /auto|scroll/.test(getComputedStyle(p).overflowX)) return p; return table; })();
   if (G.length <= SIZES[0]) { G.flat().forEach((r) => r.removeAttribute("data-pgh")); tb._bar?.remove(); tb._bar = undefined; return; }

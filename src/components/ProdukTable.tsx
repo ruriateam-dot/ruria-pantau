@@ -26,7 +26,7 @@ export default function ProdukTable({ rows, tokoName }: { rows: PRow[]; tokoName
       <span className="muted small">{F.length} SKU</span>
     </div>
     <div className="tbl"><table className="ptab">
-      <thead><tr><th>#</th><th>SKU induk</th><th>Produk</th><th className="n">GMV</th><th className="n">Qty</th><th className="n">Harga rata²</th>{hasSC && <><th className="n" title="Shopee, laporan bulanan">Dilihat</th><th className="n">Diklik</th><th className="n">CTR</th><th className="n">Keranjang</th></>}<th className="n">Δ GMV</th><th className="n">Porsi</th><th className="n">Kumulatif</th><th>Status</th></tr></thead>
+      <thead><tr><th>#</th><th>SKU induk</th><th>Produk</th><th className="n">GMV</th><th className="n">Qty</th><th className="n">Harga rata²</th>{hasSC && <><th className="n" title="Shopee, laporan bulanan">Dilihat</th><th className="n">Klik</th><th className="n">CTR</th><th className="n">Keranjang</th></>}<th className="n">Δ GMV</th><th className="n">Porsi</th><th className="n">Kumulatif</th><th>Status</th></tr></thead>
       <tbody>{F.slice(0, n).map((r) => {
         const isOpen = open.has(r.grup), code = r.kode?.[0] ?? (r.grup.startsWith("NAMA:") ? "–" : r.grup);
         return (

@@ -114,7 +114,7 @@ export default async function StatusView({ R, stores, share, staff }: { R: Range
       </tbody></table></div></div>}
     <div className="grid2c">
       <div className="card"><h3>Alasan pembatalan</h3>{alasan.length ? <div className="tbl"><table><thead><tr><th>Alasan</th><th className="n">Pesanan</th><th className="n">Porsi</th></tr></thead><tbody>{alasan.map(([a, n]) => <tr key={a}><td>{a}</td><td className="n">{nf(n)}</td><td className="n">{pc(n, batal.n)}</td></tr>)}</tbody></table></div> : <p className="muted">Tidak ada pembatalan.</p>}</div>
-      <div className="card"><h3>Produk paling sering batal / retur</h3>{prod.length ? <div className="tbl"><table><thead><tr><th>Produk</th><th className="n">GMV batal</th><th className="n">% batal</th><th className="n">Retur</th></tr></thead><tbody>{prod.map(([p, m]) => <tr key={p}><td>{p.slice(0, 60)}</td><td className="n dn">{rp(m.b)}</td><td className="n">{pc(m.b, m.b + (sold.get(p) ?? 0))}</td><td className="n">{m.nr}</td></tr>)}</tbody></table></div> : <p className="muted">Belum ada data produk batal/retur.</p>}</div>
+      <div className="card"><h3>Produk paling sering batal / retur</h3>{prod.length ? <div className="tbl"><table><thead><tr><th>Produk</th><th className="n">GMV batal</th><th className="n">% batal</th><th className="n">Retur</th></tr></thead><tbody>{prod.map(([p, m]) => <tr key={p}><td>{p.slice(0, 60)}</td><td className="n dn">{rp(m.b)}</td><td className="n">{pc(m.b, m.b + (sold.get(p) ?? 0))}</td><td className="n">{m.nr}</td></tr>)}</tbody></table></div> : <p className="muted">Belum ada data produk batal & retur.</p>}</div>
     </div>
   </>;
 }

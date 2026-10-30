@@ -8,7 +8,7 @@ export const GLOS: Record<string, string> = {
   ROAS: "Return on ad spend: GMV dari iklan dibagi biaya iklan. ROAS 10 = setiap Rp1 iklan menghasilkan Rp10 penjualan.",
   "GMV atribusi iklan": "Penjualan yang dicatat platform berasal dari klik iklan.",
   "Biaya per pesanan": "Biaya iklan dibagi jumlah pesanan dari iklan (CPA).",
-  "Biaya iklan / omzet": "Porsi biaya iklan terhadap seluruh penjualan toko (ACOS total).",
+  "Biaya iklan / GMV toko": "Porsi biaya iklan terhadap seluruh penjualan toko (ACOS total).",
   GMV: "Gross Merchandise Value: total nilai penjualan sebelum potongan biaya platform.",
   "Tingkat konversi": "Pesanan dibagi pengunjung toko.",
   AOV: "Average order value: rata-rata nilai per pesanan.",

@@ -1,5 +1,5 @@
 (async()=>{let D;try{D=await (await fetch(window.AFF_SRC("aff-jf.json"))).json()}catch(e){document.getElementById("aff-root").insertAdjacentHTML("afterbegin","<p>Data affiliate gagal dimuat. Muat ulang halaman.</p>");return}
-window.AFF_BRANDS = D.BRANDS || null; if (window.__fillToko) window.__fillToko();
+D = JSON.parse(JSON.stringify(D).replace(/Omzet/g, 'GMV').replace(/batal\/retur/g, 'batal & retur')); window.AFF_BRANDS = D.BRANDS || null; if (window.__fillToko) window.__fillToko();
 const TODAY = new Date(); TODAY.setHours(0,0,0,0);
 const RESP = ['Belum ada respon','Tertarik','Tanya detail/komisi','Minta sampel dulu','Minta fee/rate card','Tidak tertarik','Akun/nomor tidak aktif'];
 const STAT = ['Belum dihubungi','Sudah dihubungi','Setuju','Menolak','Tidak respon','Produk dikirim','Sudah posting'];
@@ -86,7 +86,7 @@ const view = document.getElementById('view');
 function setTab(t, push=true){
   if (t === 'agency') t = 'shopee';
   if (t === 'tiktok' || t === 'shopee') { S.dbpl = t === 'tiktok' ? 'TikTok' : 'Shopee'; t = 'db'; }
-  if (t === 'rekap' || t === 'efektif') t = 'ringkasan';
+  if (t === 'rekap' || t === 'efektif' || t === 'kerja') t = 'ringkasan';
   if (!['ringkasan','kerja','db','tiktok','shopee','input','log'].includes(t)) t = 'ringkasan';
   S.tab = t;
   document.querySelectorAll('nav.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === t ? 'true':'false'));
@@ -99,6 +99,7 @@ function setTab(t, push=true){
   render();
 }
 document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => { setTab(b.dataset.tab); window.scrollTo(0,0); }));
+{ const nv = document.querySelector('nav.tabs'); if (nv && !document.getElementById('hist-btn')) { nv.insertAdjacentHTML('beforeend', '<button type="button" class="hist-btn" id="hist-btn">Riwayat aktivitas</button>'); document.getElementById('hist-btn').onclick = () => { setTab('log'); window.scrollTo(0,0); }; } }
 document.getElementById('n-tiktok').textContent = nf.format(TT.length);
 document.getElementById('n-db').textContent = nf.format(TT.length + SH.length);
 document.getElementById('n-shopee').textContent = nf.format(SH.length);
@@ -106,7 +107,7 @@ document.getElementById('n-shopee').textContent = nf.format(SH.length);
 function render(){
   { const np = document.getElementById('navplat'); if (np) np.innerHTML = ''; }
   { const mw = document.getElementById('meet-wrap'); if (mw) { mw.hidden = S.tab !== 'ringkasan'; if (mw.hidden) mw.innerHTML = ''; } }
-  if (S.tab === 'ringkasan') renderSummary();
+  if (S.tab === 'ringkasan') { renderSummary(); if (!RO()) renderKerja(); }
   else if (S.tab === 'kerja') renderKerja();
   else if (S.tab === 'tiktok') { renderList('tiktok'); appendAgency('tiktok'); }
   else if (S.tab === 'shopee') { renderList('shopee'); appendAgency('shopee'); }
@@ -189,7 +190,7 @@ function renderSummary(){
   <section class="panel"><h2>TikTok per bulan</h2>${mt(D.M.tt)}
     <p class="note">GMV TikTok di laporan ini masih kotor. Dari export order, 39–52% GMV per bulan tidak dibayar (batal/COD gagal), jauh di atas "Pengembalian dana" yang tercatat.</p></section>
   <section class="panel"><h2>Shopee per bulan</h2>${mt(D.M.sh)}
-    <p class="note">Omzet Shopee sudah tanpa pesanan batal. Sumber: laporan validasi komisi Shopee (Mei–Jul, pesanan selesai) dan AMS Affiliate Performance (Agu, Sep, 1–21 Okt). Pembeli baru tidak tersedia di laporan validasi.</p></section>
+    <p class="note">GMV Shopee sudah tanpa pesanan batal. Sumber: laporan validasi komisi Shopee (Mei–Jul, pesanan selesai) dan AMS Affiliate Performance (Agu, Sep, 1–21 Okt). Pembeli baru tidak tersedia di laporan validasi.</p></section>
   <section class="panel"><h2>Cara pakai</h2>
     <p class="note">Buka tab TikTok Kreator atau Shopee Affiliate (Agency &amp; MCN ada di bagian bawah tab Shopee), lalu klik satu baris untuk mencatat kontak, tanggal dihubungi, respon, dan status. Kalau status diubah jadi "Produk dikirim", form Input Sampel langsung terbuka dengan username kreatornya; sebaliknya, setiap sampel yang diinput otomatis mengubah status kreator itu jadi "Produk dikirim". Catatan tersimpan otomatis dan langsung terlihat oleh semua orang yang membuka halaman ini. Tombol "Download Excel" mengunduh semua tab beserta catatan follow-up terbaru.</p></section>`;
   { const mw = document.getElementById('meet-wrap'); const rt = document.getElementById('sampel-root'); if (rt && mw.nextElementSibling === rt) rt.after(mw); mw.innerHTML = halPanel() + meetPanel(); }
@@ -204,7 +205,7 @@ const SORT_TXT = {num:['Terbesar dulu','Terkecil dulu'], txt:['Z–A','A–Z'], 
 const SORT_MAIN = ['pr','okt','gb','sroi','last','u'];
 const sortOpts = (defs, cur) => SORT_MAIN.concat(defs[cur] && !SORT_MAIN.includes(cur) ? [cur] : []).filter(k => defs[k]).map(k => opt(k, k === 'sroi' ? 'Efektivitas sampel' : defs[k].lbl, cur)).join('');
 function sortDefs(which){
-  const isTT = which === 'tiktok', months = isTT ? TT_M : SH_M, pre = isTT ? 'GMV ' : 'Omzet ';
+  const isTT = which === 'tiktok', months = isTT ? TT_M : SH_M, pre = isTT ? 'GMV ' : 'GMV ';
   const d = {
     pr:{lbl:'Prioritas', fn:r=>r.pr, t:'pr', dir:'asc'},
     okt:{lbl:pre+'30 hari terakhir', fn:r=>r.okt, t:'num', dir:'desc'},
@@ -212,7 +213,7 @@ function sortDefs(which){
     bln:{lbl:'Bulan aktif', fn:r=>r.bln, t:'num', dir:'desc'},
   };
   months.forEach((m,i) => { if (m !== 'Okt') d['m'+i] = {lbl:pre+m, fn:r=>r.g[i], t:'num', dir:'desc'}; });
-  if (isTT) { d.vid = {lbl:'Jumlah video', fn:r=>r.vid, t:'num', dir:'desc'}; d.live = {lbl:'Jumlah LIVE', fn:r=>r.live, t:'num', dir:'desc'}; d.gagal = {lbl:'Porsi order gagal', fn:r=>r.gagal, t:'num', dir:'desc'}; }
+  if (isTT) { d.vid = {lbl:'Jumlah video', fn:r=>r.vid, t:'num', dir:'desc'}; d.live = {lbl:'Jumlah LIVE', fn:r=>r.live, t:'num', dir:'desc'}; d.gagal = {lbl:'Porsi batal & retur', fn:r=>r.gagal, t:'num', dir:'desc'}; }
   else { d.pb = {lbl:'Pembeli baru', fn:r=>r.pb, t:'num', dir:'desc'}; d.batal = {lbl:'Porsi batal', fn:r=>r.batal, t:'num', dir:'desc'}; }
   d.u = {lbl:'Username', fn:r=>r.u.toLowerCase(), t:'txt', dir:'asc'};
   d.st = {lbl:'Status', fn:r=>STAT_ALL().indexOf(dispStatus(r)), t:'list', dir:'asc'};
@@ -269,7 +270,7 @@ function renderList(which){
   const list = filtered(which), pages = Math.max(1, Math.ceil(list.length / PAGE));
   if (f.page >= pages) f.page = pages - 1;
   const slice = list.slice(f.page*PAGE, f.page*PAGE + PAGE);
-  const mLbl = isTT ? 'GMV 30 hari terakhir' : 'Omzet 30 hari terakhir', tLbl = isTT ? 'GMV Mei–Okt' : 'Omzet Mei–Okt';
+  const mLbl = isTT ? 'GMV 30 hari terakhir' : 'GMV 30 hari terakhir', tLbl = isTT ? 'GMV Mei–Okt' : 'GMV Mei–Okt';
   const nAct = activeFilters(f);
   const th = (key, label, cls='') => { const on = f.sort === key; const arrow = on ? (dir === 'asc' ? '▲' : '▼') : '↕'; const G_ = GLOS_AFF_F(), gl = G_[label] ? `<i class="ii" title="${esc(G_[label])}">i</i>` : '';
     label = label + gl;
@@ -341,8 +342,8 @@ function dbDefs(){
   SH_M.forEach((m,i) => { if (d['m'+i]) d['m'+i].lbl = 'GMV ' + m + ' (kotor TikTok / bersih Shopee)'; });
   d.gk = {lbl:'GMV kotor', fn:r=>r.gk, t:'num', dir:'desc'};
   d.gb = {lbl:'GMV bersih', fn:r=>r.gb, t:'num', dir:'desc'};
-  d.gx = {lbl:'GMV batal/retur', fn:r=>r.gx, t:'num', dir:'desc'};
-  d.gxp = {lbl:'Porsi batal/retur', fn:r=>r.gk ? r.gx/r.gk : null, t:'num', dir:'desc'};
+  d.gx = {lbl:'GMV batal & retur', fn:r=>r.gx, t:'num', dir:'desc'};
+  d.gxp = {lbl:'Porsi batal & retur', fn:r=>r.gk ? r.gx/r.gk : null, t:'num', dir:'desc'};
   d.vid = {lbl:'Jumlah video (TikTok)', fn:r=>r.k==='tt'?r.vid:null, t:'num', dir:'desc'};
   d.live = {lbl:'Jumlah sesi LIVE (TikTok)', fn:r=>r.k==='tt'?r.live:null, t:'num', dir:'desc'};
   delete d.gagal;
@@ -436,7 +437,7 @@ function renderDb(){
     <span class="flabel">Urutkan</span>
     <select id="${W}-sort" aria-label="Urutkan menurut">${sortOpts(defs, f.sort)}</select>
     <button class="btn sm" id="${W}-dir" aria-label="Balik urutan">${dir === 'asc' ? '▲ ' + SORT_TXT[sd.t][1] : '▼ ' + SORT_TXT[sd.t][0]}</button>
-    <span class="count">${nf.format(list.length)} dari ${nf.format(rows.length)} akun · GMV kotor ${rpShort(tot('gk'))} · bersih ${rpShort(tot('gb'))} · batal/retur ${rpShort(tot('gx'))}</span>
+    <span class="count">${nf.format(list.length)} dari ${nf.format(rows.length)} akun · GMV kotor ${rpShort(tot('gk'))} · bersih ${rpShort(tot('gb'))} · batal & retur ${rpShort(tot('gx'))}</span>
   </div>
   <div class="tscroll"><table>
     <thead><tr>${th('pr','Prio')}${th('u','Username')}<th>Tipe</th>${th('okt','GMV 30 hari terakhir','num')}${th('gb','GMV bersih','num')}${th('bln','Bulan aktif','num')}${th('sn','Sampel (all time)','num')}${th('sroi','Efektivitas sampel (all time)','num')}<th>${aksiLbl()}</th>${th('st','Status')}${th('resp','Respon')}${th('last','Terakhir dihubungi')}</tr></thead>
@@ -454,7 +455,7 @@ function renderDb(){
   <div class="pager"><span>Halaman ${f.page+1} dari ${pages}</span><span class="btns">
     <button class="btn sm" id="${W}-prev"${f.page===0?' disabled':''}>Sebelumnya</button>
     <button class="btn sm" id="${W}-next"${f.page>=pages-1?' disabled':''}>Berikutnya</button></span></div>
-  <details class="srcnote"><summary class="note">Sumber data <i class="ii">i</i></summary>  <p class="note">GMV kotor, bersih dan batal/retur: periode Mei–21 Okt. <b>TikTok</b>: GMV kotor dari laporan performa kreator; bersih dan batal/retur dihitung dari porsi order gagal tiap kreator di export pesanan (Mei–Sep). <b>Shopee</b>: GMV bersih = omzet tanpa pesanan batal (validasi komisi Mei–Jul, AMS Agu–Okt); batal hanya bisa dihitung untuk Agu–Okt. <sup>*</sup> = perkiraan: TikTok memakai rata-rata 36% order gagal karena kreator tidak punya data order sendiri; Shopee berarti batal Mei–Jul tidak tercatat. Efektivitas sampel dihitung dari GMV bersih. <span class="chip ag">Agency/Platform</span> = kumpulan banyak kreator, data tidak bisa dirinci.</p></details>`;
+  <details class="srcnote"><summary class="note">Sumber data <i class="ii">i</i></summary>  <p class="note">GMV kotor, bersih dan batal & retur: periode Mei–21 Okt. <b>TikTok</b>: GMV kotor dari laporan performa kreator; bersih dan batal & retur dihitung dari porsi batal & retur tiap kreator di export pesanan (Mei–Sep). <b>Shopee</b>: GMV bersih = omzet tanpa pesanan batal (validasi komisi Mei–Jul, AMS Agu–Okt); batal hanya bisa dihitung untuk Agu–Okt. <sup>*</sup> = perkiraan: TikTok memakai rata-rata 36% batal & retur karena kreator tidak punya data order sendiri; Shopee berarti batal Mei–Jul tidak tercatat. Efektivitas sampel dihitung dari GMV bersih. <span class="chip ag">Agency/Platform</span> = kumpulan banyak kreator, data tidak bisa dirinci.</p></details>`;
   const np = document.getElementById('navplat');
   if (np) { np.innerHTML = `<span class="seg" role="radiogroup" aria-label="Platform">${[['','Semua',TT.length+SH.length],['TikTok','TikTok',TT.length],['Shopee','Shopee',SH.length]].map(([p,l,n]) => `<button class="db-pl${(S.dbpl||'')===p?' on':''}" data-pl="${p}" role="radio" aria-checked="${(S.dbpl||'')===p}">${p ? `<i class="pdot ${p==='TikTok'?'tt':'sh'}"></i>` : ''}${l} <span class="n">${nf.format(n)}</span></button>`).join('')}</span>`;
     if (D.BRANDS && D.BRANDS.length > 1) { const opts = ['Shopee','TikTok'].flatMap(pl => D.BRANDS.map(b => [pl + '|' + b, pl + ' · ' + b]));
@@ -500,14 +501,14 @@ function renderAgency(host){
     <button class="btn" id="agency-xl">Download Excel</button></div>
   <section class="panel">
     <h2>A. Agency/MCN Shopee dengan anggota yang sudah jualan</h2>
-    <p class="note">Dari kolom "MCN Terhubung" di laporan konversi Shopee (1 Agu–12 Okt). Omzet anggota dihitung sampai 21 Okt. Data TikTok tidak mencatat agency/MCN kreator. Klik baris untuk melihat anggota dan mencatat follow-up.</p>
-    <div class="tscroll"><table><thead><tr><th>Prio</th><th>Platform</th><th>Agency / MCN</th><th class="num">Anggota jualan</th><th class="num">Omzet anggota</th><th class="num">Pesanan berhasil</th><th class="num">Batal</th><th>Anggota terlaris</th><th>Saran aksi</th><th>Status</th><th>Terakhir dihubungi</th></tr></thead>
+    <p class="note">Dari kolom "MCN Terhubung" di laporan konversi Shopee (1 Agu–12 Okt). GMV anggota dihitung sampai 21 Okt. Data TikTok tidak mencatat agency/MCN kreator. Klik baris untuk melihat anggota dan mencatat follow-up.</p>
+    <div class="tscroll"><table><thead><tr><th>Prio</th><th>Platform</th><th>Agency / MCN</th><th class="num">Anggota jualan</th><th class="num">GMV anggota</th><th class="num">Pesanan berhasil</th><th class="num">Batal</th><th>Anggota terlaris</th><th>Saran aksi</th><th>Status</th><th>Terakhir dihubungi</th></tr></thead>
     <tbody>${A.map(r => `<tr class="click" tabindex="0" data-g="A" data-n="${esc(r.nama)}"><td>${prioChip(r.pr)}</td><td>${agPl(r).map(plChip).join(' ')}</td><td class="u">${esc(r.nama)}${fuOf(r)?.kontak?`<small>${esc(fuOf(r).kontak)}</small>`:''}</td><td class="num">${r.mem.length}</td><td class="num">${rpShort(r.om)}</td><td class="num">${nf.format(r.ok)}</td><td class="num ${r.batal>=.5?'late':''}">${pct(r.batal)}</td><td>${esc(r.top)}</td>${aksiTd(r)}<td>${statChip(dispStatus(r))}</td><td>${lastCell(r)}</td></tr>`).join('') || `<tr><td colspan="11" class="muted">${pf === 'TikTok' ? 'Laporan TikTok tidak mencatat agency/MCN kreator, jadi bagian ini hanya berisi data Shopee.' : 'Tidak ada yang cocok.'}</td></tr>`}</tbody></table></div>
   </section>
   <section class="panel">
     <h2>B. Jaringan affiliate / platform (TikTok &amp; Shopee)</h2>
     <p class="note">Akun yang jualan atas nama banyak kreator, jadi datanya tidak bisa dirinci per kreator. YouTube Shopping dan Shopee Media Network tidak dimasukkan karena program milik platform. GMV TikTok masih kotor.</p>
-    <div class="tscroll"><table><thead><tr><th>Prio</th><th>Platform</th><th>Jaringan</th><th class="num">GMV TikTok</th><th class="num">Omzet Shopee</th><th class="num">Total</th><th>Akun</th><th>Saran aksi</th><th>Status</th><th>Terakhir dihubungi</th></tr></thead>
+    <div class="tscroll"><table><thead><tr><th>Prio</th><th>Platform</th><th>Jaringan</th><th class="num">GMV TikTok</th><th class="num">GMV Shopee</th><th class="num">Total</th><th>Akun</th><th>Saran aksi</th><th>Status</th><th>Terakhir dihubungi</th></tr></thead>
     <tbody>${B.map(r => `<tr class="click" tabindex="0" data-g="B" data-n="${esc(r.nama)}"><td>${prioChip(r.pr)}</td><td style="white-space:nowrap">${agPl(r).map(plChip).join(' ')}</td><td class="u">${esc(r.nama)}${r.cat?`<small>${esc(r.cat)}</small>`:''}</td><td class="num">${rpShort(r.gt)}</td><td class="num">${rpShort(r.gs)}</td><td class="num"><b>${rpShort(r.tot)}</b></td><td style="min-width:180px;font-size:12.5px">${esc([r.att,r.ash].filter(Boolean).join(', '))}</td>${aksiTd(r)}<td>${statChip(dispStatus(r))}</td><td>${lastCell(r)}</td></tr>`).join('') || `<tr><td colspan="10" class="muted">Tidak ada yang cocok.</td></tr>`}</tbody></table></div>
   </section>`;
   host.querySelectorAll('button.ag-pl').forEach(b => b.onclick = () => { S.f.agency.pl = b.dataset.pl; rerenderSoon(); });
@@ -528,9 +529,9 @@ function detailHtml(r){
       <div><span>Sumber penjualan terbesar</span><b>${tipeR(r)}</b></div>
       <div><span>GMV kotor Mei–Okt${r.gest ? '*' : ''}</span><b>${rp(r.gk)}</b></div>
       <div><span>GMV bersih${r.gest ? '*' : ''}</span><b>${rp(r.gb)}</b></div>
-      <div><span>GMV batal/retur${r.gest ? '*' : ''}</span><b>${rp(r.gx)}${r.gk ? ' (' + pct(r.gx / r.gk) + ')' : ''}</b></div>
-      <div><span>${r.k==='tt'?'GMV Mei–Okt':'Omzet Mei–Okt'}</span><b>${rp(r.tot)}</b></div>
-      ${r.k==='tt' ? `<div><span>Video / LIVE</span><b>${nf.format(r.vid)} / ${nf.format(r.live)}</b></div><div class="noshare"><span>Porsi order gagal</span><b>${pct(r.gagal)}</b></div>`
+      <div><span>GMV batal & retur${r.gest ? '*' : ''}</span><b>${rp(r.gx)}${r.gk ? ' (' + pct(r.gx / r.gk) + ')' : ''}</b></div>
+      <div><span>${r.k==='tt'?'GMV Mei–Okt':'GMV Mei–Okt'}</span><b>${rp(r.tot)}</b></div>
+      ${r.k==='tt' ? `<div><span>Video / LIVE</span><b>${nf.format(r.vid)} / ${nf.format(r.live)}</b></div><div class="noshare"><span>Porsi batal & retur</span><b>${pct(r.gagal)}</b></div>`
                    : `<div><span>Channel utama</span><b>${esc(r.ch||'–')}</b></div><div><span>Pembeli baru</span><b>${nf.format(r.pb)}</b></div><div class="noshare"><span>Porsi batal</span><b>${pct(r.batal)}</b></div>`}
       ${(() => { const st = sampStat(r), roi = sampRoi(st); return `<div><span>Sampel diterima</span><b>${st.n ? st.n + '×' + (st.last ? ' · terakhir ' + esc(fdate(st.last)) : '') : 'Belum pernah'}</b></div>
       <div><span>Efektivitas sampel</span><b>${!st.n ? '–' : !st.has ? 'belum ada data penjualan' : roi == null ? 'biaya sampel Rp0' : `${roi.toLocaleString('id-ID',{maximumFractionDigits:1})}× biaya`}</b></div>
@@ -539,14 +540,14 @@ function detailHtml(r){
       ${st.n ? `<div><span>Boleh dapat sampel lagi?</span><b>${st.blk ? '<span class="chip s-bad">Tidak, diblokir</span>' : sampOk(st) ? '<span class="chip s-ok">Ya, (GMV sebelum + sesudah) &gt;10× biaya</span>' : '<span class="chip s-warn">Belum, perlu &gt;10× biaya</span>'}</b></div>` : ''}`; })()}
       ${r.cat ? `<div style="grid-column:1/-1"><span>Catatan data</span><b>${esc(r.cat)}</b></div>`:''}
     </div>
-    <div><h3 style="margin-bottom:8px">${r.k==='tt'?'GMV':'Omzet'} per bulan</h3><div class="months">${months.map((m,i)=>`<span>${m}</span><div class="bar" style="width:${Math.max(1,r.g[i]/mx*100)}%;opacity:${r.g[i]?1:.25}"></div><span>${rpShort(r.g[i])}</span>`).join('')}</div></div>
+    <div><h3 style="margin-bottom:8px">${r.k==='tt'?'GMV':'GMV'} per bulan</h3><div class="months">${months.map((m,i)=>`<span>${m}</span><div class="bar" style="width:${Math.max(1,r.g[i]/mx*100)}%;opacity:${r.g[i]?1:.25}"></div><span>${rpShort(r.g[i])}</span>`).join('')}</div></div>
     <div class="callout"><b>${aksiLbl()}</b>${esc(RO() ? kerjaTxt(r) : r.aksi)}</div>`;
   }
-  if (r.grp === 'A') return `<div class="kv"><div><span>Prioritas</span><b>${prioChip(r.pr)}</b></div><div><span>Omzet anggota</span><b>${rp(r.om)}</b></div><div><span>Pesanan berhasil</span><b>${nf.format(r.ok)}</b></div><div class="noshare"><span>Porsi batal</span><b>${pct(r.batal)}</b></div></div>
+  if (r.grp === 'A') return `<div class="kv"><div><span>Prioritas</span><b>${prioChip(r.pr)}</b></div><div><span>GMV anggota</span><b>${rp(r.om)}</b></div><div><span>Pesanan berhasil</span><b>${nf.format(r.ok)}</b></div><div class="noshare"><span>Porsi batal</span><b>${pct(r.batal)}</b></div></div>
     <div class="callout"><b>${aksiLbl()}</b>${esc(RO() ? kerjaTxt(r) : r.aksi)}</div>
-    <div><h3 style="margin-bottom:8px">Anggota yang sudah jualan (${r.mem.length})</h3><div class="tscroll"><table class="mini"><thead><tr><th>Username Shopee</th><th class="num">Omzet</th><th class="num">Pesanan</th></tr></thead><tbody>
+    <div><h3 style="margin-bottom:8px">Anggota yang sudah jualan (${r.mem.length})</h3><div class="tscroll"><table class="mini"><thead><tr><th>Username Shopee</th><th class="num">GMV</th><th class="num">Pesanan</th></tr></thead><tbody>
     ${r.mem.map(m => `<tr><td class="u">${esc(m.u)}${m.nama && m.nama!==m.u?`<small>${esc(m.nama)}</small>`:''}</td><td class="num">${rpShort(m.om)}</td><td class="num">${m.ok}/${m.all}</td></tr>`).join('')}</tbody></table></div></div>`;
-  return `<div class="kv"><div><span>Prioritas</span><b>${prioChip(r.pr)}</b></div><div><span>GMV TikTok</span><b>${rp(r.gt)}</b></div><div><span>Omzet Shopee</span><b>${rp(r.gs)}</b></div><div><span>Total</span><b>${rp(r.tot)}</b></div></div>
+  return `<div class="kv"><div><span>Prioritas</span><b>${prioChip(r.pr)}</b></div><div><span>GMV TikTok</span><b>${rp(r.gt)}</b></div><div><span>GMV Shopee</span><b>${rp(r.gs)}</b></div><div><span>Total</span><b>${rp(r.tot)}</b></div></div>
     ${r.att?`<div><h3>Akun TikTok</h3><p>${esc(r.att)}</p></div>`:''}${r.ash?`<div><h3>Akun Shopee</h3><p>${esc(r.ash)}</p></div>`:''}${r.cat?`<p class="note">${esc(r.cat)}</p>`:''}
     <div class="callout"><b>${aksiLbl()}</b>${esc(RO() ? kerjaTxt(r) : r.aksi)}</div>`;
 }
@@ -943,14 +944,17 @@ function kerjaRows(){
 function renderKerja(){
   const L = kerjaRows(), done = [...TT, ...SH].filter(r => { const f = fuOf(r); return f && f.tglLast === isoToday(); }).length;
   const hist = PHIST ? histHtml() : '<p class="muted">Memuat riwayat…</p>';
-  view.innerHTML = `${bannerHtml()}<div class="kerja"><section class="panel"><h2>Hubungi hari ini · ${esc(fdate(isoToday()))} <span class="count">${nf.format(L.length)}</span></h2>
+  const kh = `<div class="kerja" id="kerja-box"><section class="panel todo"><h2>Hubungi hari ini · ${esc(fdate(isoToday()))} <span class="count">${nf.format(L.length)}</span></h2>
     <p class="note">Otomatis dari P1–P2 yang belum dihubungi dan follow-up yang jatuh tempo. Sudah dihubungi hari ini: <b>${nf.format(done)}</b>.</p>
     <div class="tscroll"><table><thead><tr><th>Prio</th><th>Username</th><th>Alasan</th><th>Terakhir dihubungi</th></tr></thead><tbody>
     ${L.slice(0, 200).map(({ r, why }, i) => `<tr class="click" tabindex="0" data-i="${i}"><td>${prioChip(r.pr)}</td><td class="u">${esc(r.u)}${r.k==='sh' && r.nama && r.nama !== r.u ? `<small>${esc(r.nama)}</small>` : ''}${ptags(r)}${fuOf(r)?.kontak ? `<br>${kontakHtml(fuOf(r).kontak, r)}` : ''}</td><td>${esc(why)}</td><td>${lastCell(r)}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">Tidak ada yang perlu dihubungi hari ini.</td></tr>'}
     </tbody></table></div></section>
     <section class="panel"><h2>Riwayat prioritas · 7 hari terakhir</h2>${hist}</section></div>`;
-  view.querySelectorAll('tr.click').forEach(tr => { const open = () => openDrawer(L[+tr.dataset.i].r); tr.addEventListener('click', e => { if (e.target.closest('a')) return; open(); }); tr.addEventListener('keydown', e => { if (e.key === 'Enter') open(); }); });
-  if (!PHIST && db) db.collection('prio_hist').get().then(sn => { PHIST = sn.docs.map(d => ({ id: d.id, m: d.data() || {} })).sort((a, b) => a.id < b.id ? -1 : 1); if (S.tab === 'kerja') render(); }).catch(() => { PHIST = []; });
+  let box;
+  if (S.tab === 'kerja') { view.innerHTML = bannerHtml() + kh; box = view; }
+  else { const at = view.querySelector('.panel, section, .cards'); if (at) at.insertAdjacentHTML('afterend', kh); else view.insertAdjacentHTML('afterbegin', kh); box = document.getElementById('kerja-box'); }
+  box.querySelectorAll('tr.click').forEach(tr => { const open = () => openDrawer(L[+tr.dataset.i].r); tr.addEventListener('click', e => { if (e.target.closest('a')) return; open(); }); tr.addEventListener('keydown', e => { if (e.key === 'Enter') open(); }); });
+  if (!PHIST && db) db.collection('prio_hist').get().then(sn => { PHIST = sn.docs.map(d => ({ id: d.id, m: d.data() || {} })).sort((a, b) => a.id < b.id ? -1 : 1); if (S.tab === 'kerja' || S.tab === 'ringkasan') render(); }).catch(() => { PHIST = []; });
 }
 function histHtml(){
   if (!PHIST.length) return '<p class="muted">Riwayat mulai tercatat sejak data affiliate di-upload. Perubahan akan terlihat setelah upload berikutnya.</p>';
@@ -1138,15 +1142,15 @@ async function exportXlsx(){
   try { XLSX = await loadXlsx(); } catch(e) { toast('Gagal memuat pembuat Excel. Coba lagi.'); return; }
   const wb = XLSX.utils.book_new();
   const add = (name, aoa, widths) => { const ws = XLSX.utils.aoa_to_sheet(aoa); ws['!cols'] = widths.map(w => ({wch:w})); XLSX.utils.book_append_sheet(wb, ws, name); };
-  add('TikTok Kreator', [['Username','Link profil','Tipe',...TT_M.map(m=>'GMV '+m),'GMV total','Bulan aktif','Video','LIVE','Porsi order gagal','GMV kotor','GMV bersih','GMV batal/retur','GMV bersih/batal perkiraan','Jumlah sampel (all time)','Sampel terakhir','GMV sebelum sampel pertama','GMV sejak sampel pertama','Order sejak sampel pertama','Total biaya sampel','GMV per biaya','Diblokir dari sampel','Boleh sampel lagi (>'+ROI_MIN+'×)','Catatan data','Prioritas','Saran aksi',...FUH],
+  add('TikTok Kreator', [['Username','Link profil','Tipe',...TT_M.map(m=>'GMV '+m),'GMV total','Bulan aktif','Video','LIVE','Porsi batal & retur','GMV kotor','GMV bersih','GMV batal & retur','GMV bersih/batal perkiraan','Jumlah sampel (all time)','Sampel terakhir','GMV sebelum sampel pertama','GMV sejak sampel pertama','Order sejak sampel pertama','Total biaya sampel','GMV per biaya','Diblokir dari sampel','Boleh sampel lagi (>'+ROI_MIN+'×)','Catatan data','Prioritas','Saran aksi',...FUH],
     ...TT.map(r => [r.u,'https://www.tiktok.com/@'+r.u,r.tipe,...r.g,r.tot,r.bln,r.vid,r.live,r.gagal??'',...sampXl(r),r.cat,r.pr,r.aksi,...fuCols(r)])], [22,30,18,12,12,12,12,12,12,13,8,8,8,10,8,12,8,8,12,12,8,10,16,8,55,20,12,12,10,20,16,30]);
-  add('Shopee Affiliate', [['Username','Nama affiliate','Tipe','Channel utama',...SH_M.map(m=>'Omzet '+m),'Omzet total','Bulan aktif','Pembeli baru','Porsi batal','GMV kotor','GMV bersih','GMV batal/retur','GMV bersih/batal perkiraan','Jumlah sampel (all time)','Sampel terakhir','GMV sebelum sampel pertama','GMV sejak sampel pertama','Order sejak sampel pertama','Total biaya sampel','GMV per biaya','Diblokir dari sampel','Boleh sampel lagi (>'+ROI_MIN+'×)','Catatan data','Prioritas','Saran aksi',...FUH],
+  add('Shopee Affiliate', [['Username','Nama affiliate','Tipe','Channel utama',...SH_M.map(m=>'GMV '+m),'GMV total','Bulan aktif','Pembeli baru','Porsi batal','GMV kotor','GMV bersih','GMV batal & retur','GMV bersih/batal perkiraan','Jumlah sampel (all time)','Sampel terakhir','GMV sebelum sampel pertama','GMV sejak sampel pertama','Order sejak sampel pertama','Total biaya sampel','GMV per biaya','Diblokir dari sampel','Boleh sampel lagi (>'+ROI_MIN+'×)','Catatan data','Prioritas','Saran aksi',...FUH],
     ...SH.map(r => [r.u,r.nama,r.tipe,r.ch,...r.g,r.tot,r.bln,r.pb,r.batal??'',...sampXl(r),r.cat,r.pr,r.aksi,...fuCols(r)])], [22,22,18,18,12,12,12,13,8,10,10,8,12,8,8,12,12,8,10,16,8,55,20,12,12,10,20,16,30]);
-  add('Agency & MCN', [['Agency / MCN','Anggota yang jualan','Omzet anggota Agu–21 Okt','Pesanan berhasil (Agu–12 Okt)','Porsi batal','Anggota terlaris','Daftar anggota','Prioritas','Saran aksi',...FUH],
+  add('Agency & MCN', [['Agency / MCN','Anggota yang jualan','GMV anggota Agu–21 Okt','Pesanan berhasil (Agu–12 Okt)','Porsi batal','Anggota terlaris','Daftar anggota','Prioritas','Saran aksi',...FUH],
     ...AGA.map(r => [r.nama,r.mem.length,r.om,r.ok,r.batal,r.top,r.mem.map(m=>m.u).join(', '),r.pr,r.aksi,...fuCols(r)])], [24,10,14,12,10,26,50,8,50,20,12,12,10,20,16,30]);
-  add('Jaringan Affiliate', [['Jaringan','Akun TikTok','Akun Shopee','GMV TikTok Mei–21 Okt (kotor)','Omzet Shopee Agu–21 Okt','Total','Catatan','Prioritas','Saran aksi',...FUH],
+  add('Jaringan Affiliate', [['Jaringan','Akun TikTok','Akun Shopee','GMV TikTok Mei–21 Okt (kotor)','GMV Shopee Agu–21 Okt','Total','Catatan','Prioritas','Saran aksi',...FUH],
     ...AGB.map(r => [r.nama,r.att,r.ash,r.gt,r.gs,r.tot,r.cat,r.pr,r.aksi,...fuCols(r)])], [22,36,30,14,14,14,30,8,50,20,12,12,10,20,16,30]);
-  add('Anggota Agency', [['Agency / MCN','Username Shopee','Nama affiliate','Omzet Agu–21 Okt','Pesanan berhasil (Agu–12 Okt)','Pesanan total (Agu–12 Okt)'], ...D.C.map(c => c)], [24,22,24,14,12,12]);
+  add('Anggota Agency', [['Agency / MCN','Username Shopee','Nama affiliate','GMV Agu–21 Okt','Pesanan berhasil (Agu–12 Okt)','Pesanan total (Agu–12 Okt)'], ...D.C.map(c => c)], [24,22,24,14,12,12]);
   const buf = XLSX.write(wb, {bookType:'xlsx', type:'array'});
   const dl = await claude.use('downloads');
   if (!dl) { toast('Download tidak tersedia di tampilan ini.'); return; }
@@ -1618,8 +1622,8 @@ const syncDot = document.getElementById('syncdot'), syncTxt = document.getElemen
     } else bits.push('Belum pernah dapat sampel');
     if (efr.length) bits.push(efLaku ? `sampel menghasilkan ${rpc(efGmv)} dalam 30 hari` : 'sampel sebelumnya belum menghasilkan order');
     if (k) {
-      bits.push(`${platform === 'Shopee' ? 'omzet Mei–Okt' : 'GMV Mei–Okt'} ${k.tot ? rpc(k.tot) : 'Rp0'}`);
-      if (k.gagal != null && k.gagal >= 0.4) bits.push(`order gagal ${pf(k.gagal)}`);
+      bits.push(`${platform === 'Shopee' ? 'GMV Mei–Okt' : 'GMV Mei–Okt'} ${k.tot ? rpc(k.tot) : 'Rp0'}`);
+      if (k.gagal != null && k.gagal >= 0.4) bits.push(`batal & retur ${pf(k.gagal)}`);
       if (k.batal != null && k.batal >= 0.4) bits.push(`batal ${pf(k.batal)}`);
       bits.push('prioritas P' + k.pr);
     }
