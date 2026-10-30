@@ -566,11 +566,15 @@ html:not([data-theme="dark"]),html:not([data-theme="dark"]) body{background:#F6F
 .mb .mbgh{display:none}
 .mb .grps{display:flex;flex-wrap:wrap;gap:0;margin:0 -14px;border-bottom:1px solid var(--line)}
 .mb .grp{display:contents}
-.mb .grp .mbg,.mb .mbg{display:contents}
-.mb .mbc{flex:1 1 130px;padding:10px 12px;gap:2px;border-right:1px solid var(--line);border-bottom:0}
+.mb .grps .mbg{display:contents}
+.mb .grps .mbc{flex:1 1 130px;padding:10px 12px;gap:2px;border-right:1px solid var(--line);border-bottom:0}
 .mb .mbc b{font-size:17px}.mb .mbl{font-size:11.5px}
 .mb .grps{margin-bottom:12px}
 .mbfr{margin:0 0 6px;text-align:right;font-size:11px;color:var(--muted)}.mbfr.w{color:var(--warn)}
-@media(max-width:640px){.mb .mbc{flex:1 1 45%}}
+@media(max-width:640px){.mb .grps .mbc{flex:1 1 45%}}
 .lapkv{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px}.lapkv span{display:block;font-size:12px;color:var(--muted)}.lapkv b{font-size:18px}
 .btn2{display:inline-block;border:1px solid var(--accent);color:var(--accent);border-radius:8px;padding:8px 16px;font-weight:600;text-decoration:none;background:var(--panel)}
+
+/* perbaikan: .rk dipakai juga untuk badge peringkat */
+div.rk:has(> .rkc){display:grid;width:auto;height:auto;place-items:stretch;border-radius:0;background:none;font-weight:inherit;font-size:inherit;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:900px){div.rk:has(> .rkc){grid-template-columns:repeat(2,minmax(0,1fr))}}

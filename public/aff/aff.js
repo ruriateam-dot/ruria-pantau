@@ -99,7 +99,7 @@ function setTab(t, push=true){
   render();
 }
 document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => { setTab(b.dataset.tab); window.scrollTo(0,0); }));
-{ const nv = document.querySelector('nav.tabs'); if (nv && !document.getElementById('hist-btn')) { nv.insertAdjacentHTML('beforeend', '<button type="button" class="hist-btn" id="hist-btn">Riwayat aktivitas</button>'); document.getElementById('hist-btn').onclick = () => { setTab('log'); window.scrollTo(0,0); }; } }
+{ const nv = document.querySelector('#aff-root nav.tabs'); if (nv && !document.getElementById('hist-btn')) { nv.insertAdjacentHTML('beforeend', '<button type="button" class="hist-btn" id="hist-btn">Riwayat aktivitas</button>'); document.getElementById('hist-btn').onclick = () => { setTab('log'); window.scrollTo(0,0); }; } }
 document.getElementById('n-tiktok').textContent = nf.format(TT.length);
 document.getElementById('n-db').textContent = nf.format(TT.length + SH.length);
 document.getElementById('n-shopee').textContent = nf.format(SH.length);
