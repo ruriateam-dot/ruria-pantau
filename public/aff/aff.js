@@ -998,8 +998,6 @@ function todayPanel(){
   return `<section class="panel"><h2>Kerja hari ini</h2>
     <div class="stat-row">
       ${btn('td-due', due, 'perlu di-follow-up (belum respon ≥3 hari)')}
-      ${btn('td-p1', p1, 'P1 belum dihubungi')}
-      ${btn('td-p2', p2, 'P2 belum dihubungi')}
       ${btn('td-tagih', ready ? tg.length : 0, ready ? 'sampel perlu ditagih kontennya' : 'sampel perlu ditagih (memuat…)', 'dikirim 14–45 hari lalu, belum SESUAI, belum jualan bulan terakhir')}
       ${btn('td-andalan', an.length, 'kreator andalan', `${anBelum} belum dihubungi · jualan ≥5 dari 6 bulan, GMV bersih ≥Rp3 jt, masih jualan bulan terakhir`)}
     </div>

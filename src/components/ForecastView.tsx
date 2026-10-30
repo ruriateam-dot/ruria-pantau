@@ -7,7 +7,7 @@ import SafetyDays from "./SafetyDays";
 const rp = (n: number) => n >= 1e9 ? `Rp${(n / 1e9).toFixed(2).replace(".", ",")} M` : n >= 1e6 ? `Rp${(n / 1e6).toFixed(n >= 1e8 ? 0 : 1).replace(".", ",")} jt` : `Rp${Math.round(n / 1e3).toLocaleString("id")} rb`;
 const nf = (n: number) => Math.round(n).toLocaleString("id");
 const pc = (a: number, b: number | null) => (b ? ((a - b) / b) * 100 : null);
-const chg = (v: number | null) => v === null || !isFinite(v) ? <span className="muted">–</span> : <span className={v >= 0 ? "up" : "dn"}>{v >= 0 ? "▲" : "▼"} {Math.abs(v).toFixed(0)}%</span>;
+const chg = (v: number | null) => v === null || !isFinite(v) ? <span className="muted">–</span> : <span className={v >= 0 ? "up" : "dn"}>{v >= 0 ? "▲" : "▼"} {Math.abs(v).toFixed(0).replace(".", ",")}%</span>;
 const PRIO = ["Stok 0", "Habis", "Pengaman", "Aman", "Belum ada stok"];
 const pcls = (p: string) => (p === "Stok 0" ? "bad" : p.startsWith("Habis") ? "warn" : p === "Pengaman" ? "mute" : p === "Aman" ? "good" : "mute");
 
@@ -71,7 +71,7 @@ export default async function ForecastView({ clientId, sp, base, staff, share }:
     <div className="kpis fck">
       <div className="kpi"><div className="kl">Perkiraan GMV {title}</div><div className="kv">{rp(tot)}</div><div className="kd muted">kisaran {rp(lo)} – {rp(hi)}</div></div>
       <div className="kpi"><div className="kl">Tahun lalu, bulan yang sama</div><div className="kv">{lyT !== null ? rp(lyT) : "–"}</div><div className="kd">{lyT !== null ? <>{chg(pc(tot, lyT))} perkiraan vs tahun lalu</> : <span className="muted">data tahun lalu belum ada</span>}</div></div>
-      {!share && hasStock && <div className="kpi"><div className="kl">GMV terancam (stok kurang)</div><div className="kv dn">{rp(terancam)}</div><div className="kd muted">{tot ? `${((terancam / tot) * 100).toFixed(0)}% dari perkiraan, hanya tercapai kalau restock` : ""}</div></div>}
+      {!share && hasStock && <div className="kpi"><div className="kl">GMV terancam (stok kurang)</div><div className="kv dn">{rp(terancam)}</div><div className="kd muted">{tot ? `${((terancam / tot) * 100).toFixed(0).replace(".", ",")}% dari perkiraan, hanya tercapai kalau restock` : ""}</div></div>}
       {!share && hasStock && <div className="kpi"><div className="kl">Modal restock (HPP)</div><div className="kv">{rp(modal)}{modalEst ? "*" : ""}</div><div className="kd muted">{nf(restockP.reduce((a, p) => a + p.restock, 0))} unit · {restockP.length} SKU{noHpp ? ` · ${noHpp} SKU tanpa HPP` : ""}</div></div>}
     </div>
     <div className="grid2c">

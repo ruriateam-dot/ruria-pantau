@@ -136,7 +136,7 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
         {share ? <><span className="brandc"><RuriaWord height={20} /></span><b>Report</b><span className="muted">{c?.nama} · tampilan klien, hanya lihat</span></>
           : tab === "sum" ? <h1>Dashboard</h1> : <div><nav className="crumb small muted" aria-label="Breadcrumb"><a href={base + "?m=sum"}>Dashboard</a> › <span>{c?.nama}</span> › <span>{tabName}</span></nav><h1>{tabName} · {c?.nama}</h1></div>}
       </div>
-      {tab !== "forecast" && <div className="wrap fbar"><Filters rng={[R.from, R.to]} cmp={R.key === "all" ? undefined : R.sub.replace(/^vs /, "dibanding ")} last={lastData ?? null} base={base} clients={share ? clients : []} hideClient={!share || clients.length < 2} brands={tab === "sum" || tab === "lapor" ? [] : brands} platforms={tab === "sum" || tab === "lapor" ? [] : platforms} label={R.label} />{tab !== "affiliate" && <ExportBar title={title} client={tab === "sum" ? null : c?.id ?? null} token={token} />}</div>}
+      {tab !== "forecast" && tab !== "affiliate" && <div className="wrap fbar"><Filters rng={[R.from, R.to]} cmp={R.key === "all" ? undefined : R.sub.replace(/^vs /, "dibanding ")} last={lastData ?? null} base={base} clients={share ? clients : []} hideClient={!share || clients.length < 2} brands={tab === "sum" || tab === "lapor" ? [] : brands} platforms={tab === "sum" || tab === "lapor" ? [] : platforms} label={R.label} />{tab !== "affiliate" && <ExportBar title={title} client={tab === "sum" ? null : c?.id ?? null} token={token} />}</div>}
       {tab !== "sum" && tab !== "lapor" && tabs}
     </header>
   );
@@ -206,7 +206,7 @@ async function SumTab(R: Range, clients: { id: string; nama: string; modul: stri
   const statusOf = (r: (typeof rows)[number]) => { const f = F.find((x) => x.client_id === r.c.id); const out: [number, string][] = [];
     for (const [k, d] of [["penjualan", f?.penjualan], ["iklan", r.c.modul.includes("iklan") ? f?.iklan : undefined]] as const) { if (!d) continue; const lag = dayDiff(d, yday); if (lag > 3) out.push([2, `Data ${k} tertinggal ${lag} hari`]); else if (lag > 0) out.push([1, `Data ${k} kurang ${lag} hari`]); }
     for (const x of SL.filter((x) => x.client_id === r.c.id && +x.saldo < 2 * (AVG.get(x.store_id) ?? 0))) out.push([1, `Saldo ${x.platform} ${x.brand} < 2 hari belanja iklan`]);
-    if (r.roas != null && r.roasP && r.roas < r.roasP * 0.85) out.push([1, `ROAS turun ${((1 - r.roas / r.roasP) * 100).toFixed(0)}%`]);
+    if (r.roas != null && r.roasP && r.roas < r.roasP * 0.85) out.push([1, `ROAS turun ${((1 - r.roas / r.roasP) * 100).toFixed(0).replace(".", ",")}%`]);
     out.sort((a, b) => b[0] - a[0]); return out; };
   const totN = rows.reduce((a, r) => a + r.n, 0), totO = rows.reduce((a, r) => a + r.o, 0), dT = R.key !== "all" && totO ? pct(totN, totO) : null;
   const perhatian = rows.map((r) => ({ r, so: statusOf(r) })).filter((x) => x.so.length);
@@ -219,7 +219,7 @@ async function SumTab(R: Range, clients: { id: string; nama: string; modul: stri
       const so = statusOf(r), lv = so[0]?.[0] ?? 0;
       return <a key={r.c.id} className={"ccard st" + lv} href={href(r.c.id)}>
         <div className="top"><h3>{r.c.nama}</h3><span className={"pill " + (lv === 2 ? "bad" : lv === 1 ? "warn" : "good")} title={so.map((x) => x[1]).join(" · ")}>{so[0]?.[1] ?? "Aman"}{so.length > 1 ? ` +${so.length - 1}` : ""}</span></div>
-        <div className="cm"><div><span>GMV</span><b>{fmt(r.n)}</b></div><div><span>Perubahan</span><b className={v >= 0 ? "up" : "dn"}>{isFinite(v) ? `${v >= 0 ? "+" : ""}${v.toFixed(1)}%` : "–"}</b></div><div><span>ROAS iklan</span><b>{r.roas != null ? r.roas.toFixed(1) : "–"}</b></div></div>
+        <div className="cm"><div><span>GMV</span><b>{fmt(r.n)}</b></div><div><span>Perubahan</span><b className={v >= 0 ? "up" : "dn"}>{isFinite(v) ? `${v >= 0 ? "+" : ""}${v.toFixed(1).replace(".", ",")}%` : "–"}</b></div><div><span>ROAS iklan</span><b>{r.roas != null ? r.roas.toFixed(2).replace(".", ",") : "–"}</b></div></div>
         <div className="muted small">{r.ord.toLocaleString("id")} pesanan · data terakhir {f?.penjualan ? `${tgl(f.penjualan)} ${f.penjualan.slice(0, 4)}` : "–"}</div>
       </a>; })}</div>
     {upl}
@@ -260,11 +260,11 @@ function TokoTab({ R, stores, sales, last, prod, live, ads, plat, scN, scP, fr }
   const dG = pct(nf.g, o.g), dA = pct(aovF, aovP), dC = pct(crF, crP);
   const staleN = per.filter((r) => r.st);
   // Satu kotak ringkasan per tab: toko + produk, maksimal 3–4 poin per kolom
-  const sum = [`GMV ${fmt(n.g)}${cmp ? `, ${dG >= 0 ? "naik" : "turun"} ${Math.abs(dG).toFixed(1)}% ${R.sub}` : ""}${staleN.length ? ` (perbandingan tanpa ${staleN.length} toko yang datanya belum lengkap)` : ""}.`,
-    ...(per.length > 1 ? [`Kontributor terbesar: ${per[0].s.brand} · ${per[0].s.platform} (${(per[0].g / (n.g || 1) * 100).toFixed(0)}%).`] : []), ...prod.sum.slice(0, 2)];
-  const ana = [...(cmp ? [isFinite(dC) && Math.abs(dC) > Math.abs(dA) ? `Perubahan GMV lebih didorong konversi (${dC.toFixed(1)}%) daripada AOV (${dA.toFixed(1)}%).` : `Perubahan GMV lebih didorong AOV (${dA.toFixed(1)}%)${isFinite(dC) ? ` daripada konversi (${dC.toFixed(1)}%)` : ""}.`] : []),
-    ...(worst && worst.ch < -5 && cmpd.length > 1 ? [`${worst.s.platform} · ${worst.s.brand} paling melemah (${worst.ch.toFixed(1)}%).`] : []),
-    ...(best && best.ch > 5 && cmpd.length > 1 ? [`${best.s.platform} · ${best.s.brand} paling tumbuh (+${best.ch.toFixed(1)}%).`] : []), ...prod.ana.slice(0, 2)];
+  const sum = [`GMV ${fmt(n.g)}${cmp ? `, ${dG >= 0 ? "naik" : "turun"} ${Math.abs(dG).toFixed(1).replace(".", ",")}% ${R.sub}` : ""}${staleN.length ? ` (perbandingan tanpa ${staleN.length} toko yang datanya belum lengkap)` : ""}.`,
+    ...(per.length > 1 ? [`Kontributor terbesar: ${per[0].s.brand} · ${per[0].s.platform} (${(per[0].g / (n.g || 1) * 100).toFixed(0).replace(".", ",")}%).`] : []), ...prod.sum.slice(0, 2)];
+  const ana = [...(cmp ? [isFinite(dC) && Math.abs(dC) > Math.abs(dA) ? `Perubahan GMV lebih didorong konversi (${dC.toFixed(1).replace(".", ",")}%) daripada AOV (${dA.toFixed(1).replace(".", ",")}%).` : `Perubahan GMV lebih didorong AOV (${dA.toFixed(1).replace(".", ",")}%)${isFinite(dC) ? ` daripada konversi (${dC.toFixed(1).replace(".", ",")}%)` : ""}.`] : []),
+    ...(worst && worst.ch < -5 && cmpd.length > 1 ? [`${worst.s.platform} · ${worst.s.brand} paling melemah (${worst.ch.toFixed(1).replace(".", ",")}%).`] : []),
+    ...(best && best.ch > 5 && cmpd.length > 1 ? [`${best.s.platform} · ${best.s.brand} paling tumbuh (+${best.ch.toFixed(1).replace(".", ",")}%).`] : []), ...prod.ana.slice(0, 2)];
   const next = [...(worst && worst.ch < -5 && cmpd.length > 1 ? [`Cek ${worst.s.platform} · ${worst.s.brand}: listing, stok varian laris, harga, status iklan.`] : []),
     ...(staleN.length ? [`Upload data terbaru: ${staleN.map((r) => `${r.s.platform} · ${r.s.brand}`).join(", ")}.`] : []), ...prod.next.slice(0, 2)];
   const tot = n.g || 1;
@@ -285,7 +285,7 @@ function TokoTab({ R, stores, sales, last, prod, live, ads, plat, scN, scP, fr }
       const S2 = (L: SP[], k: string) => L.reduce((t, x) => t + (typeof x.d[k] === "number" ? (x.d[k] as number) * x.w : 0), 0);
       const has = (L: SP[], k: string) => L.some((x) => typeof x.d[k] === "number");
       const card = (l: string, v: number, p: number | null, f: (n: number) => string, inv = false, note?: string) => { const d = p && cmpSC ? ((v - p) / p) * 100 : null, good = d == null || (inv ? d <= 0 : d >= 0);
-        return <div className="mbc" key={l} style={{ cursor: "default" }}><span className="mbl">{l}</span><b>{f(v)}</b><span className={"mbd " + (d == null ? "muted" : good ? "up" : "dn")}>{d == null ? (note ?? "") : `${d >= 0 ? "▲" : "▼"} ${Math.abs(d).toFixed(1)}% ${R.sub}`}</span></div>; };
+        return <div className="mbc" key={l} style={{ cursor: "default" }}><span className="mbl">{l}</span><b>{f(v)}</b><span className={"mbd " + (d == null ? "muted" : good ? "up" : "dn")}>{d == null ? (note ?? "") : `${d >= 0 ? "▲" : "▼"} ${Math.abs(d).toFixed(1).replace(".", ",")}% ${R.sub}`}</span></div>; };
       const cmpSC = scP.length > 0 && R.key !== "all";
       const nn = (n: number) => Math.round(n).toLocaleString("id"), pc = (n: number) => n.toFixed(2).replace(".", ",") + "%";
       const pen = S2(scN, "penjualan"), penP = S2(scP, "penjualan"), pes = S2(scN, "pesanan"), pesP = S2(scP, "pesanan");
@@ -305,14 +305,14 @@ function TokoTab({ R, stores, sales, last, prod, live, ads, plat, scN, scP, fr }
         <h3 className="mbgh">Pembeli & trafik</h3><div className="mbg">
           {card("Pembeli", pb, cmpSC ? S2(scP, "pembeli") : null, nn)}
           {card("Pembeli baru", br, cmpSC ? S2(scP, "baru") : null, nn)}
-          {card("Pembeli lama", lm, cmpSC ? S2(scP, "lama") : null, nn, false, pb ? `${((lm / pb) * 100).toFixed(1)}% dari pembeli` : undefined)}
+          {card("Pembeli lama", lm, cmpSC ? S2(scP, "lama") : null, nn, false, pb ? `${((lm / pb) * 100).toFixed(1).replace(".", ",")}% dari pembeli` : undefined)}
           {card("Potensi pembeli", pt, cmpSC ? S2(scP, "potensi") : null, nn)}
           {card("Produk diklik", kl, cmpSC ? S2(scP, "diklik") : null, nn)}
           {card("Penjualan (Seller Centre)", pen, cmpSC ? penP : null, fmt)}
         </div>
         {kk && <><h3 className="mbgh">Rincian kontribusi penjualan</h3><div className="contrib" style={{ marginTop: 8 }}>
           <div className="tot"><span>Total penjualan (100%)</span><b>{fmt(pen)}</b></div>
-          {K.map(([l, k]) => { const v = S2(scN, k), vp = S2(scP, k); return <div key={k}><span>{l}</span><b>{fmt(v)}</b><small className="small muted">{pen ? ((v / pen) * 100).toFixed(0) : 0}% dari penjualan{cmpSC && vp ? <span className={v >= vp ? "up" : "dn"}> {v >= vp ? "▲" : "▼"} {Math.abs(pct(v, vp)).toFixed(1)}%</span> : null}</small></div>; })}
+          {K.map(([l, k]) => { const v = S2(scN, k), vp = S2(scP, k); return <div key={k}><span>{l}</span><b>{fmt(v)}</b><small className="small muted">{pen ? ((v / pen) * 100).toFixed(0) : 0}% dari penjualan{cmpSC && vp ? <span className={v >= vp ? "up" : "dn"}> {v >= vp ? "▲" : "▼"} {Math.abs(pct(v, vp)).toFixed(1).replace(".", ",")}%</span> : null}</small></div>; })}
           <div><span>Iklan Shopee (kontribusi)</span><b>{fmt(S2(scN, "k_iklan"))}</b><small className="small muted">{pen ? Math.min(100, (S2(scN, "k_iklan") / pen) * 100).toFixed(0) : 0}% dari penjualan</small></div>
         </div></>}
         <p className="muted small" style={{ marginBottom: 12 }}>Sumber: ekspor statistik toko Shopee (Data Bisnis), status pesanan dibuat. Laporannya bulanan{monthly ? ", jadi untuk periode yang tidak sebulan penuh angkanya dibagi rata per hari (perkiraan)" : ""}. Kontribusi iklan dihitung Shopee terpisah dan bisa tumpang tindih dengan sumber lain.</p>
@@ -324,22 +324,22 @@ function TokoTab({ R, stores, sales, last, prod, live, ads, plat, scN, scP, fr }
       const ids2 = new Set(stores.map((x) => x.id)), pr = (x: Ad, a: string, b: string) => { const f = x.dari > a ? x.dari : a, t = x.sampai < b ? x.sampai : b; return f > t ? 0 : (dayDiff(f, t) + 1) / (dayDiff(x.dari, x.sampai) + 1); };
       const ad = ads.filter((x) => ids2.has(x.store_id)).reduce((t, x) => t + +x.gmv * pr(x, R.from, R.to), 0), adP = ads.filter((x) => ids2.has(x.store_id)).reduce((t, x) => t + +x.gmv * pr(x, R.pf, R.pt), 0);
       if (!lv && !ad) return null;
-      const tot = n.g || 1, ch = (a2: number, b2: number) => cmp && b2 ? <span className={a2 >= b2 ? "up" : "dn"}> {a2 >= b2 ? "▲" : "▼"} {Math.abs(pct(a2, b2)).toFixed(1)}%</span> : null;
+      const tot = n.g || 1, ch = (a2: number, b2: number) => cmp && b2 ? <span className={a2 >= b2 ? "up" : "dn"}> {a2 >= b2 ? "▲" : "▼"} {Math.abs(pct(a2, b2)).toFixed(1).replace(".", ",")}%</span> : null;
       return <div className="card"><h2>Rincian kontribusi penjualan</h2><div className="contrib">
         <div className="tot"><span>Total penjualan (100%)</span><b>{fmt(n.g)}</b><small className="small">{ch(n.g, o.g)}</small></div>
-        {lv > 0 && <div><span>Livestream (data laporan live)</span><b>{fmt(lv)}</b><small className="small muted">{Math.min(100, (lv / tot) * 100).toFixed(0)}% dari penjualan{ch(lv, lvP)}</small></div>}
-        {lv > 0 && <div><span>Di luar livestream</span><b>{fmt(Math.max(0, n.g - lv))}</b><small className="small muted">{Math.max(0, 100 - (lv / tot) * 100).toFixed(0)}% dari penjualan</small></div>}
-        {ad > 0 && <div><span>Dipengaruhi iklan (atribusi platform)</span><b>{fmt(ad)}</b><small className="small muted">{Math.min(100, (ad / tot) * 100).toFixed(0)}% dari penjualan{ch(ad, adP)}</small></div>}
+        {lv > 0 && <div><span>Livestream (data laporan live)</span><b>{fmt(lv)}</b><small className="small muted">{Math.min(100, (lv / tot) * 100).toFixed(0).replace(".", ",")}% dari penjualan{ch(lv, lvP)}</small></div>}
+        {lv > 0 && <div><span>Di luar livestream</span><b>{fmt(Math.max(0, n.g - lv))}</b><small className="small muted">{Math.max(0, 100 - (lv / tot) * 100).toFixed(0).replace(".", ",")}% dari penjualan</small></div>}
+        {ad > 0 && <div><span>Dipengaruhi iklan (atribusi platform)</span><b>{fmt(ad)}</b><small className="small muted">{Math.min(100, (ad / tot) * 100).toFixed(0).replace(".", ",")}% dari penjualan{ch(ad, adP)}</small></div>}
       </div><p className="muted small">Kontribusi iklan dan livestream bisa saling tumpang tindih (pesanan dari live juga bisa tercatat sebagai hasil iklan), jadi persentasenya tidak dijumlahkan. Video & affiliate belum termasuk karena belum ada data hariannya.</p></div>; })()}
     <div className="card"><h2>Per toko</h2>
       {per.length > 1 && (() => { const P = ["Shopee", "TikTok"].map((pf) => ({ l: pf, v: per.filter((r) => r.s.platform === pf).reduce((a, r) => a + r.g, 0) })).filter((x) => x.v > 0); const t = P.reduce((a, x) => a + x.v, 0) || 1;
         return P.length > 1 ? <div className="pfrow"><div className="pfsplit">{P.map((x) => <i key={x.l} style={{ width: `${(x.v / t) * 100}%`, background: x.l === "Shopee" ? "var(--accent)" : "var(--aqua)" }} />)}</div>
-          <div className="muted small">{P.map((x) => <span key={x.l} style={{ marginRight: 14 }}><b style={{ color: x.l === "Shopee" ? "var(--accent)" : "var(--aqua)" }}>■</b> {x.l} {fmt(x.v)} · {((x.v / t) * 100).toFixed(0)}%</span>)}</div></div> : null; })()}
+          <div className="muted small">{P.map((x) => <span key={x.l} style={{ marginRight: 14 }}><b style={{ color: x.l === "Shopee" ? "var(--accent)" : "var(--aqua)" }}>■</b> {x.l} {fmt(x.v)} · {((x.v / t) * 100).toFixed(0).replace(".", ",")}%</span>)}</div></div> : null; })()}
       <div className="tbl"><table><thead><tr><th>Toko</th><th className="n">GMV</th><th className="n">Porsi</th><th className="n">Pesanan</th><th className="n">AOV</th><th className="n">Pengunjung</th><th className="n">Konversi</th><th className="n">Δ GMV</th><th>Tren</th><th>Data s.d.</th><th>Status</th></tr></thead>
       <tbody>{per.map((r) => <tr key={r.s.id}><td>{r.s.platform} · {r.s.brand}</td><td className="n">{fmt(r.g)}</td>
-        <td className="n"><div className="minibar"><i style={{ width: `${(r.g / tot) * 100}%` }} /></div>{((r.g / tot) * 100).toFixed(0)}%</td>
-        <td className="n">{r.o.toLocaleString("id")}</td><td className="n">{r.o ? fmt(r.aov) : "–"}</td><td className="n">{r.v != null ? r.v.toLocaleString("id") : "–"}</td><td className="n">{isFinite(r.cr) ? r.cr.toFixed(2) + "%" : "–"}</td>
-        <td className={"n " + (!isFinite(r.ch) ? "" : r.ch >= 0 ? "up" : "dn")}>{!isFinite(r.ch) || R.key === "all" ? "–" : `${r.ch >= 0 ? "+" : ""}${r.ch.toFixed(1)}%`}</td>
+        <td className="n"><div className="minibar"><i style={{ width: `${(r.g / tot) * 100}%` }} /></div>{((r.g / tot) * 100).toFixed(0).replace(".", ",")}%</td>
+        <td className="n">{r.o.toLocaleString("id")}</td><td className="n">{r.o ? fmt(r.aov) : "–"}</td><td className="n">{r.v != null ? r.v.toLocaleString("id") : "–"}</td><td className="n">{isFinite(r.cr) ? r.cr.toFixed(2).replace(".", ",") + "%" : "–"}</td>
+        <td className={"n " + (!isFinite(r.ch) ? "" : r.ch >= 0 ? "up" : "dn")}>{!isFinite(r.ch) || R.key === "all" ? "–" : `${r.ch >= 0 ? "+" : ""}${r.ch.toFixed(1).replace(".", ",")}%`}</td>
         <td><Spark v={r.tr} /></td><td className="small">{r.last ? tgl(r.last) : "–"}</td>
         <td>{r.st ? <span className="pill mute">Data belum lengkap</span> : R.key === "all" ? "–" : r.ch < -25 ? <span className="pill bad">Turun tajam</span> : r.ch < -5 ? <span className="pill warn">Turun</span> : <span className="pill good">Stabil/naik</span>}</td></tr>)}</tbody></table></div>
       {staleN.length > 0 && <p className="muted small">Toko bertanda &quot;Data belum lengkap&quot; datanya berhenti lebih dari 3 hari sebelum akhir periode, jadi tidak dihitung dalam perbandingan.</p>}</div>
@@ -391,9 +391,9 @@ function IklanTab({ R, stores, ads, sales, meta = [], share = false, fr }: { fr?
   const sumB = boros.reduce((a, r) => a + r.s, 0);
   const L = (t: string, xs: CRow[], f: (r: CRow) => string, cls: string, hint: string) => <div className="act"><h3><span className={"pill " + cls}>{xs.length}</span> {t}</h3><p className="muted small" style={{ margin: "-4px 0 8px" }}>{hint}</p>{xs.length ? <ul>{xs.slice(0, 5).map((r) => <li key={r.k} title={r.nama}><b>{shortName(r.nama)}</b> <span className="muted small">{r.toko} · {f(r)}</span></li>)}{xs.length > 5 && <li className="muted small">+{xs.length - 5} lainnya (filter status di tabel)</li>}</ul> : <p className="muted small">Tidak ada.</p>}</div>;
   return (<>
-    <p className="note">Data iklan: {ket}.</p>
+    <p className="muted small">Data iklan: {ket}.</p>
     <div className="ichart"><Insight src="Data asli" sum={[`Biaya iklan ${fmt2(S)}${om ? ` (${(S / om * 100).toFixed(2).replace(".", ",")}% dari GMV toko)` : ""}, ROAS ${roas.toFixed(2).replace(".", ",")}${cmp ? ` (${roas >= roasP ? "naik" : "turun"} dari ${roasP.toFixed(2).replace(".", ",")} ${R.sub})` : ""}.`, ...(per.length > 1 ? [`Biaya terbesar: ${per[0].st.brand} · ${per[0].st.platform} (${fmt2(per[0].s)}, ROAS ${per[0].r.toFixed(2).replace(".", ",")}).`] : [])]}
-      ana={[...(boros.length ? [`${boros.length} kampanye boros menyerap ${fmt2(sumB)} (${(sumB / S * 100).toFixed(0)}% biaya) dengan ROAS di bawah ${(roas * 0.6).toFixed(2).replace(".", ",")}.`] : []), ...(nol.length ? [`${nol.length} kampanye keluar biaya tanpa pesanan (${fmt2(nol.reduce((a, r) => a + r.s, 0))}).`] : []), ...(scale.length ? [`${scale.length} kampanye efisien (ROAS ≥ ${(roas * 1.3).toFixed(2).replace(".", ",")}) masih berbiaya kecil.`] : [])]}
+      ana={[...(boros.length ? [`${boros.length} kampanye boros menyerap ${fmt2(sumB)} (${(sumB / S * 100).toFixed(0).replace(".", ",")}% biaya) dengan ROAS di bawah ${(roas * 0.6).toFixed(2).replace(".", ",")}.`] : []), ...(nol.length ? [`${nol.length} kampanye keluar biaya tanpa pesanan (${fmt2(nol.reduce((a, r) => a + r.s, 0))}).`] : []), ...(scale.length ? [`${scale.length} kampanye efisien (ROAS ≥ ${(roas * 1.3).toFixed(2).replace(".", ",")}) masih berbiaya kecil.`] : [])]}
       next={[...(boros.length ? [`Pangkas atau turunkan bid ${boros.length} kampanye boros, hemat sampai ${fmt2(sumB * 0.5)}.`] : []), ...(nol.length ? [`Matikan atau ganti produk di ${nol.length} kampanye tanpa penjualan.`] : []), ...(scale.length ? [`Naikkan budget ${Math.min(5, scale.length)} kampanye "bisa di-scale" 20–30%, evaluasi 3 hari.`] : [])]} />
     {(() => { const B0 = buckets(R.from, R.to), PB0 = dayDiff(R.from, R.to) >= 13 ? buckets(R.pf, R.pt) : null;
       const ser = (bs: { f: string; t: string }[]) => bs.map((k) => { const r = all.reduce((a, x) => { const w = porsi(x, k.f, k.t); a.s += x.biaya * w; a.g += x.gmv * w; a.o += x.pesanan * w; return a; }, { s: 0, g: 0, o: 0 });
@@ -415,8 +415,8 @@ function IklanTab({ R, stores, ads, sales, meta = [], share = false, fr }: { fr?
         { g: "Efisiensi", k: "bo", l: "Biaya iklan / GMV toko", f: "pct", v: om ? (S / om) * 100 : NaN, ex: om ? `${fmt(S)} ÷ ${fmt(om)} × 100 = ${((S / om) * 100).toFixed(2).replace(".", ",")}%` : undefined, p: cmp && omP ? (Sp / omP) * 100 : null, inv: true, s: c.map((x) => (x.om ? (x.s / x.om) * 100 : 0)), ps: pv?.map((x) => (x.om ? (x.s / x.om) * 100 : 0)) },
       ];
       return <MetricBoard metrics={M} labels={B0.map((b) => b.l)} sub={R.sub} init={["s", "r"]} dec={2} fresh={fr} />; })()}</div>
-    {G > om && om > 0 && <p className="muted small" style={{ marginTop: -6 }}>GMV atribusi iklan bisa lebih besar dari GMV toko: platform menghitung pesanan dalam beberapa hari setelah klik (satu pesanan bisa tercatat di lebih dari satu kampanye) dan belum mengurangi pembatalan sebelum pesanan dikirim.</p>}
-    {monthly && <p className="muted small">Laporan bulanan Shopee dibagi rata per hari, jadi angka hariannya perkiraan.</p>}
+    {((G > om && om > 0) || monthly) && <details className="infod"><summary>ⓘ Catatan data iklan</summary>{G > om && om > 0 && <p className="muted small">GMV atribusi iklan bisa lebih besar dari GMV toko: platform menghitung pesanan dalam beberapa hari setelah klik (satu pesanan bisa tercatat di lebih dari satu kampanye) dan belum mengurangi pembatalan sebelum pesanan dikirim.</p>}
+      {monthly && <p className="muted small">Laporan bulanan Shopee dibagi rata per hari, jadi angka hariannya perkiraan.</p>}</details>}
     {per.length > 0 && <div className="card"><h2>Per toko</h2><div className="tbl"><table><thead><tr><th>Toko</th><th className="n">Biaya</th><th className="n">GMV iklan</th><th className="n">Pesanan</th><th className="n">ROAS</th><th className="n">Δ ROAS</th><th className="n">Biaya / omzet</th></tr></thead>
       <tbody>{per.map((x) => <tr key={x.st.id}><td>{x.st.platform} · {x.st.brand}</td><td className="n">{fmt2(x.s)}</td><td className="n">{fmt2(x.g)}</td><td className="n">{x.o.toLocaleString("id")}</td><td className="n">{x.r.toFixed(2).replace(".", ",")}</td>
         <td className={"n " + (x.rp == null || !cmp ? "" : x.r >= x.rp ? "up" : "dn")}>{x.rp == null || !cmp ? "–" : `${x.r - x.rp >= 0 ? "+" : ""}${(x.r - x.rp).toFixed(2).replace(".", ",")}`}</td><td className="n">{x.bo != null ? x.bo.toFixed(2).replace(".", ",") + "%" : "–"}</td></tr>)}</tbody></table></div></div>}
@@ -455,7 +455,7 @@ function JadwalVsLive({ jadwal, live }: { jadwal: Jd[]; live: Live[] }) {
   const tanpa = live.filter((l) => !used.has(l) && tglJadwal.has(l.tanggal));
   return <div className="card"><h2>Jadwal vs realisasi</h2><div className="tbl"><table><thead><tr><th>Host</th><th className="n">Jadwal</th><th className="n">Jam terjadwal</th><th className="n">Jam live sesuai jadwal</th><th className="n">Realisasi</th><th className="n">Jadwal tanpa live</th></tr></thead>
     <tbody>{rows.map((x) => { const p = x.j ? (x.r / x.j) * 100 : 0; return <tr key={x.nama}><td>{x.nama}</td><td className="n">{x.n}</td><td className="n">{jm(x.j)}</td><td className="n">{jm(x.r)}</td>
-      <td className="n"><span className={"pill " + (p >= 90 ? "good" : p >= 70 ? "warn" : "bad")}>{p.toFixed(0)}%</span></td><td className={"n" + (x.miss ? " dn" : "")}>{x.miss || "–"}</td></tr>; })}</tbody></table></div>
+      <td className="n"><span className={"pill " + (p >= 90 ? "good" : p >= 70 ? "warn" : "bad")}>{p.toFixed(0).replace(".", ",")}%</span></td><td className={"n" + (x.miss ? " dn" : "")}>{x.miss || "–"}</td></tr>; })}</tbody></table></div>
     <p className="muted small">Jam live dihitung dari sesi di laporan live dengan nama host yang sama, yang mulai paling cepat 1 jam sebelum jadwal sampai jadwal selesai.
       {` Dibandingkan hanya pada ${tglJadwal.size} tanggal yang sudah punya jadwal.`}{tanpa.length ? ` Di tanggal itu ada ${tanpa.length} sesi live (${jm(tanpa.reduce((a, l) => a + l.durasi_jam, 0))}) yang tidak sesuai jadwal: ${[...new Set(tanpa.map((l) => l.host || "tanpa nama"))].join(", ")}.` : ""}</p></div>;
 }
@@ -484,8 +484,8 @@ function LiveTab({ R, live, brand, plat, jadwal, fr }: { fr?: { l: string; w?: s
   const weak = cur.filter((x) => x.durasi_jam >= 1).sort((a, b) => gf(a) / a.durasi_jam - gf(b) / b.durasi_jam).slice(0, 10);
   return (<>
     <p className="note">Periode: {R.label}. Durasi dihitung sekali per sesi walau live di Shopee dan TikTok bersamaan.</p>
-    <div className="ichart"><Insight src="Data asli" sum={[`GMV live ${fmt(a.g)} dari ${a.n} sesi (${jm(a.j)})${R.key === "all" ? "" : `, ${pct(a.g, b.g) >= 0 ? "naik" : "turun"} ${Math.abs(pct(a.g, b.g)).toFixed(1)}% ${R.sub}`}.`, `Rata-rata ${fmt(gj)} per jam.`, `Shopee ${fmt(a.gs)} · TikTok ${fmt(a.gt)}.`]}
-      ana={[...(best && worst && best !== worst ? [`Slot ${SLOTS[best.i][2]} paling produktif (${fmt(best.g)}/jam), slot ${SLOTS[worst.i][2]} paling lemah (${fmt(worst.g)}/jam).`] : []), ...(effi.length > 1 ? [`GMV/jam tertinggi: ${effi[0].k} (${fmt(effi[0].s.g / effi[0].s.j)}); terendah: ${effi[effi.length - 1].k}.`] : []), ...(zr > 15 ? [`${zr.toFixed(0)}% sesi ≥1 jam berakhir Rp0.`] : [])]}
+    <div className="ichart"><Insight src="Data asli" sum={[`GMV live ${fmt(a.g)} dari ${a.n} sesi (${jm(a.j)})${R.key === "all" ? "" : `, ${pct(a.g, b.g) >= 0 ? "naik" : "turun"} ${Math.abs(pct(a.g, b.g)).toFixed(1).replace(".", ",")}% ${R.sub}`}.`, `Rata-rata ${fmt(gj)} per jam.`, `Shopee ${fmt(a.gs)} · TikTok ${fmt(a.gt)}.`]}
+      ana={[...(best && worst && best !== worst ? [`Slot ${SLOTS[best.i][2]} paling produktif (${fmt(best.g)}/jam), slot ${SLOTS[worst.i][2]} paling lemah (${fmt(worst.g)}/jam).`] : []), ...(effi.length > 1 ? [`GMV/jam tertinggi: ${effi[0].k} (${fmt(effi[0].s.g / effi[0].s.j)}); terendah: ${effi[effi.length - 1].k}.`] : []), ...(zr > 15 ? [`${zr.toFixed(0).replace(".", ",")}% sesi ≥1 jam berakhir Rp0.`] : [])]}
       next={[...(best && worst && best !== worst ? [`Geser jam dari slot ${SLOTS[worst.i][2]} ke ${SLOTS[best.i][2]}, atau coba promo khusus di slot ${SLOTS[worst.i][2]}.`] : []), ...(effi.length > 1 ? [`Tempatkan ${effi[0].k} di slot terbaik; dampingi ${effi[effi.length - 1].k} dengan review rekaman dan skrip penawaran.`] : []), "Cek sesi Rp0: produk yang dipajang, voucher live, dan jam tayang."]} />
     {(() => { const PBl = dayDiff(R.from, R.to) >= 13 ? buckets(R.pf, R.pt) : null;
       const sr2 = (bs: { f: string; t: string }[]) => bs.map((k) => { const xs = L.filter((x) => x.tanggal >= k.f && x.tanggal <= k.t); const a2 = agg(xs); return { ...a2, pen: xs.reduce((s2, x) => s2 + (x.penonton ?? 0), 0) }; });
@@ -511,7 +511,7 @@ function LiveTab({ R, live, brand, plat, jadwal, fr }: { fr?: { l: string; w?: s
         const bs = SLOTS.map((_, i) => { const v = slot(h.v, i); return { i, g: v.j >= 1 ? v.g / v.j : -1 }; }).sort((x, y) => y.g - x.g)[0];
         const tw = WK.map((w) => { const v = agg(h.v.filter((x) => x.tanggal >= w.f && x.tanggal <= w.t)); return v.j ? v.g / v.j : 0; });
         return <tr key={h.k}><td><b>{h.k}</b>{h === hs[0] ? <div className="muted small">GMV terbesar</div> : h.k === effi[0]?.k ? <div className="muted small">Paling efisien</div> : null}</td><td className="n">{fmt(h.s.g)}</td><td className="n">{fmt(h.s.gs)}</td><td className="n">{fmt(h.s.gt)}</td><td className="n">{jm(h.s.j)}</td><td className="n">{h.s.n}</td><td className="n"><b>{fmt(gjH)}</b></td>
-          <td className={"n " + (!isFinite(d) ? "" : d >= 0 ? "up" : "dn")}>{isFinite(d) ? `${d >= 0 ? "+" : ""}${d.toFixed(0)}%` : "–"}</td><td className="n">{h.s.n ? ((h.s.z / h.s.n) * 100).toFixed(0) + "%" : "–"}</td><td className="small">{bs && bs.g > 0 ? `${SLOTS[bs.i][2]} (${fmt(bs.g)}/jam)` : "–"}</td><td>{WK.length > 1 ? <Spark v={tw} /> : "–"}</td></tr>; })}</tbody></table></div>
+          <td className={"n " + (!isFinite(d) ? "" : d >= 0 ? "up" : "dn")}>{isFinite(d) ? `${d >= 0 ? "+" : ""}${d.toFixed(0).replace(".", ",")}%` : "–"}</td><td className="n">{h.s.n ? ((h.s.z / h.s.n) * 100).toFixed(0).replace(".", ",") + "%" : "–"}</td><td className="small">{bs && bs.g > 0 ? `${SLOTS[bs.i][2]} (${fmt(bs.g)}/jam)` : "–"}</td><td>{WK.length > 1 ? <Spark v={tw} /> : "–"}</td></tr>; })}</tbody></table></div>
       {WK.length > 1 && <p className="muted small">Tren = GMV per jam per minggu ({WK.length} minggu). Δ dibanding {R.sub.replace(/^vs /, "")}.</p>}</div>
     <div className="card"><h2>GMV/jam per host & slot</h2><div className="tbl"><div className="hm">
       <div />{SLOTS.map((s) => <div key={s[2]} className="hmh"><b>{s[2]}</b><span>{s[3]}</span></div>)}
@@ -524,7 +524,7 @@ function LiveTab({ R, live, brand, plat, jadwal, fr }: { fr?: { l: string; w?: s
     </div></div><p className="muted small">Untuk menyusun jadwal: kotak paling gelap = kombinasi hari & jam dengan GMV per jam tertinggi.</p></div>
     {weak.length > 0 && <div className="card"><h2>10 sesi terlemah</h2><div className="tbl"><table><thead><tr><th>Tanggal</th><th>Jam</th><th>Host</th><th className="n">Durasi</th><th className="n">GMV</th><th className="n">GMV/jam</th><th className="n">vs rata-rata host</th></tr></thead>
       <tbody>{weak.map((x, i) => { const hh2 = hs.find((h) => h.k === (x.host || "Tanpa nama")), avg = hh2 ? hh2.s.g / hh2.s.j : 0, g = gf(x) / x.durasi_jam;
-        return <tr key={i}><td>{HARI[dow(x.tanggal)]}, {tgl(x.tanggal)}</td><td>{String(Math.floor(x.jam_mulai)).padStart(2, "0")}:{String(Math.round((x.jam_mulai % 1) * 60)).padStart(2, "0")}</td><td>{x.host || "–"}</td><td className="n">{jm(x.durasi_jam)}</td><td className="n">{fmt(gf(x))}</td><td className="n">{fmt(g)}</td><td className="n dn">{avg ? `${pct(g, avg).toFixed(0)}%` : "–"}</td></tr>; })}</tbody></table></div>
+        return <tr key={i}><td>{HARI[dow(x.tanggal)]}, {tgl(x.tanggal)}</td><td>{String(Math.floor(x.jam_mulai)).padStart(2, "0")}:{String(Math.round((x.jam_mulai % 1) * 60)).padStart(2, "0")}</td><td>{x.host || "–"}</td><td className="n">{jm(x.durasi_jam)}</td><td className="n">{fmt(gf(x))}</td><td className="n">{fmt(g)}</td><td className="n dn">{avg ? `${pct(g, avg).toFixed(0).replace(".", ",")}%` : "–"}</td></tr>; })}</tbody></table></div>
       <p className="muted small">Sesi ≥1 jam dengan GMV per jam terendah. Cek rekaman: produk yang dipajang, voucher live, dan alur penawaran.</p></div>}
     <div className="card"><h2>Daftar sesi live</h2><LiveSessions rows={cur.map((x) => ({ tgl: x.tanggal, hari: HARI[dow(x.tanggal)], jam: `${String(Math.floor(x.jam_mulai)).padStart(2, "0")}:${String(Math.round((x.jam_mulai % 1) * 60) % 60).padStart(2, "0")}`, host: x.host || "Tanpa nama", dur: x.durasi_jam, pen: x.penonton, gs: plat === "TikTok" ? 0 : x.gmv_shopee, gt: plat === "Shopee" ? 0 : x.gmv_tiktok }))} /></div>
     <div className="card"><h2>GMV live per {B[0].f === B[0].t ? "hari" : "bulan"}</h2><Bars title="GMV live" labels={B.map((x) => x.l)} series={[ser("gmv_shopee"), ser("gmv_tiktok")]} colors={["var(--accent)", "var(--aqua)"]} /><p className="muted small"><span style={{ color: "var(--accent)" }}>■</span> Shopee <span style={{ color: "var(--aqua)" }}>■</span> TikTok</p></div>
@@ -547,8 +547,8 @@ function prodStats(rows: Prod[], stores: Store[], PM: Map<string, { dl: number; 
   const turun = st.filter((r) => r.prev > tot * 0.005 && r.ch <= -50 && r.gmv > 0).sort((a, b) => a.gmv - a.prev - (b.gmv - b.prev)), naik = st.filter((r) => r.status === "naik").sort((a, b) => b.gmv - b.prev - (a.gmv - a.prev)), baru = st.filter((r) => r.status === "baru");
   if (!sold.length) return { st, tokoName, sum: [], ana: [], next: [], stop, turun, baru, naik };
   return { st, tokoName, stop, turun, baru, naik,
-    sum: [`${andalan.length} dari ${sold.length} SKU menyumbang 80% GMV; terlaris ${nm(sold[0])} (${sold[0].share.toFixed(0)}%).`],
-    ana: [...(stop.length ? [`${stop.length} SKU yang biasanya laku berhenti terjual.`] : []), ...turun.slice(0, 1).map((r) => `${nm(r)} turun ${Math.abs(r.ch).toFixed(0)}% (${fmt(r.prev)} → ${fmt(r.gmv)}).`)],
+    sum: [`${andalan.length} dari ${sold.length} SKU menyumbang 80% GMV; terlaris ${nm(sold[0])} (${sold[0].share.toFixed(0).replace(".", ",")}%).`],
+    ana: [...(stop.length ? [`${stop.length} SKU yang biasanya laku berhenti terjual.`] : []), ...turun.slice(0, 1).map((r) => `${nm(r)} turun ${Math.abs(r.ch).toFixed(0).replace(".", ",")}% (${fmt(r.prev)} → ${fmt(r.gmv)}).`)],
     next: [...(stop.length ? [`Cek stok & listing SKU yang berhenti terjual (lihat "Perlu tindakan").`] : []), ...(naik.length ? [`Tambah stok dan exposure ${nm(naik[0])} selagi naik.`] : [])] };
 }
 function ProdukSection({ R, ps, err }: { R: Range; ps: PStats; err?: string }) {

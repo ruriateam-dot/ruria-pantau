@@ -35,9 +35,9 @@ export default function ProdukTable({ rows, tokoName }: { rows: PRow[]; tokoName
               <td>{(() => { const k = rows.indexOf(r) + 1; return r.gmv > 0 ? <span className={"rk" + (k <= 3 ? " r" + k : "")}>{k}</span> : "–"; })()}</td>
               <td><span className="chev" aria-hidden="true">{isOpen ? "▾" : "▸"}</span> <b>{code}</b>{r.kode && r.kode.length > 1 && <div className="muted small">+{r.kode.length - 1} kode lain</div>}</td>
               <td className="wrapcell" title={r.nama}>{shortName(r.nama)}<div className="muted small">{r.tokoLabel}</div></td>
-              <td className="n">{fmt(r.gmv)}</td><td className="n">{r.qty.toLocaleString("id")}</td><td className="n">{r.qty ? fmt(r.gmv / r.qty) : "–"}</td>{hasSC && <><td className="n">{r.sc ? Math.round(r.sc.dl).toLocaleString("id") : "–"}</td><td className="n">{r.sc ? Math.round(r.sc.kl).toLocaleString("id") : "–"}</td><td className="n">{r.sc && r.sc.dl ? ((r.sc.kl / r.sc.dl) * 100).toFixed(2) + "%" : "–"}</td><td className="n">{r.sc ? Math.round(r.sc.kr).toLocaleString("id") : "–"}</td></>}
-              <td className={"n " + (r.ch >= 0 ? "up" : "dn")}>{r.prev ? `${r.ch >= 0 ? "+" : ""}${r.ch.toFixed(0)}%` : "–"}</td>
-              <td className="n">{r.share.toFixed(1)}%</td><td className="n muted">{r.gmv ? r.cum.toFixed(0) + "%" : "–"}</td>
+              <td className="n">{fmt(r.gmv)}</td><td className="n">{r.qty.toLocaleString("id")}</td><td className="n">{r.qty ? fmt(r.gmv / r.qty) : "–"}</td>{hasSC && <><td className="n">{r.sc ? Math.round(r.sc.dl).toLocaleString("id") : "–"}</td><td className="n">{r.sc ? Math.round(r.sc.kl).toLocaleString("id") : "–"}</td><td className="n">{r.sc && r.sc.dl ? ((r.sc.kl / r.sc.dl) * 100).toFixed(2).replace(".", ",") + "%" : "–"}</td><td className="n">{r.sc ? Math.round(r.sc.kr).toLocaleString("id") : "–"}</td></>}
+              <td className={"n " + (r.ch >= 0 ? "up" : "dn")}>{r.prev ? `${r.ch >= 0 ? "+" : ""}${r.ch.toFixed(0).replace(".", ",")}%` : "–"}</td>
+              <td className="n">{r.share.toFixed(1).replace(".", ",")}%</td><td className="n muted">{r.gmv ? r.cum.toFixed(0).replace(".", ",") + "%" : "–"}</td>
               <td><span className={"pill " + PILL[r.status][0]}>{PILL[r.status][1]}</span></td>
             </tr>
             {isOpen && (

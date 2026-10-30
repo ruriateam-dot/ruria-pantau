@@ -4,7 +4,7 @@ export function Kpi({ l, v, d, sub, invert }: { l: string; v: string; d?: number
   const good = d === undefined ? true : invert ? d <= 0 : d >= 0;
   return (
     <div className="kpi"><div className="kl">{l}</div><div className="kv">{v}</div>
-      {d !== undefined && isFinite(d) && <div className={"kd " + (good ? "up" : "dn")}>{d >= 0 ? "▲" : "▼"} {Math.abs(d).toFixed(1)}% <span className="muted">{sub}</span></div>}
+      {d !== undefined && isFinite(d) && <div className={"kd " + (good ? "up" : "dn")}>{d >= 0 ? "▲" : "▼"} {Math.abs(d).toFixed(1).replace(".", ",")}% <span className="muted">{sub}</span></div>}
       {d === undefined && sub && <div className="kd muted">{sub}</div>}
     </div>
   );
@@ -67,12 +67,12 @@ export function LineChart({ labels, cur, prev, title }: { labels: string[]; cur:
 export function Share({ items, color = "var(--accent)" }: { items: { l: string; v: number; note?: string }[]; color?: string }) {
   const tot = items.reduce((a, x) => a + x.v, 0) || 1, mx = Math.max(1, ...items.map((x) => x.v));
   return <div className="share">{items.map((x) => <div className="srow" key={x.l}>
-    <span>{x.l}</span><span className="v">{x.note ?? `${fmt(x.v)} · ${((x.v / tot) * 100).toFixed(0)}%`}</span>
+    <span>{x.l}</span><span className="v">{x.note ?? `${fmt(x.v)} · ${((x.v / tot) * 100).toFixed(0).replace(".", ",")}%`}</span>
     <div className="bar"><i style={{ width: `${(x.v / mx) * 100}%`, background: color }} /></div>
   </div>)}</div>;
 }
 
-export const Chg = ({ a, b }: { a: number; b: number }) => { const v = pct(a, b); return <b className={v >= 0 ? "up" : "dn"}>{v >= 0 ? "naik" : "turun"} {Math.abs(v).toFixed(1)}%</b>; };
+export const Chg = ({ a, b }: { a: number; b: number }) => { const v = pct(a, b); return <b className={v >= 0 ? "up" : "dn"}>{v >= 0 ? "naik" : "turun"} {Math.abs(v).toFixed(1).replace(".", ",")}%</b>; };
 export { fmt };
 
 /* Grafik tren kecil untuk tabel */
