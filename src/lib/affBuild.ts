@@ -102,9 +102,12 @@ export async function rebuildAff(clientId: string): Promise<string> {
   const Y = kemarin(), d30 = addD(Y, -29), d60 = addD(Y, -59), d90 = addD(Y, -89);
   const ids = stores.map((s) => s.id);
   const cov = await q<{ platform: string; a: string; b: string }>("select platform, date_format(min(tanggal), '%Y-%m-%d') a, date_format(max(tanggal), '%Y-%m-%d') b from aff_orders where store_id in (?) group by platform", [ids]);
-  const ok = (pl: string) => { const c = cov.find((x) => x.platform === pl); return !!c && c.a <= d90; };
+  // Jendela 30/60/90 hari per platform dihitung mundur dari tanggal data terakhir platform itu (maks. kemarin)
+  const ank = (pl: string) => { const c = cov.find((x) => x.platform === pl); return c && c.b < Y ? c.b : Y; };
+  const W = (pl: string) => { const e = ank(pl); return { e, d30: addD(e, -29), d60: addD(e, -59), d90: addD(e, -89) }; };
+  const ok = (pl: string) => { const c = cov.find((x) => x.platform === pl); return !!c && c.a <= W(pl).d90; };
   const doT = ok("T"), doS = ok("S");
-  const ket = (pl: string, nm: string) => { const c = cov.find((x) => x.platform === pl); return !c ? `${nm}: belum ada data` : c.a <= d90 ? `${nm}: dihitung ulang (${c.a} s/d ${c.b})` : `${nm}: data baru mulai ${c.a}, perlu data sejak ${d90} (90 hari terakhir) untuk menghitung ulang`; };
+  const ket = (pl: string, nm: string) => { const c = cov.find((x) => x.platform === pl); return !c ? `${nm}: belum ada data` : c.a <= W(pl).d90 ? `${nm}: dihitung ulang (${c.a} s/d ${c.b})` : `${nm}: data baru mulai ${c.a}, perlu data sejak ${W(pl).d90} (90 hari terakhir) untuk menghitung ulang`; };
   if (!doT && !doS) return `Prioritas affiliate belum dihitung ulang. ${ket("T", "TikTok")}. ${ket("S", "Shopee")}.`;
 
   // Bulan yang ditampilkan: Januari tahun ini s.d. bulan kemarin (minimal 6 bulan)
@@ -121,6 +124,7 @@ export async function rebuildAff(clientId: string): Promise<string> {
 
   const O = await q<O>("select store_id, platform, order_id, kreator, nama, date_format(tanggal, '%Y-%m-%d') tanggal, nilai, gagal, retur, konten, mcn, komisi from aff_orders where store_id in (?) and tanggal >= ?", [ids, months[0] + "-01"]);
   const agg = (pl: string) => {
+    const { e: Ye, d30, d60, d90 } = W(pl);
     const A = new Map<string, Agg>();
     for (const o of O) {
       if (o.platform !== pl) continue;
@@ -129,9 +133,9 @@ export async function rebuildAff(clientId: string): Promise<string> {
       const bersih = bad ? 0 : v - ret, i = mi(o.tanggal);
       a.gk += v; a.gx += bad ? v : ret; a.n++; if (bad) a.batal++;
       if (i >= 0) a.g[i] += pl === "T" ? v : bersih;     // TikTok per bulan = kotor, Shopee = bersih (sama seperti sebelumnya)
-      if (o.tanggal >= d30 && o.tanggal <= Y) a.l30 += bersih;
-      if (o.tanggal >= d60 && o.tanggal <= Y) a.l60 += bersih;
-      if (o.tanggal >= d90 && o.tanggal <= Y) a.l90 += bersih;
+      if (o.tanggal >= d30 && o.tanggal <= Ye) a.l30 += bersih;
+      if (o.tanggal >= d60 && o.tanggal <= Ye) a.l60 += bersih;
+      if (o.tanggal >= d90 && o.tanggal <= Ye) a.l90 += bersih;
       if (o.konten) a.kont.set(o.konten, (a.kont.get(o.konten) ?? 0) + v);
       a.br.add(brandOf.get(o.store_id) ?? "");
       if (o.mcn) a.mcn.set(o.mcn, (a.mcn.get(o.mcn) ?? 0) + v);
@@ -216,7 +220,7 @@ export async function rebuildAff(clientId: string): Promise<string> {
 
   // Kalau hanya satu platform dihitung ulang, bulan platform lain tetap memakai susunan lama
   const D = { ...(OLD ?? {}), tip: TIP, tipArti: TIP_ARTI, tt: TT, sh: SH, A, B, C, M: { tt: MT, sh: MS }, X: OLD?.X ?? [], HAL: OLD?.HAL ?? null,
-    TT_M: doT ? M : OLD?.TT_M, SH_M: doS ? M : OLD?.SH_M, ...(brands.length > 1 ? { BRANDS: brands } : {}), DIHITUNG: { kemarin: Y, tiktok: doT, shopee: doS } };
+    TT_M: doT ? M : OLD?.TT_M, SH_M: doS ? M : OLD?.SH_M, ...(brands.length > 1 ? { BRANDS: brands } : {}), DIHITUNG: { kemarin: Y, tiktok: doT, shopee: doS, sd_tiktok: ank("T"), sd_shopee: ank("S") } };
   // aksi: daftar baru untuk platform yang dihitung ulang; platform lama tetap menunjuk indeks daftar lama
   if (doT && doS) D.aks = AKS;
   else { const base = (OLD?.aks ?? []).length; D.aks = [...(OLD?.aks ?? []), ...AKS]; const shift = (rows: Row[], pi: number) => rows.forEach((r) => { r[pi] = (r[pi] as number) + base; });

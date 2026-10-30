@@ -445,7 +445,7 @@ function renderDb(){
     <span class="flabel">Urutkan</span>
     <select id="${W}-sort" aria-label="Urutkan menurut">${sortOpts(defs, f.sort)}</select>
     <button class="btn sm" id="${W}-dir" aria-label="Balik urutan">${dir === 'asc' ? '▲ ' + SORT_TXT[sd.t][1] : '▼ ' + SORT_TXT[sd.t][0]}</button>
-    <span class="count">${nf.format(list.length)} dari ${nf.format(rows.length)} akun · GMV kotor ${rpShort(tot('gk'))} · bersih ${rpShort(tot('gb'))} · batal & retur ${rpShort(tot('gx'))}</span>
+    <span class="count">${nf.format(list.length)} dari ${nf.format(rows.length)} akun · GMV kotor ${rpShort(tot('gk'))} · bersih ${rpShort(tot('gb'))} · batal & retur ${rpShort(tot('gx'))}</span>${(() => { const h = D.DIHITUNG || {}; const f = d => d ? fdate(d) : null; const t = [h.sd_tiktok && `TikTok s.d. ${f(h.sd_tiktok)}`, h.sd_shopee && `Shopee s.d. ${f(h.sd_shopee)}`].filter(Boolean); return t.length ? `<span class="count" style="margin-left:8px">· prioritas & GMV 30 hari dihitung dari data ${t.join(', ')}</span>` : ''; })()}
   </div>
   <div class="tscroll"><table>
     <thead><tr>${th('pr','Prio')}${th('u','Username')}<th>Tipe</th>${th('okt','GMV 30 hari terakhir','num')}${th('gb','GMV bersih','num')}${th('bln','Bulan aktif','num')}${th('sn','Sampel (all time)','num')}${th('sroi','Efektivitas sampel (all time)','num')}<th>${aksiLbl()}</th>${th('st','Status')}${th('resp','Respon')}${th('last','Terakhir dihubungi')}</tr></thead>
@@ -935,7 +935,7 @@ const andalan = r => r.k !== 'ag' && (D.tipArti ? true : r.tipe === 'Kreator kon
 /* penjelasan istilah (ikon ⓘ) */
 function GLOS_AFF_F(){ return { 'Prio': 'P1: GMV bersih 30 hari > Rp3 jt · P2: GMV bersih 90 hari > Rp1 jt · P3: ≤ Rp1 jt · P4: tidak jualan 60 hari / sampel belum efektif · P5: GMV 0 atau akun platform',
   'GMV bersih': 'Penjualan setelah dikurangi pesanan batal / tidak memenuhi syarat dan dana yang dikembalikan.',
-  'GMV 30 hari terakhir': 'GMV bersih 30 hari terakhir sampai kemarin.',
+  'GMV 30 hari terakhir': 'GMV bersih 30 hari terakhir, dihitung mundur dari tanggal data affiliate terakhir (lihat keterangan di atas tabel).',
   'Efektivitas sampel (all time)': '(GMV sebelum + sesudah sampel) ÷ (HPP + ongkir). Efektif bila di atas ambang klien.',
   'Bulan aktif': 'Jumlah bulan ada penjualan dari bulan yang ada datanya; di bawahnya bulan dengan kontribusi terbesar.' }; }
 
