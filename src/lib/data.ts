@@ -95,10 +95,13 @@ export async function produkSku(storeIds: string[], from: string, to: string, pf
   return out.sort((a, b) => b.gmv - a.gmv || b.gmv_prev - a.gmv_prev).slice(0, 300);
 }
 
-export type Cl = { id: string; nama: string; modul: string[]; target_roas: number | null; tab_klien?: string[] | null; lap_temuan?: string | null; lap_langkah?: string | null; lap_waktu?: string | null };
+export type Cl = { id: string; nama: string; modul: string[]; target_roas: number | null; tab_klien?: string[] | null; lap_temuan?: string | null; lap_langkah?: string | null; lap_waktu?: string | null; brand?: string };
 export async function clientsFor(ids: string[]): Promise<Cl[]> {
-  return ids.length ? (await q<{ id: string; nama: string; modul: string; target_roas: number | null; tab_klien: string | null; lap_temuan: string | null; lap_langkah: string | null; lap_waktu: string | null }>("select id, nama, modul, target_roas, tab_klien, lap_temuan, lap_langkah, date_format(lap_waktu, '%Y-%m-%d') lap_waktu from clients where id in (?) order by nama", [ids]))
-    .map((x) => ({ ...x, modul: x.modul.split(","), tab_klien: x.tab_klien == null ? null : x.tab_klien.split(",").filter(Boolean) })) : [];
+  if (!ids.length) return [];
+  const B = await q<{ client_id: string; brand: string }>("select distinct client_id, brand from stores where client_id in (?) and platform <> 'CPAS' order by brand", [ids]);
+  const brand = (id: string) => { const b = [...new Set(B.filter((x) => x.client_id === id).map((x) => x.brand))]; return b.length <= 2 ? b.join(" · ") : `${b.slice(0, 2).join(" · ")} +${b.length - 2}`; };
+  return (await q<{ id: string; nama: string; modul: string; target_roas: number | null; tab_klien: string | null; lap_temuan: string | null; lap_langkah: string | null; lap_waktu: string | null }>("select id, nama, modul, target_roas, tab_klien, lap_temuan, lap_langkah, date_format(lap_waktu, '%Y-%m-%d') lap_waktu from clients where id in (?) order by nama", [ids]))
+    .map((x) => ({ ...x, modul: x.modul.split(","), tab_klien: x.tab_klien == null ? null : x.tab_klien.split(",").filter(Boolean), brand: brand(x.id) || x.nama }));
 }
 
 

@@ -6,7 +6,7 @@ import { todayWIB, addDays, tgl } from "@/lib/period";
    harian (data kemarin): statistik toko, produk, iklan · live: 7 hari terakhir · pesanan & penghasilan: tiap tanggal 1, 6, 11, 16, 21, 26, 30
    stok: mingguan (klien yang stoknya dihitung) · affiliate (JF, OT, CV Cahaya): 4 file mingguan */
 const JADWAL = [1, 6, 11, 16, 21, 26, 30];
-type Cell = { ok: boolean | null; last: string | null; need: string; gaps: [string, string][] };
+type Cell = { ok: boolean | null; last: string | null; need: string; gaps: [string, string][]; old?: [string, string][] };
 /* Iklan Shopee Jan–Mar 2026 sudah tidak bisa diunduh dari Shopee: tidak diminta & tidak ditandai kurang */
 const SHOPEE_ADS_ARSIP = "2026-04-01";
 /* Klien dengan ruang kerja affiliate: wajib 4 file per brand (Shopee: validasi komisi + AMS; TikTok: pesanan affiliate + Transaction Analysis) */
@@ -72,12 +72,15 @@ async function inner(clientIds: string[]) {
   for (const r of await q<{ k: string; d: string }>("select distinct client_id k, date_format(tanggal, '%Y-%m-%d') d from live_sessions where client_id in (?) and tanggal >= ?", [clientIds, START])) put("live|" + r.k, r.d);
   const first = (k: string) => { let m: string | null = null; for (const p of ["stat|", "ord|", "ads|"]) for (const d of sets.get(p + k) ?? []) if (!m || d < m) m = d; return m; };
   const cell = (last: string | null | undefined, need: string, on = true, key?: string, start?: string | null, minDays = 1, monthOnly = false): Cell => {
-    if (!on) return { ok: null, last: null, need, gaps: [] };
+    if (!on) return { ok: null, last: null, need, gaps: [], old: [] };
     const G = key ? gaps(sets.get(key) ?? new Set(), start && start > START ? start : START, need, minDays, monthOnly) : [];
     // data terbaru yang belum masuk selalu dihitung, berapa pun lamanya
     const tail: [string, string] | null = !last || last < need ? [last && last >= (start ?? START) ? addDays(last, 1) : (start && start > START ? start : START), need] : null;
     if (tail) { const lastG = G[G.length - 1]; if (!lastG || lastG[1] < tail[0]) G.push(tail); else if (lastG[1] < need) lastG[1] = need; }
-    return { ok: !G.length, last: last ?? null, need, gaps: G };
+    // "Hari ini" = kekurangan 7 hari terakhir sebelum batas; sisanya = data lama yang belum lengkap
+    const rs = addDays(need, -6), rec: [string, string][] = [], old: [string, string][] = [];
+    for (const [a, b] of G) { if (b >= rs) rec.push([a > rs ? a : rs, b]); if (a < rs) old.push([a, b < rs ? b : addDays(rs, -1)]); }
+    return { ok: !rec.length, last: last ?? null, need, gaps: rec, old };
   };
 
   type Row = { klien: string; toko: string; tt: boolean; c: Record<string, Cell> };
@@ -119,13 +122,16 @@ async function inner(clientIds: string[]) {
   const used = COLS.filter(([k]) => R.some((r) => r.c[k].ok !== null));
   const todo = R.reduce((a, r) => a + used.filter(([k]) => r.c[k].ok === false).length, 0), all = R.reduce((a, r) => a + used.filter(([k]) => r.c[k].ok !== null).length, 0);
   const show = (x: Cell, file: string) => x.ok === null ? <td className="ckc na">–</td>
-    : x.ok ? <td className="ckc ok" title={`${file} · terakhir s.d. ${x.last}`}><b>✓</b><span>s.d. {tgl(x.last!)}</span></td>
+    : x.ok ? <td className="ckc ok" title={`${file} · terakhir s.d. ${x.last ?? "–"}`}><b>✓</b><span>{x.last ? `s.d. ${tgl(x.last)}` : "aman"}</span>{x.old?.length ? <span className="oldg">+ data lama</span> : null}</td>
     : <td className="ckc no" title={`${file} · perlu: ${x.gaps.map(fmtGap).join(", ")}`}><b>✗</b><span className="per">{joinGaps(x.gaps) || `s.d. ${tgl(x.need)}`}</span><span>{x.last ? `ada s.d. ${tgl(x.last)}` : "belum pernah ada"}</span><em>{file}</em></td>;
   return <div className="card ucl">
-    <h2>Checklist upload hari ini</h2>
-    <p className="muted small"><b className={todo ? "dn" : "up"}>{todo ? `${todo} dari ${all} belum` : `Semua ${all} sudah lengkap`}</b> · data harian wajib s.d. kemarin ({tgl(y)}) · pesanan & penghasilan wajib s.d. {tgl(ordNeed)} · ✗ menampilkan periode yang perlu diupload (dicek sejak 1 Jan 2026 atau sejak data pertama toko)</p>
+    <h2>Upload hari ini</h2>
+    <p className="muted small"><b className={todo ? "dn" : "up"}>{todo ? `${todo} dari ${all} belum` : `Semua ${all} sudah lengkap`}</b> · data harian wajib s.d. kemarin ({tgl(y)}) · pesanan & penghasilan wajib s.d. {tgl(ordNeed)} · ✗ = kekurangan 7 hari terakhir (data lama di bagian bawah) · dicek sejak 1 Jan 2026 atau sejak data pertama toko)</p>
     <div className="tbl"><table><thead><tr><th>Klien</th><th>Toko</th>{used.map(([k, l, s, fs, ft]) => <th key={k} className="ckc">{l}<span>{s}</span><span className="fn">S: {fs}</span>{ft !== "–" && <span className="fn">T: {ft}</span>}</th>)}</tr></thead>
       <tbody>{R.map((r, i) => <tr key={i}><td className="small">{i === 0 || R[i - 1].klien !== r.klien ? <b>{r.klien}</b> : ""}</td><td><b>{r.toko}</b></td>{used.map(([k, , , fs, ft]) => <Fragment key={k}>{show(r.c[k], r.tt ? ft : fs)}</Fragment>)}</tr>)}</tbody></table></div>
+    {(() => { const L = R.flatMap((r) => used.filter(([k]) => r.c[k].old?.length).map(([k, l, , fs, ft]) => ({ r, l, f: r.tt ? ft : fs, g: r.c[k].old! })));
+      return L.length ? <details className="oldd"><summary>Data lama yang belum lengkap <span className="muted small">({L.length} kotak · tidak mendesak)</span></summary>
+        <div className="tbl"><table><thead><tr><th>Klien · toko</th><th>Data</th><th>Periode belum ada</th><th>File</th></tr></thead><tbody>{L.map((x, i) => <tr key={i}><td>{x.r.klien} · {x.r.toko}</td><td>{x.l}</td><td>{joinGaps(x.g)}</td><td className="muted small">{x.f}</td></tr>)}</tbody></table></div></details> : null; })()}
     <p className="muted small">✓ sudah sesuai jadwal · ✗ belum (nama file yang perlu diupload tertulis di kotak) · – tidak perlu untuk toko ini · S = Shopee, T = TikTok. Stok tidak diminta untuk klien yang stoknya dianggap selalu ada.</p>
     {used.some(([k]) => k === "affp" || k === "affk") && <div className="tbl" style={{ marginTop: 12 }}><table><thead><tr><th>Platform</th><th>Performa affiliate</th><th>Pesanan affiliate / validasi tagihan</th><th>Jadwal</th></tr></thead><tbody>
       <tr><td><b>Shopee</b></td><td><code>AMSAffiliatePerformance…csv</code></td><td>Validasi tagihan · <code>SellerOnlinePaymentValidationReport…csv</code></td><td>mingguan</td></tr>

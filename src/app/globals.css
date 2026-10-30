@@ -584,3 +584,6 @@ div.rk:has(> .rkc){display:grid;width:auto;height:auto;place-items:stretch;borde
 .card .tbl td:first-child{white-space:normal;min-width:160px}
 .mbch svg text{font-size:11px}
 .infod{margin:-4px 0 12px}.infod>summary{cursor:pointer;font-size:12px;color:var(--muted);list-style:none}.infod>summary::-webkit-details-marker{display:none}.infod p{margin:6px 0 0}
+.ckc .oldg{display:block;font-size:10px;color:var(--muted)}.oldd{margin-top:12px}.oldd>summary{cursor:pointer;font-weight:600;color:var(--accent)}
+.slpt{display:block;font-size:10.5px;color:var(--muted);font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.slt{min-width:0}
+.h1pt{display:block;font-size:12px;font-weight:400;color:var(--muted);margin-top:2px}

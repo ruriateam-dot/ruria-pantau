@@ -12,6 +12,6 @@ export default async function AppShell({ user, active, keep = {}, children, subs
   return <>
     <LoadingBar />
     <Shell dashHref={dashHref} user={{ nama: user.nama, peran: PERAN_LABEL[user.peran] ?? user.peran }} staff={isStaff(user)} active={active} subs={subs} tab={keep.m}
-      clients={clients.map((c) => ({ id: c.id, nama: c.nama, href: href(c.id) }))}>{children}</Shell>
+      clients={clients.map((c) => ({ id: c.id, nama: c.brand ?? c.nama, pt: c.nama, href: href(c.id) }))}>{children}</Shell>
   </>;
 }

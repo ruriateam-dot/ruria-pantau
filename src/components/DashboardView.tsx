@@ -28,7 +28,7 @@ import { clientsFor, loadClient, freshness, produkSku, storeLast, storePeriods, 
 import { resolvePeriod, buckets, fmt, pct, jm, tgl, addDays, dayDiff, todayWIB, type Range } from "@/lib/period";
 
 type SPv = Record<string, string | undefined>;
-type Cl = { id: string; nama: string; modul: string[]; target_roas: number | null; tab_klien?: string[] | null; lap_temuan?: string | null; lap_langkah?: string | null; lap_waktu?: string | null };
+type Cl = { id: string; nama: string; modul: string[]; target_roas: number | null; tab_klien?: string[] | null; lap_temuan?: string | null; lap_langkah?: string | null; lap_waktu?: string | null; brand?: string };
 
 const TABS: [string, string][] = [["sum", "Dashboard"], ["lapor", "Laporan"], ["ringkas", "Ringkasan"], ["toko", "Penjualan"], ["iklan", "Iklan"], ["affiliate", "Kreator"], ["live", "Livestream"], ["forecast", "Stok"]];
 
@@ -134,7 +134,7 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
     <header className="dh">
       <div className="wrap top ctitle">
         {share ? <><span className="brandc"><RuriaWord height={20} /></span><b>Report</b><span className="muted">{c?.nama} · tampilan klien, hanya lihat</span></>
-          : tab === "sum" ? <h1>Dashboard</h1> : <div><nav className="crumb small muted" aria-label="Breadcrumb"><a href={base + "?m=sum"}>Dashboard</a> › <span>{c?.nama}</span> › <span>{tabName}</span></nav><h1>{tabName} · {c?.nama}</h1></div>}
+          : tab === "sum" ? <h1>Dashboard</h1> : <div><nav className="crumb small muted" aria-label="Breadcrumb"><a href={base + "?m=sum"}>Dashboard</a> › <span>{c?.brand ?? c?.nama}</span> › <span>{tabName}</span></nav><h1>{tabName} · {c?.brand ?? c?.nama}{c?.brand && c.brand !== c.nama && <small className="h1pt">{c.nama}</small>}</h1></div>}
       </div>
       {tab !== "forecast" && tab !== "affiliate" && <div className="wrap fbar"><Filters rng={[R.from, R.to]} cmp={R.key === "all" ? undefined : R.sub.replace(/^vs /, "dibanding ")} last={lastData ?? null} base={base} clients={share ? clients : []} hideClient={!share || clients.length < 2} brands={tab === "sum" || tab === "lapor" ? [] : brands} platforms={tab === "sum" || tab === "lapor" ? [] : platforms} label={R.label} />{tab !== "affiliate" && <ExportBar title={title} client={tab === "sum" ? null : c?.id ?? null} token={token} />}</div>}
       {tab !== "sum" && tab !== "lapor" && tabs}
@@ -180,7 +180,7 @@ async function RingkasTab({ R, c, stores, sales, ads, live }: { R: Range; c: Cl;
 }
 
 /* ---------------- Semua klien ---------------- */
-async function SumTab(R: Range, clients: { id: string; nama: string; modul: string[] }[], href: (id: string) => string, staff = false, hrefIklan: (id: string) => string = href, upl: React.ReactNode = null) {
+async function SumTab(R: Range, clients: { id: string; nama: string; modul: string[]; brand?: string }[], href: (id: string) => string, staff = false, hrefIklan: (id: string) => string = href, upl: React.ReactNode = null) {
   const F = await freshness(clients.map((c) => c.id));
   const yday = addDays(todayWIB(), -1);
   const badge = (d: string | null | undefined) => { if (!d) return <span className="pill mute">Belum ada data</span>; const lag = dayDiff(d, yday); return lag <= 0 ? <span className="pill good">Aman</span> : lag <= 3 ? <span className="pill warn">Kurang {lag} hari</span> : <span className="pill bad">Tertinggal {lag} hari</span>; };
@@ -204,7 +204,7 @@ async function SumTab(R: Range, clients: { id: string; nama: string; modul: stri
   const SL = staff ? await q<{ client_id: string; store_id: string; brand: string; platform: string; saldo: number }>(
     `select s.client_id, s.id store_id, s.brand, s.platform, b.saldo from ad_balance b join stores s on s.id = b.store_id where s.id in (?) and b.id = (select b2.id from ad_balance b2 where b2.store_id = b.store_id order by b2.waktu desc, b2.id desc limit 1)`, [SALDO_STORES]) : [];
   const statusOf = (r: (typeof rows)[number]) => { const f = F.find((x) => x.client_id === r.c.id); const out: [number, string][] = [];
-    for (const [k, d] of [["penjualan", f?.penjualan], ["iklan", r.c.modul.includes("iklan") ? f?.iklan : undefined]] as const) { if (!d) continue; const lag = dayDiff(d, yday); if (lag > 3) out.push([2, `Data ${k} tertinggal ${lag} hari`]); else if (lag > 0) out.push([1, `Data ${k} kurang ${lag} hari`]); }
+    for (const [k, d] of [["penjualan", f?.penjualan], ["iklan", r.c.modul.includes("iklan") ? f?.iklan : undefined]] as const) { if (!d) continue; const lag = dayDiff(d, yday); if (lag > 3) out.push([2, `Data ${k} tertinggal ${lag} hari`]); else if (lag >= 2) out.push([1, `Data ${k} kurang ${lag} hari`]); }
     for (const x of SL.filter((x) => x.client_id === r.c.id && +x.saldo < 2 * (AVG.get(x.store_id) ?? 0))) out.push([1, `Saldo ${x.platform} ${x.brand} < 2 hari belanja iklan`]);
     if (r.roas != null && r.roasP && r.roas < r.roasP * 0.85) out.push([1, `ROAS turun ${((1 - r.roas / r.roasP) * 100).toFixed(0).replace(".", ",")}%`]);
     out.sort((a, b) => b[0] - a[0]); return out; };
@@ -214,24 +214,28 @@ async function SumTab(R: Range, clients: { id: string; nama: string; modul: stri
   return (<>
     {rows.length > 0 && <div className={"verdict v-" + tone} role="status"><span className="vic" aria-hidden>{tone === "good" ? "✅" : tone === "warn" ? "⚠️" : "⛔"}</span><div>
       <b>Total GMV {rows.length} klien {fmt(totN)}{dT != null ? ` (${dT >= 0 ? "▲" : "▼"} ${Math.abs(dT).toFixed(1).replace(".", ",")}%)` : ""}. {perhatian.length ? `${perhatian.length} klien perlu perhatian.` : "Semua klien aman."}</b>
-      <ul className="vpts">{perhatian.slice(0, 3).map((x) => <li key={x.r.c.id}><a href={href(x.r.c.id)}>{x.r.c.nama}</a>: {x.so.map((y) => y[1]).join(" · ")}.</li>)}{!perhatian.length && up && <li>Pertumbuhan terbaik: {up.c.nama} ({pct(up.n, up.o).toFixed(1).replace(".", ",")}%).</li>}</ul></div></div>}
+      <ul className="vpts">{perhatian.slice(0, 3).map((x) => <li key={x.r.c.id}><a href={href(x.r.c.id)}>{x.r.c.brand ?? x.r.c.nama}</a>: {x.so.map((y) => y[1]).join(" · ")}.</li>)}{!perhatian.length && up && <li>Pertumbuhan terbaik: {up.c.brand ?? up.c.nama} ({pct(up.n, up.o).toFixed(1).replace(".", ",")}%).</li>}</ul></div></div>}
     <div className="ccards">{rows.map((r) => { const v = pct(r.n, r.o); const f = F.find((x) => x.client_id === r.c.id);
       const so = statusOf(r), lv = so[0]?.[0] ?? 0;
       return <a key={r.c.id} className={"ccard st" + lv} href={href(r.c.id)}>
-        <div className="top"><h3>{r.c.nama}</h3><span className={"pill " + (lv === 2 ? "bad" : lv === 1 ? "warn" : "good")} title={so.map((x) => x[1]).join(" · ")}>{so[0]?.[1] ?? "Aman"}{so.length > 1 ? ` +${so.length - 1}` : ""}</span></div>
+        <div className="top"><h3>{r.c.brand ?? r.c.nama}{r.c.brand && r.c.brand !== r.c.nama && <small className="h1pt">{r.c.nama}</small>}</h3><span className={"pill " + (lv === 2 ? "bad" : lv === 1 ? "warn" : "good")} title={so.map((x) => x[1]).join(" · ")}>{so[0]?.[1] ?? "Aman"}{so.length > 1 ? ` +${so.length - 1}` : ""}</span></div>
         <div className="cm"><div><span>GMV</span><b>{fmt(r.n)}</b></div><div><span>Perubahan</span><b className={v >= 0 ? "up" : "dn"}>{isFinite(v) ? `${v >= 0 ? "+" : ""}${v.toFixed(1).replace(".", ",")}%` : "–"}</b></div><div><span>ROAS iklan</span><b>{r.roas != null ? r.roas.toFixed(2).replace(".", ",") : "–"}</b></div></div>
         <div className="muted small">{r.ord.toLocaleString("id")} pesanan · data terakhir {f?.penjualan ? `${tgl(f.penjualan)} ${f.penjualan.slice(0, 4)}` : "–"}</div>
       </a>; })}</div>
     {upl}
     <div className="grid2c">{staff && await (async () => {
-      const S2 = await q<{ client_id: string; nama: string; brand: string; platform: string; saldo: number; oleh: string | null; w: string }>(
-        `select s.client_id, c.nama, s.brand, s.platform, b.saldo, b.nama oleh, date_format(b.waktu, '%Y-%m-%d %H:%i') w from ad_balance b join stores s on s.id = b.store_id join clients c on c.id = s.client_id
+      const S2a = await q<{ client_id: string; store_id: string; nama: string; brand: string; platform: string; saldo: number; oleh: string | null; w: string }>(
+        `select s.client_id, s.id store_id, c.nama, s.brand, s.platform, b.saldo, b.nama oleh, date_format(b.waktu, '%Y-%m-%d %H:%i') w from ad_balance b join stores s on s.id = b.store_id join clients c on c.id = s.client_id
          where s.client_id in (?) and s.id in (?) and b.id = (select b2.id from ad_balance b2 where b2.store_id = b.store_id order by b2.waktu desc, b2.id desc limit 1) order by b.saldo`, [clients.map((c) => c.id), SALDO_STORES]);
-      if (!S2.length) return null;
+      const lama0 = (w: string) => Date.now() - Date.parse(w.replace(" ", "T") + ":00+07:00") > 3 * 864e5;
+      const hari = (x: { store_id: string; saldo: number }) => { const a = AVG.get(x.store_id) ?? 0; return a > 0 ? +x.saldo / a : null; };
+      const S2 = S2a.filter((x) => { const h = hari(x); return lama0(x.w) || (h != null && h < 3); });
+      if (!S2a.length) return null;
+      if (!S2.length) return <div className="card"><h2>Saldo iklan</h2><p className="muted small">Semua saldo iklan cukup untuk 3 hari atau lebih. Daftar lengkap di tab Iklan tiap klien.</p></div>;
       const lama = (w: string) => Date.now() - Date.parse(w.replace(" ", "T") + ":00+07:00") > 3 * 864e5;
-      return <div className="card"><h2>Saldo iklan</h2><div className="tbl"><table><thead><tr><th>Klien</th><th>Akun</th><th className="n">Sisa saldo</th><th>Dicatat</th><th>Oleh</th></tr></thead>
-        <tbody>{S2.map((x, i) => <tr key={i}><td><a href={hrefIklan(x.client_id)}>{x.nama}</a></td><td>{x.platform} · {x.brand}</td><td className="n"><b>Rp{Math.round(+x.saldo).toLocaleString("id")}</b></td><td className={"small" + (lama(x.w) ? " dn" : "")}>{tgl(x.w.slice(0, 10))} {x.w.slice(11)} WIB{lama(x.w) ? " · lebih dari 3 hari" : ""}</td><td className="small">{x.oleh ?? "–"}</td></tr>)}</tbody></table></div>
-        <p className="muted small">Urut dari saldo terkecil. Update saldo di tab Iklan masing-masing klien.</p></div>;
+      return <div className="card"><h2>Saldo iklan menipis</h2><div className="tbl"><table><thead><tr><th>Klien</th><th>Akun</th><th className="n">Sisa saldo</th><th className="n">Cukup</th><th>Dicatat</th><th>Oleh</th></tr></thead>
+        <tbody>{S2.map((x, i) => <tr key={i}><td><a href={hrefIklan(x.client_id)}>{x.nama}</a></td><td>{x.platform} · {x.brand}</td><td className="n"><b>Rp{Math.round(+x.saldo).toLocaleString("id")}</b></td><td className="n">{(() => { const h = hari(x); return h == null ? "–" : <span className={"pill " + (h < 2 ? "bad" : "warn")}>{h.toFixed(1).replace(".", ",")} hari</span>; })()}</td><td className={"small" + (lama(x.w) ? " dn" : "")}>{tgl(x.w.slice(0, 10))} {x.w.slice(11)} WIB{lama(x.w) ? " · lebih dari 3 hari" : ""}</td><td className="small">{x.oleh ?? "–"}</td></tr>)}</tbody></table></div>
+        <p className="muted small">Hanya akun yang saldonya cukup &lt; 3 hari belanja iklan atau belum dicatat &gt; 3 hari. Daftar lengkap & update saldo di tab Iklan tiap klien.</p></div>;
     })()}</div>
   </>);
 }

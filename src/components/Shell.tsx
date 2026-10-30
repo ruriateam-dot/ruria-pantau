@@ -5,7 +5,7 @@ import { useNav } from "./Nav";
 import { logout } from "@/app/login/actions";
 import { RuriaWord, RuriaMark } from "./Logo";
 
-type Item = { id: string; nama: string; href: string };
+type Item = { id: string; nama: string; href: string; pt?: string };
 type Props = { user: { nama: string; peran: string }; staff: boolean; clients: Item[]; active?: string; dashHref: string; children: React.ReactNode; subs?: { k: string; l: string; href: string }[]; tab?: string };
 
 /* Pilihan tema hanya untuk superadmin; akun lain selalu terang */
@@ -52,8 +52,8 @@ export default function Shell({ user, staff, clients, active, dashHref, children
   useEffect(() => { setOpen(false); }, [path, active]);
   useEffect(() => { if (!open) return; const k = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false); addEventListener("keydown", k); return () => removeEventListener("keydown", k); }, [open]);
   const { mini, toggle } = useSide();
-  const link = (href: string, label: string, on: boolean, key?: string, icon?: React.ReactNode) =>
-    <a key={key} href={href} title={label} className={"sl" + (on ? " on" : "")} aria-current={on ? "page" : undefined} onClick={(e) => { e.preventDefault(); setOpen(false); go(href); }}>{icon}<span className="slt">{label}</span></a>;
+  const link = (href: string, label: string, on: boolean, key?: string, icon?: React.ReactNode, sub?: string) =>
+    <a key={key} href={href} title={label} className={"sl" + (on ? " on" : "")} aria-current={on ? "page" : undefined} onClick={(e) => { e.preventDefault(); setOpen(false); go(href); }}>{icon}<span className="slt">{label}{sub && sub !== label && <small className="slpt">{sub}</small>}</span></a>;
   const bl = (href: string, label: string, k: string, on: boolean) =>
     <a href={href} className={on ? "on" : ""} aria-current={on ? "page" : undefined} onClick={(e) => { e.preventDefault(); setOpen(false); go(href); }}><Ic k={k} /><span>{label}</span></a>;
   const cur = clients.find((c) => c.id === active);
@@ -66,7 +66,7 @@ export default function Shell({ user, staff, clients, active, dashHref, children
       </nav>
       <nav className="sgroup">
         <div className="sh">Klien</div>
-        {clients.length ? clients.map((c) => <div key={c.id}>{link(c.href, c.nama, path === "/dashboard" && c.id === active, undefined, <Dot n={c.id} />)}{c.id === active && path === "/dashboard" && subs.length > 0 && <div className="ssub">{subs.map((x) => <a key={x.k} href={x.href} className={"ssl" + (x.k === tab ? " on" : "")} aria-current={x.k === tab ? "page" : undefined} onClick={(e) => { e.preventDefault(); setOpen(false); go(x.href); }}>{x.l}</a>)}</div>}</div>) : <p className="muted small">Belum ada klien.</p>}
+        {clients.length ? clients.map((c) => <div key={c.id}>{link(c.href, c.nama, path === "/dashboard" && c.id === active, undefined, <Dot n={c.id} />, c.pt)}{c.id === active && path === "/dashboard" && subs.length > 0 && <div className="ssub">{subs.map((x) => <a key={x.k} href={x.href} className={"ssl" + (x.k === tab ? " on" : "")} aria-current={x.k === tab ? "page" : undefined} onClick={(e) => { e.preventDefault(); setOpen(false); go(x.href); }}>{x.l}</a>)}</div>}</div>) : <p className="muted small">Belum ada klien.</p>}
       </nav>
       <nav className="sgroup">
         <div className="sh">Menu</div>
