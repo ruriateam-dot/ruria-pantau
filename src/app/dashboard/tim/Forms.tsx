@@ -72,7 +72,7 @@ export function Links({ clients, links, origin }: { clients: C[]; links: { token
   const url = (t: string) => `${origin}/lihat/${t}`;
   return <div className="card form">
     <h2>Link untuk klien (lihat tanpa login)</h2>
-    <p className="muted small">Siapa pun yang memegang link bisa melihat dashboard klien tersebut (Analisa Toko, Iklan, Livestream) tanpa bisa mengubah apa pun. Nonaktifkan link kalau tidak dipakai lagi.</p>
+    <p className="muted small">Siapa pun yang memegang link bisa melihat dashboard klien tersebut (Penjualan, Iklan, Livestream) tanpa bisa mengubah apa pun. Nonaktifkan link kalau tidak dipakai lagi.</p>
     <form action={a} className="inline">
       <div style={{ flexBasis: "100%" }}><p className="muted small" style={{ margin: "0 0 6px" }}>Klien yang bisa dilihat lewat link ini (boleh lebih dari satu):</p><div className="chk">{clients.map((c) => <label key={c.id}><input type="checkbox" name="klien" value={c.id} /> {c.nama}</label>)}</div></div>
       <input name="label" placeholder="Catatan, mis. untuk owner" />

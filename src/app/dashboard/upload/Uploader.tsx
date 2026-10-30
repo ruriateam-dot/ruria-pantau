@@ -4,8 +4,22 @@ import { detect, type Parsed, type Sheet } from "@/lib/parse";
 import { saveUpload , saveOrders } from "./actions";
 
 type C = { id: string; nama: string };
-type St = { id: string; client_id: string; brand: string; platform: string };
-type Item = { name: string; p?: Parsed; err?: string; status?: "run" | "ok" | "err"; msg?: string };
+type St = { id: string; client_id: string; brand: string; platform: string; akun?: string | null };
+type Item = { name: string; p?: Parsed; err?: string; status?: "run" | "ok" | "err"; msg?: string; s?: string };
+const norm = (x: string) => x.toLowerCase().replace(/[^a-z0-9]/g, "");
+/* Tebak toko dari akun di file, platform di jenis file, dan nama toko di nama file */
+function guess(it: Item, stores: St[], c: string): string {
+  if (!it.p || it.p.kind === "live") return "";
+  const pl = /shopee/i.test(it.p.label) ? "Shopee" : /tiktok/i.test(it.p.label) ? "TikTok" : "";
+  const ak = "akun" in it.p && it.p.akun ? norm(it.p.akun) : "", fn = norm(it.name);
+  const C = stores.filter((x) => !pl || x.platform === pl);
+  const byAk = ak ? C.filter((x) => x.akun && (norm(x.akun) === ak || ak.includes(norm(x.brand)))) : [];
+  if (byAk.length === 1) return byAk[0].id;
+  const byNm = C.filter((x) => fn.includes(norm(x.brand)) || (x.akun && fn.includes(norm(x.akun))));
+  if (byNm.length === 1) return byNm[0].id;
+  const inC = C.filter((x) => x.client_id === c);
+  return inC.length === 1 ? inC[0].id : "";
+}
 
 const rp = (n: number) => "Rp" + Math.round(n).toLocaleString("id");
 
@@ -43,7 +57,7 @@ export default function Uploader({ clients, stores }: { clients: C[]; stores: St
   const [c, setC] = useState(clients[0]?.id ?? "");
   const [s, setS] = useState("");
   const [items, setItems] = useState<Item[]>([]);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(false), [drag, setDrag] = useState(false);
   const ss = useMemo(() => stores.filter((x) => x.client_id === c), [stores, c]);
   const store = ss.find((x) => x.id === s);
   const upd = (i: number, patch: Partial<Item>) => setItems((a) => a.map((x, j) => (j === i ? { ...x, ...patch } : x)));
@@ -60,18 +74,20 @@ export default function Uploader({ clients, stores }: { clients: C[]; stores: St
         }
       } catch (e) { out.push({ name: f.name, err: "File tidak bisa dibaca: " + (e as Error).message }); }
     }
-    setItems(out);
+    setItems(out.map((x) => ({ ...x, s: guess(x, stores, c) })));
     setBusy(false);
   }
 
-  const needStore = items.some((x) => x.p && x.p.kind !== "live");
-  const ready = items.some((x) => x.p && !x.status) && (!needStore || !!store);
+  const sOf = (it: Item) => it.s || s;
+  const missing = items.filter((x) => x.p && !x.status && x.p.kind !== "live" && !sOf(x)).length;
+  const ready = items.some((x) => x.p && !x.status) && !missing;
 
   async function save() {
     setBusy(true);
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
       if (!it.p || it.status === "ok") continue;
+      const st = sOf(it), cl = stores.find((x) => x.id === st)?.client_id ?? c;
       upd(i, { status: "run", msg: "Menyimpan…" });
       let r;
       if (it.p.kind === "produk") {
@@ -79,7 +95,7 @@ export default function Uploader({ clients, stores }: { clients: C[]; stores: St
         const N = 2000, parts = Math.ceil(it.p.rows.length / N);
         for (let k = 0; k < parts; k++) {
           upd(i, { msg: `Menyimpan… bagian ${k + 1} dari ${parts}` });
-          r = await saveUpload(c, s, it.name, { kind: "produk", label: it.p.label, rows: it.p.rows.slice(k * N, (k + 1) * N) }, k, parts, rng);
+          r = await saveUpload(cl, st, it.name, { kind: "produk", label: it.p.label, rows: it.p.rows.slice(k * N, (k + 1) * N) }, k, parts, rng);
           if (!r.ok) break;
         }
         if (!parts) r = { ok: true, msg: "" };
@@ -89,12 +105,12 @@ export default function Uploader({ clients, stores }: { clients: C[]; stores: St
           for (let k = 0; k < pp; k++) {
             upd(i, { msg: `Menyimpan status pesanan… bagian ${k + 1} dari ${pp}` });
             const ids = new Set(ord.slice(k * M, (k + 1) * M).map((o) => o[0]));
-            r = await saveOrders(c, s, ord.slice(k * M, (k + 1) * M), oi.filter((x) => ids.has(x[0])));
+            r = await saveOrders(cl, st, ord.slice(k * M, (k + 1) * M), oi.filter((x) => ids.has(x[0])));
             if (!r.ok) break;
           }
         }
         if (r?.ok) r = { ok: true, msg: "Tersimpan: " + summary(it.p) + (ord.length ? ` · ${ord.length.toLocaleString("id")} pesanan dengan status` : "") };
-      } else r = await saveUpload(c, s, it.name, it.p);
+      } else r = await saveUpload(cl, st, it.name, it.p);
       upd(i, { status: r!.ok ? "ok" : "err", msg: r!.msg });
     }
     setBusy(false);
@@ -103,21 +119,22 @@ export default function Uploader({ clients, stores }: { clients: C[]; stores: St
   return <div className="card form upl">
     <div className="grid2">
       <label>Klien<select value={c} onChange={(e) => { setC(e.target.value); setS(""); setItems([]); }}>{clients.map((x) => <option key={x.id} value={x.id}>{x.nama}</option>)}</select></label>
-      <label>Toko<select value={s} onChange={(e) => setS(e.target.value)}><option value="">— pilih toko —</option>{ss.map((x) => <option key={x.id} value={x.id}>{x.platform} · {x.brand}</option>)}</select></label>
+      <label>Toko bawaan (opsional)<select value={s} onChange={(e) => setS(e.target.value)}><option value="">— otomatis per file —</option>{ss.map((x) => <option key={x.id} value={x.id}>{x.platform} · {x.brand}</option>)}</select></label>
     </div>
-    <label className="drop">
+    <label className={"drop" + (drag ? " over" : "")} onDragOver={(e) => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)} onDrop={(e) => { e.preventDefault(); setDrag(false); pick(e.dataTransfer.files); }}>
       <input type="file" multiple accept=".xlsx,.xls,.csv,.zip" disabled={busy} onChange={(e) => { pick(e.target.files); e.target.value = ""; }} />
-      <span>{busy && !items.length ? "Membaca file…" : "Klik untuk memilih file (boleh beberapa sekaligus: xlsx, csv, atau zip)"}</span>
+      <span>{busy && !items.length ? "Membaca file…" : <><b>Tarik semua file ke sini</b> atau klik untuk memilih (xlsx, csv, zip). Klien, toko dan jenis file dikenali otomatis.</>}</span>
     </label>
     {items.length > 0 && <ul className="ulist">{items.map((it, i) => <li key={i} className={it.status ?? (it.err ? "err" : "")}>
       <b>{it.name}</b>
       {it.p && <div><span className="badge">{it.p.label}</span> {summary(it.p)}</div>}
+      {it.p && it.p.kind !== "live" && !it.status && <label className="small">Toko tujuan <select value={it.s ?? ""} onChange={(e) => upd(i, { s: e.target.value })} aria-label={"Toko tujuan " + it.name}><option value="">{store ? `Pakai pilihan atas (${store.platform} · ${store.brand})` : "— pilih toko —"}</option>{stores.map((x) => <option key={x.id} value={x.id}>{clients.find((k) => k.id === x.client_id)?.nama} · {x.platform} · {x.brand}</option>)}</select></label>}
       {it.err && <div className="err">{it.err}</div>}
       {it.msg && <div className={it.status === "err" ? "err" : it.status === "ok" ? "ok" : "muted"}>{it.msg}</div>}
     </li>)}</ul>}
     {items.length > 0 && <>
-      {needStore && !store && <p className="err">Pilih toko tujuan dulu.</p>}
-      {store && needStore && <p className="muted small">Akan disimpan ke <b>{store.platform} · {store.brand}</b>. Laporan livestream disimpan per klien.</p>}
+      {missing > 0 && <p className="err">{missing} file belum dikenali tokonya. Pilih toko tujuan di file tersebut.</p>}
+      <p className="muted small">Toko tujuan tiap file sudah ditebak otomatis, cek sebelum menyimpan. Laporan livestream disimpan per klien.</p>
       <button disabled={!ready || busy} onClick={save}>{busy ? "Menyimpan…" : "Simpan ke dashboard"}</button>
     </>}
   </div>;

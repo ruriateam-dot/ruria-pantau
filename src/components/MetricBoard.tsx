@@ -23,7 +23,8 @@ const fmtV = (f: Metric["f"], n: number, dec = 1) => {
   return Math.round(n).toLocaleString("id");
 };
 
-export default function MetricBoard({ metrics, labels, sub, init, dec = 1 }: { metrics: Metric[]; labels: string[]; sub: string; init?: string[]; dec?: number }) {
+export default function MetricBoard({ metrics, labels, sub, init, dec = 1, fresh }: { metrics: Metric[]; labels: string[]; sub: string; init?: string[]; dec?: number; fresh?: { l: string; w?: string; src?: string } }) {
+  const [pop, setPop] = useState<string | null>(null);
   const [sel, setSel] = useState<string[]>(init ?? metrics.slice(0, 2).map((m) => m.k));
   const [hov, setHov] = useState<number | null>(null);
   const ns = (k: string) => { const m = metrics.find((x) => x.k === k); return !m || m.s.every((v) => !isFinite(v)); };
@@ -34,17 +35,20 @@ export default function MetricBoard({ metrics, labels, sub, init, dec = 1 }: { m
   const step = Math.max(1, Math.ceil(n / 8));
   return (
     <div className="card mb">
+      {fresh?.w && <p className="fresh w" style={{ margin: "0 0 8px" }}>⚠ {fresh.w}. Angka periode ini belum lengkap untuk toko tersebut.</p>}
       <div className="grps">{[...new Set(metrics.map((m) => m.g ?? ""))].map((grp) => { const nG = metrics.filter((m) => (m.g ?? "") === grp).length; return <div key={grp} className="grp" style={{ flex: nG }}>{grp && <h3 className="mbgh">{grp}</h3>}<div className="mbg" style={{ gridTemplateColumns: `repeat(${nG}, minmax(0, 1fr))` }}>{metrics.filter((m) => (m.g ?? "") === grp).map((m) => { const i = sel.indexOf(m.k), d = m.d !== undefined ? (m.d != null && isFinite(m.d) ? m.d : null) : m.p != null && m.p !== 0 && isFinite(m.p) ? ((m.v - m.p) / Math.abs(m.p)) * 100 : null, good = d == null ? true : m.inv ? d <= 0 : d >= 0;
         return <button type="button" key={m.k} className={"mbc" + (i >= 0 ? " on" : "")} style={i >= 0 ? { borderTopColor: COL[i] } : undefined} onClick={() => toggle(m.k)} aria-pressed={i >= 0}>
-          <span className="mbl">{m.l}{GLOS[m.l] && <i className="ii" title={GLOS[m.l]} aria-label={GLOS[m.l]}>i</i>}</span><b>{fmtV(m.f, m.v, dec)}</b>
+          <span className="mbl">{m.l}{GLOS[m.l] && <span role="button" tabIndex={0} className="ii" aria-label={"Penjelasan " + m.l} aria-expanded={pop === m.k} onClick={(e) => { e.stopPropagation(); setPop(pop === m.k ? null : m.k); }} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); setPop(pop === m.k ? null : m.k); } }}>i</span>}</span>
+          {pop === m.k && <span className="mpop" role="note"><b>{m.l}</b><br />{GLOS[m.l]}{fresh?.src && <><br /><br />Sumber: {fresh.src}.</>}{fresh?.w && <><br />Belum lengkap: {fresh.w}.</>}</span>}<b>{fmtV(m.f, m.v, dec)}</b>
           <span className={"mbd " + (d == null ? "muted" : good ? "up" : "dn")}>{d == null ? (m.note ?? sub) : `${d >= 0 ? "▲" : "▼"} ${Math.abs(d).toFixed(dec).replace(".", ",")}% ${sub}`}</span>
+          {fresh && <span className={"fresh" + (fresh.w ? " w" : "")}>{fresh.w ? "⚠ sebagian data tertinggal" : fresh.l}</span>}
         </button>; })}</div></div>; })}</div>
       <div className="mbch" onMouseLeave={() => setHov(null)}>
         <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Tren metrik">
           {[0, 1, 2, 3].map((k) => <line key={k} x1={L} x2={W - R} y1={T + (k * (H - T - B)) / 3} y2={T + (k * (H - T - B)) / 3} stroke="var(--line)" />)}
           {on.map((m, j) => { const mx = Math.max(1e-9, ...m.s.filter(isFinite), ...(m.ps ?? []).filter(isFinite)) * 1.08, y = (v: number) => H - B - ((isFinite(v) ? v : 0) / mx) * (H - T - B);
             const path = (s: number[]) => s.slice(0, n).map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join("");
-            return <g key={m.k}>{m.ps && on.length === 1 && <path d={path(m.ps)} fill="none" stroke={COL[j]} strokeOpacity=".45" strokeWidth="1.5" strokeDasharray="5 4" />}
+            return <g key={m.k}>{m.ps && on.length === 1 && <path d={path(m.ps)} fill="none" stroke="var(--muted)" strokeOpacity=".8" strokeWidth="1.5" strokeDasharray="5 4" />}
               <path d={path(m.s)} fill="none" stroke={COL[j]} strokeWidth="2.2" strokeLinejoin="round" />
               {hov != null && <circle cx={x(hov)} cy={y(m.s[hov])} r="3.5" fill={COL[j]} />}
               {(() => { let li = Math.min(n, m.s.length) - 1; while (li > 0 && !isFinite(m.s[li])) li--; if (li < 0 || !isFinite(m.s[li])) return null;

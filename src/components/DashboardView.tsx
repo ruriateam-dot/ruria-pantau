@@ -30,7 +30,7 @@ import { resolvePeriod, buckets, fmt, pct, jm, tgl, addDays, dayDiff, todayWIB, 
 type SPv = Record<string, string | undefined>;
 type Cl = { id: string; nama: string; modul: string[]; target_roas: number | null; tab_klien?: string[] | null };
 
-const TABS: [string, string][] = [["sum", "Dashboard"], ["ringkas", "Ringkasan"], ["toko", "Analisa Toko"], ["iklan", "Analisa Iklan"], ["live", "Livestream"], ["affiliate", "Affiliate"], ["forecast", "Forecast"], ["status", "Status Pesanan"]];
+const TABS: [string, string][] = [["sum", "Dashboard"], ["ringkas", "Ringkasan"], ["toko", "Penjualan"], ["iklan", "Iklan"], ["affiliate", "Kreator"], ["live", "Livestream"], ["forecast", "Stok"]];
 
 /* Dipakai oleh /dashboard (login) dan /lihat/[token] (klien tanpa login, hanya lihat) */
 export default async function DashboardView({ sp, profile, clients: all, base, share, shareLabel, token }: { sp: SPv; profile: User | null; clients: Cl[]; base: string; share?: boolean; shareLabel?: string; token?: string }) {
@@ -39,6 +39,7 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
   const isAdmin = isStaff(profile);
   const c = clients.find((x) => x.id === sp.c) ?? clients[0];
   let tab = sp.m ?? (sp.c || share ? "toko" : "sum");
+  if (tab === "status") tab = "toko";
   if (share && tab === "sum") tab = "toko";
   const viewKlien = !!share || !isAdmin;
   const has = (k: string) => !!c && (k === "forecast" || k === "status" || k === "ringkas" ? c.modul.includes("toko") : c.modul.includes(k)) && !(viewKlien && c.tab_klien && !c.tab_klien.includes(k));
@@ -58,6 +59,9 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
     brands = [...new Set(D.stores.map((s) => s.brand))];
     platforms = [...new Set(D.stores.map((s) => s.platform))].filter((p) => p !== "CPAS" || tab === "iklan");
     const st = D.stores.filter((s) => (!sp.b || s.brand === sp.b) && (!sp.p || s.platform === sp.p));
+    const ttl = (d: string) => `${tgl(R.from)}–${tgl(d < R.to ? d : R.to)}`;
+    const fr: { l: string; w?: string; src?: string } = { l: lastData ? `data s.d. ${tgl(lastData)}` : "belum ada data", src: lastData ? (tab === "iklan" ? `File iklan Shopee (Data Keseluruhan) & TikTok GMV Max, ${ttl(lastData)}` : tab === "live" ? `Laporan livestream Shopee & TikTok, ${ttl(lastData)}` : `Statistik toko & ekspor pesanan Shopee/TikTok, ${ttl(lastData)}`) : undefined };
+    if (lastData && (tab === "toko" || tab === "ringkas")) { const SLx = await storeLast(st.filter((x) => x.platform !== "CPAS").map((x) => x.id)); const lag = st.filter((x) => SLx[x.id] && SLx[x.id] < addDays(lastData, -1)); if (lag.length) fr.w = lag.map((x) => `${x.platform} · ${x.brand} baru s.d. ${tgl(SLx[x.id])}`).join(", "); }
     if (["toko", "ringkas", "iklan", "live"].includes(tab)) {
       const K = hitung(R, st, D.sales, D.ads, D.live);
       kilas = <>{share && (tab === "ringkas" || tab === "toko") && <LaporanKlien k={K} R={R} nama={c.nama} last={lastData ? tgl(lastData) : null} />}
@@ -75,7 +79,7 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
       for (const x of PP) for (const r of x.d as unknown as [string, string, number, number, number | null, number | null, number | null, number | null, number | null][]) {
         const k = String(r[1]).trim().toLowerCase(), m = PM.get(k) ?? { dl: 0, kl: 0, kr: 0, pg: 0 }; m.dl += (r[4] ?? 0) * x.w; m.kl += (r[5] ?? 0) * x.w; m.pg += (r[6] ?? 0) * x.w; m.kr += (r[7] ?? 0) * x.w; PM.set(k, m); }
       const PS = prodStats(prod, ts, PM);
-      body = <><TokoTab R={R} stores={ts} sales={D.sales} last={SL} prod={PS} live={D.live} ads={D.ads} plat={sp.p} scN={scN} scP={scP} /><ProdukSection R={R} ps={PS} err={prodErr} /></>;
+      body = <><TokoTab R={R} stores={ts} sales={D.sales} last={SL} prod={PS} live={D.live} ads={D.ads} plat={sp.p} scN={scN} scP={scP} fr={fr} /><ProdukSection R={R} ps={PS} err={prodErr} />{(!(viewKlien && c.tab_klien) || c.tab_klien.includes("status")) && <><h2 className="secth" id="status">Status pesanan, batal &amp; retur</h2><StatusView R={R} stores={ts} share={!!share} staff={isAdmin && !share} /></>}</>;
     }
     else if (tab === "iklan") {
       // Saldo iklan hanya untuk tim (tidak tampil di link klien)
@@ -91,7 +95,7 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
         saldo = rowsS.length ? <SaldoIklan rows={rowsS} canEdit={isAdmin} /> : null;
       }
       const AM = await adsMeta(st.map((s) => s.id), R.pf < R.from ? R.pf : R.from, R.to);
-      body = <>{saldo}<IklanTab R={R} stores={st} ads={D.ads} sales={D.sales} meta={AM} share={!!share} /></>;
+      body = <>{saldo}<IklanTab R={R} stores={st} ads={D.ads} sales={D.sales} meta={AM} share={!!share} fr={fr} /></>;
     }
     else if (tab === "affiliate") {
       const has = (await q<{ n: number }>("select count(*) n from aff_files where client_id = ?", [c.id]))[0].n > 0;
@@ -108,7 +112,7 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
     else if (tab === "live") {
       const jad = await q<Jd>("select date_format(l.tanggal, '%Y-%m-%d') tanggal, l.mulai, l.selesai, h.nama host from live_schedule l join hosts h on h.id = l.host_id where l.client_id = ? and l.tanggal between ? and ?", [c.id, R.from, R.to]);
       // Catatan: ekspor statistik toko Shopee hanya memuat 5 sesi live teratas per bulan, jadi tidak dipakai untuk total live
-      body = <LiveTab R={R} live={D.live} brand={sp.b} plat={sp.p} jadwal={jad} />;
+      body = <LiveTab R={R} live={D.live} brand={sp.b} plat={sp.p} jadwal={jad} fr={fr} />;
     }
   }
 
@@ -131,7 +135,7 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
   const warn = !share && tab !== "sum" && tab !== "affiliate" && lastData && lag > 3 ? <p className="note warnnote">Data {tab === "iklan" ? "iklan" : tab === "live" ? "live" : "penjualan"} klien ini baru sampai <b>{tgl(lastData)} {lastData.slice(0, 4)}</b> (tertinggal {lag} hari). Periode dihitung sampai tanggal itu supaya data yang belum diupload tidak terbaca sebagai penurunan.</p> : null;
   const main = <main className="wrap dv">{isAdmin && <AutoImport />}{isAdmin && !share && tab === "sum" && <><JadwalUpload /><UploadChecklist clientIds={clients.map((x) => x.id)} /></>}{kilas}{warn}{body}</main>;
   if (share || !profile) return <><LoadingBar />{head}{main}</>;
-  return <AppShell user={profile} active={tab === "sum" ? undefined : c?.id} keep={{ m: tab, per: sp.per }}>{head}{main}</AppShell>;
+  return <AppShell user={profile} active={tab === "sum" ? undefined : c?.id} keep={{ m: tab, per: sp.per }} subs={c ? TABS.filter(([k]) => k !== "sum" && has(k)).map(([k, l]) => ({ k, l, href: base + qs({ m: k }) })) : []}>{head}{main}</AppShell>;
 }
 
 /* ---------------- Ringkasan 1 layar untuk klien ---------------- */
@@ -213,7 +217,7 @@ async function SumTab(R: Range, clients: { id: string; nama: string; modul: stri
       const lama = (w: string) => Date.now() - Date.parse(w.replace(" ", "T") + ":00+07:00") > 3 * 864e5;
       return <div className="card"><h2>Sisa saldo iklan terakhir</h2><div className="tbl"><table><thead><tr><th>Klien</th><th>Akun</th><th className="n">Sisa saldo</th><th>Dicatat</th><th>Oleh</th></tr></thead>
         <tbody>{S2.map((x, i) => <tr key={i}><td><a href={hrefIklan(x.client_id)}>{x.nama}</a></td><td>{x.platform} · {x.brand}</td><td className="n"><b>Rp{Math.round(+x.saldo).toLocaleString("id")}</b></td><td className={"small" + (lama(x.w) ? " dn" : "")}>{tgl(x.w.slice(0, 10))} {x.w.slice(11)} WIB{lama(x.w) ? " · lebih dari 3 hari" : ""}</td><td className="small">{x.oleh ?? "–"}</td></tr>)}</tbody></table></div>
-        <p className="muted small">Urut dari saldo terkecil. Update saldo di tab Analisa Iklan masing-masing klien.</p></div>;
+        <p className="muted small">Urut dari saldo terkecil. Update saldo di tab Iklan masing-masing klien.</p></div>;
     })()}
     <div className="card"><h2>Status data terakhir</h2><p className="muted small">Aman kalau data sudah masuk sampai kemarin ({tgl(yday)} {yday.slice(0, 4)}).</p>
       <div className="tbl"><table><thead><tr><th>Klien</th><th>Penjualan</th><th></th><th>Iklan</th><th></th><th>Livestream</th><th></th></tr></thead>
@@ -224,7 +228,7 @@ async function SumTab(R: Range, clients: { id: string; nama: string; modul: stri
 }
 
 /* ---------------- Toko ---------------- */
-function TokoTab({ R, stores, sales, last, prod, live, ads, plat, scN, scP }: { R: Range; stores: Store[]; sales: Sale[]; last: Record<string, string>; prod: PStats; live: Live[]; ads: Ad[]; plat?: string; scN: SP[]; scP: SP[] }) {
+function TokoTab({ R, stores, sales, last, prod, live, ads, plat, scN, scP, fr }: { fr?: { l: string; w?: string; src?: string }; R: Range; stores: Store[]; sales: Sale[]; last: Record<string, string>; prod: PStats; live: Live[]; ads: Ad[]; plat?: string; scN: SP[]; scP: SP[] }) {
   if (!stores.length) return <p className="muted">Tidak ada toko untuk pilihan ini.</p>;
   // Toko yang datanya berhenti sebelum akhir periode (lebih dari 3 hari) tidak ikut dibandingkan
   const stale = (id: string) => !last[id] || dayDiff(last[id], R.to) > 3;
@@ -267,7 +271,7 @@ function TokoTab({ R, stores, sales, last, prod, live, ads, plat, scN, scP }: { 
         { g: "Penjualan", k: "aov", l: "Penjualan per pesanan", f: "rp", v: aov, d: cmp ? dA : null, s: ser((x) => (x.o ? x.g / x.o : 0), B), ps: PBs && ser((x) => (x.o ? x.g / x.o : 0), PBs) },
         { g: "Trafik", k: "vp", l: "Penjualan per pengunjung", f: "rp", v: n.vok && n.v ? n.g / n.v : NaN, d: cmp && nf.vok && nf.v && o.vok && o.v ? pct(nf.g / nf.v, o.g / o.v) : null, s: ser((x) => (x.v ? x.g / x.v : 0), B), ps: PBs && ser((x) => (x.v ? x.g / x.v : 0), PBs) },
       ];
-      return <MetricBoard metrics={M} labels={B.map((b) => b.l)} sub={R.sub} init={["g", "o"]} />; })()}</div>
+      return <MetricBoard metrics={M} labels={B.map((b) => b.l)} sub={R.sub} init={["g", "o"]} fresh={fr} />; })()}</div>
     {scN.length > 0 && (() => { // Metrik Seller Centre (ekspor statistik toko Shopee, bulanan)
       const S2 = (L: SP[], k: string) => L.reduce((t, x) => t + (typeof x.d[k] === "number" ? (x.d[k] as number) * x.w : 0), 0);
       const has = (L: SP[], k: string) => L.some((x) => typeof x.d[k] === "number");
@@ -340,7 +344,7 @@ const porsi = (x: Ad, a: string, b: string) => { const f = x.dari > a ? x.dari :
 /* Tab iklan: angka desimal 2 digit */
 const fmt2 = (n: number) => fmt(n); // Rupiah tetap 1 desimal; ROAS & persen 2 desimal
 type AMeta = { store_id: string; dari: string; sampai: string; kampanye: string; dilihat: number | null; klik: number | null; keranjang: number | null };
-function IklanTab({ R, stores, ads, sales, meta = [], share = false }: { R: Range; stores: Store[]; ads: Ad[]; sales: Sale[]; meta?: AMeta[]; share?: boolean }) {
+function IklanTab({ R, stores, ads, sales, meta = [], share = false, fr }: { fr?: { l: string; w?: string; src?: string }; R: Range; stores: Store[]; ads: Ad[]; sales: Sale[]; meta?: AMeta[]; share?: boolean }) {
   const nk = (s2: string) => s2.replace(/\s+/g, " ").trim().slice(0, 255);
   const MM = new Map(meta.map((m) => [m.store_id + "|" + m.dari + "|" + m.sampai + "|" + m.kampanye, m]));
   const ids = new Set(stores.map((s) => s.id)); const SM = new Map(stores.map((s) => [s.id, s]));
@@ -401,7 +405,7 @@ function IklanTab({ R, stores, ads, sales, meta = [], share = false }: { R: Rang
             { g: "Jangkauan (Shopee)", k: "kr", l: "Tambah ke keranjang", f: "n", v: kr, p: cmp && krP ? krP : null, s: c.map(() => NaN), note: nt }] as Metric[]; })()),
         { g: "Efisiensi", k: "bo", l: "Biaya iklan / GMV toko", f: "pct", v: om ? (S / om) * 100 : NaN, p: cmp && omP ? (Sp / omP) * 100 : null, inv: true, s: c.map((x) => (x.om ? (x.s / x.om) * 100 : 0)), ps: pv?.map((x) => (x.om ? (x.s / x.om) * 100 : 0)) },
       ];
-      return <MetricBoard metrics={M} labels={B0.map((b) => b.l)} sub={R.sub} init={["s", "r"]} dec={2} />; })()}</div>
+      return <MetricBoard metrics={M} labels={B0.map((b) => b.l)} sub={R.sub} init={["s", "r"]} dec={2} fresh={fr} />; })()}</div>
     {G > om && om > 0 && <p className="muted small" style={{ marginTop: -6 }}>GMV atribusi iklan bisa lebih besar dari GMV toko: platform menghitung pesanan dalam beberapa hari setelah klik (satu pesanan bisa tercatat di lebih dari satu kampanye) dan belum mengurangi pembatalan sebelum pesanan dikirim.</p>}
     {monthly && <p className="muted small">Laporan bulanan Shopee dibagi rata per hari, jadi angka hariannya perkiraan.</p>}
     {per.length > 0 && <div className="card"><h2>Per toko</h2><div className="tbl"><table><thead><tr><th>Toko</th><th className="n">Biaya</th><th className="n">GMV iklan</th><th className="n">Pesanan</th><th className="n">ROAS</th><th className="n">Δ ROAS</th><th className="n">Biaya / omzet</th></tr></thead>
@@ -447,7 +451,7 @@ function JadwalVsLive({ jadwal, live }: { jadwal: Jd[]; live: Live[] }) {
       {` Dibandingkan hanya pada ${tglJadwal.size} tanggal yang sudah punya jadwal.`}{tanpa.length ? ` Di tanggal itu ada ${tanpa.length} sesi live (${jm(tanpa.reduce((a, l) => a + l.durasi_jam, 0))}) yang tidak sesuai jadwal: ${[...new Set(tanpa.map((l) => l.host || "tanpa nama"))].join(", ")}.` : ""}</p></div>;
 }
 
-function LiveTab({ R, live, brand, plat, jadwal }: { R: Range; live: Live[]; brand?: string; plat?: string; jadwal: Jd[] }) {
+function LiveTab({ R, live, brand, plat, jadwal, fr }: { fr?: { l: string; w?: string; src?: string }; R: Range; live: Live[]; brand?: string; plat?: string; jadwal: Jd[] }) {
   const gf = (x: Live) => plat === "Shopee" ? x.gmv_shopee : plat === "TikTok" ? x.gmv_tiktok : x.gmv_shopee + x.gmv_tiktok;
   const L = live.filter((x) => !brand || x.brand === brand);
   const agg = (xs: Live[]) => { const a = { g: 0, j: 0, n: 0, z: 0, gs: 0, gt: 0 }; xs.forEach((x) => { const g = gf(x); a.g += g; a.gs += x.gmv_shopee; a.gt += x.gmv_tiktok; a.j += x.durasi_jam; a.n++; if (g === 0 && x.durasi_jam >= 1) a.z++; }); return a; };
@@ -491,7 +495,7 @@ function LiveTab({ R, live, brand, plat, jadwal }: { R: Range; live: Live[]; bra
         { g: "Transaksi", k: "gt", l: "GMV TikTok", f: "rp", v: a.gt, p: cm ? b.gt : null, s: c.map((x) => x.gt), ps: pv?.map((x) => x.gt) },
         { g: "Konversi", k: "z", l: "Sesi tanpa penjualan", f: "pct", v: zr, p: cm && b.n ? (b.z / b.n) * 100 : null, inv: true, s: c.map((x) => (x.n ? (x.z / x.n) * 100 : 0)) },
       ];
-      return <MetricBoard metrics={M} labels={B.map((x) => x.l)} sub={R.sub} init={["g", "gj"]} />; })()}</div>
+      return <MetricBoard metrics={M} labels={B.map((x) => x.l)} sub={R.sub} init={["g", "gj"]} fresh={fr} />; })()}</div>
     <JadwalVsLive jadwal={jadwal} live={cur} />
     <div className="card"><h2>Per host</h2><div className="tbl"><table><thead><tr><th>Host</th><th className="n">GMV</th><th className="n">Shopee</th><th className="n">TikTok</th><th className="n">Durasi</th><th className="n">Sesi</th><th className="n">GMV/jam</th><th className="n">Δ GMV/jam</th><th className="n">Sesi Rp0</th><th>Slot terbaik</th><th>Tren GMV/jam</th></tr></thead>
       <tbody>{hs.map((h) => { const p = agg(prev.filter((x) => (x.host || "Tanpa nama") === h.k)), gjH = h.s.g / h.s.j, gjPrev = p.j ? p.g / p.j : 0, d = gjPrev && R.key !== "all" ? pct(gjH, gjPrev) : NaN;

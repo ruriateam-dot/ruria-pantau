@@ -6,7 +6,7 @@ import { logout } from "@/app/login/actions";
 import { RuriaWord, RuriaMark } from "./Logo";
 
 type Item = { id: string; nama: string; href: string };
-type Props = { user: { nama: string; peran: string }; staff: boolean; clients: Item[]; active?: string; dashHref: string; children: React.ReactNode };
+type Props = { user: { nama: string; peran: string }; staff: boolean; clients: Item[]; active?: string; dashHref: string; children: React.ReactNode; subs?: { k: string; l: string; href: string }[]; tab?: string };
 
 /* Pilihan tema hanya untuk superadmin; akun lain selalu terang */
 function Theme({ show }: { show: boolean }) {
@@ -45,7 +45,7 @@ function useSide() {
   return { mini, toggle };
 }
 
-export default function Shell({ user, staff, clients, active, dashHref, children }: Props) {
+export default function Shell({ user, staff, clients, active, dashHref, children, subs = [], tab }: Props) {
   const [open, setOpen] = useState(false);
   const path = usePathname();
   const { go } = useNav();
@@ -66,7 +66,7 @@ export default function Shell({ user, staff, clients, active, dashHref, children
       </nav>
       <nav className="sgroup">
         <div className="sh">Klien</div>
-        {clients.length ? clients.map((c) => link(c.href, c.nama, path === "/dashboard" && c.id === active, c.id, <Dot n={c.id} />)) : <p className="muted small">Belum ada klien.</p>}
+        {clients.length ? clients.map((c) => <div key={c.id}>{link(c.href, c.nama, path === "/dashboard" && c.id === active, undefined, <Dot n={c.id} />)}{c.id === active && path === "/dashboard" && subs.length > 0 && <div className="ssub">{subs.map((x) => <a key={x.k} href={x.href} className={"ssl" + (x.k === tab ? " on" : "")} aria-current={x.k === tab ? "page" : undefined} onClick={(e) => { e.preventDefault(); setOpen(false); go(x.href); }}>{x.l}</a>)}</div>}</div>) : <p className="muted small">Belum ada klien.</p>}
       </nav>
       <nav className="sgroup">
         <div className="sh">Menu</div>

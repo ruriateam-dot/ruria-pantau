@@ -1,7 +1,7 @@
 #aff-root{--display:system-ui,-apple-system,"Segoe UI",sans-serif;--body:system-ui,-apple-system,"Segoe UI",sans-serif}
 #aff-root{--surface:var(--panel);--ink:var(--fg);--accent-ink:var(--panel);--sunk:color-mix(in srgb,var(--fg) 5%,var(--panel));--f-display:var(--display);--f-body:var(--body);--shadow:0 12px 40px rgba(0,0,0,.25);font-family:var(--body);color:var(--fg)}
 #aff-root{ --sunk:#F3ECF0;
-  --tt:#1F1A21; --sh:#E8572F;
+  --tt:#111111; --sh:#EE4D2D;
   --p1:#F6C3D3; --p1-ink:#7A1640; --p2:#FBE1BC; --p2-ink:#7A4A06; --p3:#DCE8F6; --p3-ink:#1F4673; --p4:#ECE7EA; --p4-ink:#5E5560;
   --ok:#1F7A4D; --ok-soft:#D9F0E3; --warn:#9A5B00; --warn-soft:#FCEBCB; --bad:#A3283A; --bad-soft:#F8D9DE;
   --agency:#E4DCF2; --agency-ink:#4B3778;
@@ -286,7 +286,7 @@
 /* label platform di kiri nama toko, di bawah username */
 #aff-root .ptags{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:4px}
 #aff-root .ptags .plt{font-size:10.5px;font-weight:800;border-radius:5px;padding:1px 6px;color:#fff;letter-spacing:.02em}
-#aff-root .ptags .plt.tt{background:#111}#aff-root .ptags .plt.sh{background:#ee5a2c}
+#aff-root .ptags .plt.tt{background:#111}#aff-root .ptags .plt.sh{background:#EE4D2D}
 #aff-root .ptags .brt{font-size:11px;font-weight:600;border:1px solid var(--line);border-radius:5px;padding:0 6px;color:var(--muted)}
 /* Header final: lebar penuh, tab berbentuk tombol, pilihan platform di ujung kanan */
 #aff-root header.top .wrap{max-width:none !important;width:100%;margin:0 !important;box-sizing:border-box}
@@ -334,3 +334,5 @@
 
 #aff-root .hist-btn{margin-left:auto;background:#fff!important;color:var(--accent,#D16D3D)!important;border:1px solid var(--accent,#D16D3D)!important;border-radius:8px;padding:4px 12px;font-size:12px}
 #aff-root .panel.todo{border:2px solid var(--accent,#D16D3D);background:#fffaf6}
+#aff-root :where(a,button,select,input,textarea,[tabindex]):focus-visible{outline:2px solid var(--accent,#D16D3D);outline-offset:2px}
+#aff-root .chip.pl-tt{background:#111;color:#fff}

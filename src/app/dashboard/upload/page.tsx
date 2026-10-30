@@ -8,11 +8,11 @@ import { recentUploads } from "./actions";
 export const dynamic = "force-dynamic";
 
 const PANDUAN: [string, string, string][] = [
-  ["Analisa Toko · Shopee", "Statistik toko (file …shopee-shop-stats…xlsx)", "Seller Centre → Data → Ringkasan Toko → Ekspor. GMV memakai \"Pesanan Siap Dikirim\"."],
-  ["Analisa Toko · TikTok", "Key metrics / Overview Business Performance (xlsx)", "Seller Center → Analitik → Ringkasan → Ekspor data harian."],
+  ["Penjualan · Shopee", "Statistik toko (file …shopee-shop-stats…xlsx)", "Seller Centre → Data → Ringkasan Toko → Ekspor. GMV memakai \"Pesanan Siap Dikirim\"."],
+  ["Penjualan · TikTok", "Key metrics / Overview Business Performance (xlsx)", "Seller Center → Analitik → Ringkasan → Ekspor data harian."],
   ["Analisa Produk", "Ekspor pesanan (Shopee Order.all…xlsx, TikTok Semua pesanan…csv)", "Pesanan Saya → Ekspor. Pesanan batal tidak dihitung."],
-  ["Analisa Iklan · Shopee", "Data Keseluruhan Iklan (csv)", "Iklan Shopee → Laporan → Unduh semua iklan untuk satu periode."],
-  ["Analisa Iklan · TikTok", "Campaign overview data (xlsx, per hari)", "Iklan GMV Max → Ekspor ringkasan kampanye per hari."],
+  ["Iklan · Shopee", "Data Keseluruhan Iklan (csv)", "Iklan Shopee → Laporan → Unduh semua iklan untuk satu periode."],
+  ["Iklan · TikTok", "Campaign overview data (xlsx, per hari)", "Iklan GMV Max → Ekspor ringkasan kampanye per hari."],
   ["Livestream", "Laporan live (format Draft Livestream atau laporan host)", "Satu file bisa berisi Shopee dan TikTok; sesi yang bersamaan digabung otomatis."],
 ];
 
@@ -20,7 +20,7 @@ export default async function UploadPage() {
   const u = await requireUser();
   const ok = await allowedClients(u);
   const clients = ok.length ? await q<{ id: string; nama: string }>("select id, nama from clients where id in (?) order by nama", [ok]) : [];
-  const stores = ok.length ? await q<{ id: string; client_id: string; brand: string; platform: string }>("select id, client_id, brand, platform from stores where client_id in (?) and platform <> 'CPAS' order by brand, platform", [ok]) : [];
+  const stores = ok.length ? await q<{ id: string; client_id: string; brand: string; platform: string; akun: string | null }>("select id, client_id, brand, platform, akun from stores where client_id in (?) and platform <> 'CPAS' order by brand, platform", [ok]) : [];
   const recent = await recentUploads();
   await logAct(u, "lihat", null, "Upload data");
   return <AppShell user={u}>

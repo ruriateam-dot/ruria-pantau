@@ -1,4 +1,4 @@
-:root{--bg:#f6f3f0;--panel:#ffffff;--fg:#1a1411;--muted:#6f645e;--line:#e7e0da;--accent:#D16D3D;--accent-ink:#b4572a;--aqua:#0aa9b5;--bad:#c2412d;--warn:#b7791f;--good:#1b8a4a;color-scheme:light}
+:root{--bg:#f6f3f0;--panel:#ffffff;--fg:#1a1411;--muted:#6f645e;--line:#e7e0da;--accent:#D16D3D;--accent-ink:#b4572a;--aqua:#0aa9b5;--bad:#c2412d;--warn:#b7791f;--good:#1b8a4a;--tt:#111111;--sh:#EE4D2D;color-scheme:light}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b0908;--panel:#151110;--fg:#f3ece7;--muted:#a3978f;--line:#2a2320;--accent:#D16D3D;--accent-ink:#e8895c;--aqua:#00e5ee;--bad:#ef6a55;--warn:#e0a344;--good:#4cc27c;color-scheme:dark}}
 :root[data-theme="dark"]{--bg:#0b0908;--panel:#151110;--fg:#f3ece7;--muted:#a3978f;--line:#2a2320;--accent:#D16D3D;--accent-ink:#e8895c;--aqua:#00e5ee;--bad:#ef6a55;--warn:#e0a344;--good:#4cc27c;color-scheme:dark}
 *{box-sizing:border-box}
@@ -500,3 +500,14 @@ tr[data-pgh]{display:none!important}
   table.mcard td:first-child::before{content:none}
   table.mcard td[colspan]::before{content:none}
 }
+.drop.over{background:#fff1e8;border-color:var(--accent)}
+.ssub{display:flex;flex-direction:column;margin:2px 0 6px 30px;border-left:1px solid var(--line)}.ssl{padding:5px 10px;font-size:13px;color:var(--muted);text-decoration:none;border-radius:0 6px 6px 0}.ssl:hover{color:var(--fg);background:#00000008}.ssl.on{color:var(--accent-ink);font-weight:600;box-shadow:inset 2px 0 0 var(--accent)}
+.app.mini .ssub{display:none}.secth{margin:24px 0 10px;font-size:18px}
+.fresh{display:block;font-size:11px;color:var(--muted);margin-top:2px}.fresh.w{color:var(--warn)}
+.mbc{position:relative}.mpop{position:absolute;left:0;top:100%;z-index:30;margin-top:6px;width:min(280px,80vw);background:#1f2937;color:#fff;border-radius:10px;padding:10px 12px;font-size:12px;font-weight:400;text-align:left;line-height:1.45;box-shadow:0 6px 20px #0003;white-space:normal}
+/* Komponen baku & aksesibilitas */
+:where(a,button,select,input,textarea,[role=button],[tabindex]):focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.verdict.v-good{border-color:var(--good)}.verdict.v-warn{border-color:var(--warn)}.verdict.v-bad{border-color:var(--bad)}
+.pill,.chip-b,.fchip{min-height:24px}
+button,.btn{min-height:32px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}

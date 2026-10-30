@@ -3,8 +3,8 @@ import { useActionState } from "react";
 import { saveClient, addStore, editStore, deleteStore } from "./actions";
 
 type R = { ok: boolean; msg: string } | null;
-const MOD: [string, string][] = [["toko", "Analisa Toko"], ["iklan", "Analisa Iklan"], ["live", "Livestream"], ["affiliate", "Affiliate"]];
-const TABK: [string, string][] = [["ringkas", "Ringkasan"], ["toko", "Analisa Toko"], ["iklan", "Analisa Iklan"], ["live", "Livestream"], ["affiliate", "Affiliate"], ["forecast", "Forecast"], ["status", "Status Pesanan"]];
+const MOD: [string, string][] = [["toko", "Penjualan"], ["iklan", "Iklan"], ["live", "Livestream"], ["affiliate", "Kreator (affiliate)"]];
+const TABK: [string, string][] = [["ringkas", "Ringkasan"], ["toko", "Penjualan"], ["status", "Status pesanan (di Penjualan)"], ["iklan", "Iklan"], ["affiliate", "Kreator"], ["live", "Livestream"], ["forecast", "Stok"]];
 const Msg = ({ r }: { r: R }) => r ? <p className={r.ok ? "ok" : "err"} role="status">{r.msg}</p> : null;
 
 export function ClientForm({ c }: { c?: { id: string; nama: string; modul: string[]; target_roas: number | null; stok_selalu_ada?: number; tab_klien?: string | null } }) {
