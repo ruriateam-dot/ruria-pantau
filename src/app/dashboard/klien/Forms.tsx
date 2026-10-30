@@ -7,7 +7,7 @@ const MOD: [string, string][] = [["toko", "Penjualan"], ["iklan", "Iklan"], ["li
 const TABK: [string, string][] = [["ringkas", "Ringkasan"], ["toko", "Penjualan"], ["status", "Status pesanan (di Penjualan)"], ["iklan", "Iklan"], ["affiliate", "Kreator"], ["live", "Livestream"], ["forecast", "Stok"]];
 const Msg = ({ r }: { r: R }) => r ? <p className={r.ok ? "ok" : "err"} role="status">{r.msg}</p> : null;
 
-export function ClientForm({ c }: { c?: { id: string; nama: string; modul: string[]; target_roas: number | null; stok_selalu_ada?: number; tab_klien?: string | null } }) {
+export function ClientForm({ c }: { c?: { id: string; nama: string; modul: string[]; target_roas: number | null; stok_selalu_ada?: number; tab_klien?: string | null; lap_temuan?: string | null; lap_langkah?: string | null } }) {
   const [r, a, p] = useActionState(saveClient, null);
   return <form action={a} className="kform">
     <input type="hidden" name="id" value={c?.id ?? ""} />
@@ -20,6 +20,10 @@ export function ClientForm({ c }: { c?: { id: string; nama: string; modul: strin
     {c && <fieldset className="chk"><legend>Tab yang terlihat oleh klien (akun klien &amp; link klien)</legend><input type="hidden" name="tab_set" value="1" />
       {TABK.map(([k, l]) => <label key={k}><input type="checkbox" name="tab_klien" value={k} defaultChecked={c.tab_klien == null || c.tab_klien.split(",").includes(k)} /> {l}</label>)}
       <p className="muted small">Tab hanya muncul jika modulnya juga aktif. Tim Ruria tetap melihat semua tab.</p></fieldset>}
+    {c && <fieldset><legend>Laporan di link klien (opsional)</legend><input type="hidden" name="lap_set" value="1" />
+      <div className="grid2"><label>Temuan (satu per baris)<textarea name="lap_temuan" rows={4} defaultValue={c.lap_temuan ?? ""} placeholder="Kosongkan = disusun otomatis dari data" /></label>
+      <label>Langkah tim Ruria (satu per baris)<textarea name="lap_langkah" rows={4} defaultValue={c.lap_langkah ?? ""} placeholder="Kosongkan = disusun otomatis dari data" /></label></div>
+      <p className="muted small">Kalau diisi, menggantikan draf otomatis di link klien. Kosongkan lagi untuk kembali ke otomatis.</p></fieldset>}
     <Msg r={r} /><button disabled={p}>{c ? "Simpan klien" : "Tambah klien"}</button>
   </form>;
 }

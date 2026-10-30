@@ -28,7 +28,7 @@ import { clientsFor, loadClient, freshness, produkSku, storeLast, storePeriods, 
 import { resolvePeriod, buckets, fmt, pct, jm, tgl, addDays, dayDiff, todayWIB, type Range } from "@/lib/period";
 
 type SPv = Record<string, string | undefined>;
-type Cl = { id: string; nama: string; modul: string[]; target_roas: number | null; tab_klien?: string[] | null };
+type Cl = { id: string; nama: string; modul: string[]; target_roas: number | null; tab_klien?: string[] | null; lap_temuan?: string | null; lap_langkah?: string | null; lap_waktu?: string | null };
 
 const TABS: [string, string][] = [["sum", "Dashboard"], ["ringkas", "Ringkasan"], ["toko", "Penjualan"], ["iklan", "Iklan"], ["affiliate", "Kreator"], ["live", "Livestream"], ["forecast", "Stok"]];
 
@@ -62,9 +62,11 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
     const ttl = (d: string) => `${tgl(R.from)}–${tgl(d < R.to ? d : R.to)}`;
     const fr: { l: string; w?: string; src?: string } = { l: lastData ? `data s.d. ${tgl(lastData)}` : "belum ada data", src: lastData ? (tab === "iklan" ? `File iklan Shopee (Data Keseluruhan) & TikTok GMV Max, ${ttl(lastData)}` : tab === "live" ? `Laporan livestream Shopee & TikTok, ${ttl(lastData)}` : `Statistik toko & ekspor pesanan Shopee/TikTok, ${ttl(lastData)}`) : undefined };
     if (lastData && (tab === "toko" || tab === "ringkas")) { const SLx = await storeLast(st.filter((x) => x.platform !== "CPAS").map((x) => x.id)); const lag = st.filter((x) => SLx[x.id] && SLx[x.id] < addDays(lastData, -1)); if (lag.length) fr.w = lag.map((x) => `${x.platform} · ${x.brand} baru s.d. ${tgl(SLx[x.id])}`).join(", "); }
+    if (lastData && tab === "iklan" && st.length) { const AL = await q<{ store_id: string; d: string }>("select store_id, date_format(max(sampai), '%Y-%m-%d') d from ads where store_id in (?) group by store_id", [st.map((x) => x.id)]); const m = Object.fromEntries(AL.map((x) => [x.store_id, x.d])); const lag = st.filter((x) => m[x.id] && m[x.id] < addDays(lastData, -1) && m[x.id] >= R.from); if (lag.length) fr.w = lag.map((x) => `${x.platform} · ${x.brand} baru s.d. ${tgl(m[x.id])}`).join(", "); }
+    if (lastData && tab === "live") { const LL = await q<{ b: string | null; d: string }>("select brand b, date_format(max(tanggal), '%Y-%m-%d') d from live_sessions where client_id = ? group by brand", [c.id]).catch(() => []); const lag = LL.filter((x) => x.d < addDays(lastData, -1) && x.d >= R.from); if (lag.length) fr.w = lag.map((x) => `Live ${x.b ?? "tanpa brand"} baru s.d. ${tgl(x.d)}`).join(", "); }
     if (["toko", "ringkas", "iklan", "live"].includes(tab)) {
       const K = hitung(R, st, D.sales, D.ads, D.live);
-      kilas = <>{share && (tab === "ringkas" || tab === "toko") && <LaporanKlien k={K} R={R} nama={c.nama} last={lastData ? tgl(lastData) : null} />}
+      kilas = <>{share && (tab === "ringkas" || tab === "toko") && <LaporanKlien k={K} R={R} nama={c.nama} last={lastData ? tgl(lastData) : null} tem={c.lap_temuan} lang={c.lap_langkah} waktu={c.lap_waktu ? tgl(c.lap_waktu) : null} />}
         {!(share && (tab === "ringkas" || tab === "toko")) && <Verdict tab={tab} k={K} R={R} href={(m) => base + qs({ m })} />}</>;
     }
     if (tab === "sum") body = await SumTab(R, clients, (id) => base + qs({ c: id, m: "toko", b: "", p: "" }), isAdmin && !share, (id) => base + qs({ c: id, m: "iklan", b: "", p: "" }));
@@ -267,8 +269,8 @@ function TokoTab({ R, stores, sales, last, prod, live, ads, plat, scN, scP, fr }
         { g: "Penjualan", k: "g", l: "Penjualan", f: "rp", v: n.g, d: cmp ? dG : null, s: vals, ps: prevVals },
         { g: "Penjualan", k: "o", l: "Pesanan", f: "n", v: n.o, d: cmp ? pct(nf.o, o.o) : null, s: ser((x) => x.o, B), ps: PBs && ser((x) => x.o, PBs) },
         { g: "Trafik", k: "v", l: "Pengunjung", f: "n", v: n.vok ? n.v : NaN, d: cmp && o.vok && nf.vok ? pct(nf.v, o.v) : null, s: ser((x) => x.v, B), ps: PBs && ser((x) => x.v, PBs), note: n.vok ? undefined : "data pengunjung belum lengkap" },
-        { g: "Trafik", k: "cr", l: "Tingkat konversi", f: "pct", v: cr, d: cmp ? dC : null, s: ser(cv, B), ps: PBs && ser(cv, PBs) },
-        { g: "Penjualan", k: "aov", l: "Penjualan per pesanan", f: "rp", v: aov, d: cmp ? dA : null, s: ser((x) => (x.o ? x.g / x.o : 0), B), ps: PBs && ser((x) => (x.o ? x.g / x.o : 0), PBs) },
+        { g: "Trafik", k: "cr", l: "Tingkat konversi", f: "pct", v: cr, ex: n.vok && n.v ? `${Math.round(n.o).toLocaleString("id")} pesanan ÷ ${Math.round(n.v).toLocaleString("id")} pengunjung × 100 = ${cr.toFixed(2).replace(".", ",")}%` : undefined, d: cmp ? dC : null, s: ser(cv, B), ps: PBs && ser(cv, PBs) },
+        { g: "Penjualan", k: "aov", l: "Penjualan per pesanan", f: "rp", v: aov, ex: n.o ? `${fmt(n.g)} ÷ ${Math.round(n.o).toLocaleString("id")} pesanan = ${fmt(aov)}` : undefined, d: cmp ? dA : null, s: ser((x) => (x.o ? x.g / x.o : 0), B), ps: PBs && ser((x) => (x.o ? x.g / x.o : 0), PBs) },
         { g: "Trafik", k: "vp", l: "Penjualan per pengunjung", f: "rp", v: n.vok && n.v ? n.g / n.v : NaN, d: cmp && nf.vok && nf.v && o.vok && o.v ? pct(nf.g / nf.v, o.g / o.v) : null, s: ser((x) => (x.v ? x.g / x.v : 0), B), ps: PBs && ser((x) => (x.v ? x.g / x.v : 0), PBs) },
       ];
       return <MetricBoard metrics={M} labels={B.map((b) => b.l)} sub={R.sub} init={["g", "o"]} fresh={fr} />; })()}</div>
@@ -393,9 +395,9 @@ function IklanTab({ R, stores, ads, sales, meta = [], share = false, fr }: { fr?
       const M: Metric[] = [
         { g: "Biaya & hasil", k: "s", l: "Biaya iklan", f: "rp", v: S, p: cmp ? Sp : null, inv: true, s: c.map((x) => x.s), ps: pv?.map((x) => x.s) },
         { g: "Biaya & hasil", k: "g", l: "GMV atribusi iklan", f: "rp", v: G, p: cmp ? Gp : null, s: c.map((x) => x.g), ps: pv?.map((x) => x.g) },
-        { g: "Efisiensi", k: "r", l: "ROAS", f: "x", v: roas, p: cmp ? roasP : null, s: c.map((x) => (x.s ? x.g / x.s : 0)), ps: pv?.map((x) => (x.s ? x.g / x.s : 0)) },
+        { g: "Efisiensi", k: "r", l: "ROAS", f: "x", v: roas, ex: S ? `${fmt(G)} ÷ ${fmt(S)} = ${roas.toFixed(2).replace(".", ",")}` : undefined, p: cmp ? roasP : null, s: c.map((x) => (x.s ? x.g / x.s : 0)), ps: pv?.map((x) => (x.s ? x.g / x.s : 0)) },
         { g: "Biaya & hasil", k: "o", l: "Pesanan dari iklan", f: "n", v: Oo, p: cmp ? Op : null, s: c.map((x) => x.o), ps: pv?.map((x) => x.o) },
-        { g: "Efisiensi", k: "cpa", l: "Biaya per pesanan", f: "rp", v: Oo ? S / Oo : NaN, p: cmp && Op ? Sp / Op : null, inv: true, s: c.map((x) => (x.o ? x.s / x.o : 0)), ps: pv?.map((x) => (x.o ? x.s / x.o : 0)) },
+        { g: "Efisiensi", k: "cpa", l: "Biaya per pesanan", f: "rp", v: Oo ? S / Oo : NaN, ex: Oo ? `${fmt(S)} ÷ ${Math.round(Oo).toLocaleString("id")} pesanan = ${fmt(S / Oo)}` : undefined, p: cmp && Op ? Sp / Op : null, inv: true, s: c.map((x) => (x.o ? x.s / x.o : 0)), ps: pv?.map((x) => (x.o ? x.s / x.o : 0)) },
         ...((() => { const cs = [...C.values()].filter((x) => x.mt), ps = [...CP.values()].filter((x) => x.mt); if (!cs.length) return [] as Metric[];
           const dl = cs.reduce((t, x) => t + x.dl, 0), kl = cs.reduce((t, x) => t + x.kl, 0), kr = cs.reduce((t, x) => t + x.kr, 0), dlP = ps.reduce((t, x) => t + x.dl, 0), klP = ps.reduce((t, x) => t + x.kl, 0), krP = ps.reduce((t, x) => t + x.kr, 0);
           const nt = "Shopee saja, laporan bulanan";
@@ -403,7 +405,7 @@ function IklanTab({ R, stores, ads, sales, meta = [], share = false, fr }: { fr?
             { g: "Jangkauan (Shopee)", k: "kl", l: "Klik", f: "n", v: kl, p: cmp && klP ? klP : null, s: c.map(() => NaN), note: nt },
             { g: "Jangkauan (Shopee)", k: "ctr", l: "Persentase klik", f: "pct", v: dl ? (kl / dl) * 100 : NaN, p: cmp && dlP ? (klP / dlP) * 100 : null, s: c.map(() => NaN), note: nt },
             { g: "Jangkauan (Shopee)", k: "kr", l: "Tambah ke keranjang", f: "n", v: kr, p: cmp && krP ? krP : null, s: c.map(() => NaN), note: nt }] as Metric[]; })()),
-        { g: "Efisiensi", k: "bo", l: "Biaya iklan / GMV toko", f: "pct", v: om ? (S / om) * 100 : NaN, p: cmp && omP ? (Sp / omP) * 100 : null, inv: true, s: c.map((x) => (x.om ? (x.s / x.om) * 100 : 0)), ps: pv?.map((x) => (x.om ? (x.s / x.om) * 100 : 0)) },
+        { g: "Efisiensi", k: "bo", l: "Biaya iklan / GMV toko", f: "pct", v: om ? (S / om) * 100 : NaN, ex: om ? `${fmt(S)} ÷ ${fmt(om)} × 100 = ${((S / om) * 100).toFixed(2).replace(".", ",")}%` : undefined, p: cmp && omP ? (Sp / omP) * 100 : null, inv: true, s: c.map((x) => (x.om ? (x.s / x.om) * 100 : 0)), ps: pv?.map((x) => (x.om ? (x.s / x.om) * 100 : 0)) },
       ];
       return <MetricBoard metrics={M} labels={B0.map((b) => b.l)} sub={R.sub} init={["s", "r"]} dec={2} fresh={fr} />; })()}</div>
     {G > om && om > 0 && <p className="muted small" style={{ marginTop: -6 }}>GMV atribusi iklan bisa lebih besar dari GMV toko: platform menghitung pesanan dalam beberapa hari setelah klik (satu pesanan bisa tercatat di lebih dari satu kampanye) dan belum mengurangi pembatalan sebelum pesanan dikirim.</p>}
@@ -488,7 +490,7 @@ function LiveTab({ R, live, brand, plat, jadwal, fr }: { fr?: { l: string; w?: s
         { g: "Kunjungan", k: "rd", l: "Rata-rata durasi", f: "jam", v: a.n ? a.j / a.n : NaN, p: cm && b.n ? b.j / b.n : null, s: c.map((x) => (x.n ? x.j / x.n : 0)), ps: pv?.map((x) => (x.n ? x.j / x.n : 0)) },
         { g: "Kunjungan", k: "j", l: "Durasi live", f: "jam", v: a.j, p: cm ? b.j : null, s: c.map((x) => x.j), ps: pv?.map((x) => x.j) },
         { g: "Kunjungan", k: "n", l: "Sesi", f: "n", v: a.n, p: cm ? b.n : null, s: c.map((x) => x.n), ps: pv?.map((x) => x.n) },
-        { g: "Konversi", k: "gj", l: "GMV per jam", f: "rp", v: gj, p: cm ? gjp : null, s: c.map((x) => (x.j ? x.g / x.j : 0)), ps: pv?.map((x) => (x.j ? x.g / x.j : 0)) },
+        { g: "Konversi", k: "gj", l: "GMV per jam", f: "rp", v: gj, ex: a.j ? `${fmt(a.g)} ÷ ${jm(a.j)} = ${fmt(gj)}` : undefined, p: cm ? gjp : null, s: c.map((x) => (x.j ? x.g / x.j : 0)), ps: pv?.map((x) => (x.j ? x.g / x.j : 0)) },
         ...(hasPen ? [{ g: "Kunjungan", k: "pen", l: "Penonton", f: "n", v: pen, p: cmPen ? penP : null, note: cmPen ? undefined : "data penonton belum lengkap untuk dibandingkan", s: c.map((x) => x.pen), ps: pv?.map((x) => x.pen) } as Metric,
           { g: "Konversi", k: "gp", l: "GMV per penonton", f: "rp", v: pen ? a.g / pen : NaN, p: cmPen && penP ? b.g / penP : null, note: cmPen ? undefined : "data penonton belum lengkap untuk dibandingkan", s: c.map((x) => (x.pen ? x.g / x.pen : 0)), ps: pv?.map((x) => (x.pen ? x.g / x.pen : 0)) } as Metric] : []),
         { g: "Transaksi", k: "gs", l: "GMV Shopee", f: "rp", v: a.gs, p: cm ? b.gs : null, s: c.map((x) => x.gs), ps: pv?.map((x) => x.gs) },

@@ -1,11 +1,11 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { detect, type Parsed, type Sheet } from "@/lib/parse";
-import { saveUpload , saveOrders } from "./actions";
+import { saveUpload, saveOrders, cekIklan } from "./actions";
 
 type C = { id: string; nama: string };
 type St = { id: string; client_id: string; brand: string; platform: string; akun?: string | null };
-type Item = { name: string; p?: Parsed; err?: string; status?: "run" | "ok" | "err"; msg?: string; s?: string };
+type Item = { name: string; p?: Parsed; err?: string; status?: "run" | "ok" | "err"; msg?: string; s?: string; warn?: string | null; ck?: string };
 const norm = (x: string) => x.toLowerCase().replace(/[^a-z0-9]/g, "");
 /* Tebak toko dari akun di file, platform di jenis file, dan nama toko di nama file */
 function guess(it: Item, stores: St[], c: string): string {
@@ -79,6 +79,8 @@ export default function Uploader({ clients, stores }: { clients: C[]; stores: St
   }
 
   const sOf = (it: Item) => it.s || s;
+  useEffect(() => { items.forEach((it, i) => { const st = sOf(it); if (!it.p || it.p.kind !== "ads" || !st || it.status || it.ck === st) return; const p = it.p; upd(i, { ck: st });
+    cekIklan(st, p.dari, p.sampai, p.rows.reduce((a, r) => a + r[3], 0)).then((w) => upd(i, { warn: w })).catch(() => {}); }); }, [items, s]); // eslint-disable-line react-hooks/exhaustive-deps
   const missing = items.filter((x) => x.p && !x.status && x.p.kind !== "live" && !sOf(x)).length;
   const ready = items.some((x) => x.p && !x.status) && !missing;
 
@@ -129,6 +131,7 @@ export default function Uploader({ clients, stores }: { clients: C[]; stores: St
       <b>{it.name}</b>
       {it.p && <div><span className="badge">{it.p.label}</span> {summary(it.p)}</div>}
       {it.p && it.p.kind !== "live" && !it.status && <label className="small">Toko tujuan <select value={it.s ?? ""} onChange={(e) => upd(i, { s: e.target.value })} aria-label={"Toko tujuan " + it.name}><option value="">{store ? `Pakai pilihan atas (${store.platform} · ${store.brand})` : "— pilih toko —"}</option>{stores.map((x) => <option key={x.id} value={x.id}>{clients.find((k) => k.id === x.client_id)?.nama} · {x.platform} · {x.brand}</option>)}</select></label>}
+      {it.warn && !it.status && <div className="warnnote small">⚠ {it.warn}</div>}
       {it.err && <div className="err">{it.err}</div>}
       {it.msg && <div className={it.status === "err" ? "err" : it.status === "ok" ? "ok" : "muted"}>{it.msg}</div>}
     </li>)}</ul>}

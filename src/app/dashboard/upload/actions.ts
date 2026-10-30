@@ -195,3 +195,14 @@ export async function saveOrders(clientId: string, storeId: string, ord: (string
   } catch (e) { return { ok: false, msg: "Gagal menyimpan status pesanan: " + (e as Error).message }; }
   return { ok: true, msg: "" };
 }
+
+/* Cek awal sebelum disimpan: biaya iklan di file vs data tersimpan (peringatan di daftar file) */
+export async function cekIklan(storeId: string, dari: string, sampai: string, biaya: number): Promise<string | null> {
+  const me = await requireUser(); if (!me) return null;
+  const st = (await q<{ client_id: string; platform: string }>("select client_id, platform from stores where id = ?", [storeId]))[0];
+  if (!st || !(await allowedClients(me)).includes(st.client_id)) return null;
+  if (st.platform === "Shopee" && dari < SHOPEE_ADS_ARSIP) return null;
+  const old = +((await q<{ b: number | null }>("select sum(biaya) b from ads where store_id = ? and dari >= ? and sampai <= ?", [storeId, dari, sampai]))[0]?.b ?? 0);
+  if (old > 0 && biaya < old * 0.5) return `Biaya di file ${Math.round((1 - biaya / old) * 100)}% lebih kecil dari data tersimpan (${rp(biaya)} vs ${rp(old)}). Kemungkinan file tidak lengkap; upload akan ditahan.`;
+  return null;
+}

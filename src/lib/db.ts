@@ -58,6 +58,7 @@ async function ready() {
       try { await pool().query("alter table clients add column stok_pengaman int null"); } catch { /* sudah ada */ }
       // Klien yang stoknya dianggap selalu ada (tidak perlu upload stok): awalnya Just Fluff & Organic Treasure
       try { await pool().query("alter table clients add column tab_klien varchar(200) null"); } catch { /* sudah ada */ }
+      try { await pool().query("alter table clients add column lap_temuan text null, add column lap_langkah text null, add column lap_waktu datetime null"); } catch { /* sudah ada */ }
       try { await pool().query("alter table clients add column stok_selalu_ada tinyint not null default 0"); await pool().query("update clients set stok_selalu_ada = 1 where id in ('jf', 'ot')"); } catch { /* sudah ada */ }
       // Status pesanan per nomor pesanan (dari file pesanan), produk di pesanan batal/retur, dan potongan per pesanan (dari laporan penghasilan)
       await pool().query("create table if not exists orders (store_id varchar(80) not null, order_id varchar(40) not null, tanggal date not null, status varchar(20) not null, status_asli varchar(100) null, alasan varchar(200) null, retur varchar(60) null, gmv decimal(16,2) not null default 0, qty int not null default 0, metode varchar(40) null, provinsi varchar(50) null, kota varchar(60) null, batas_kirim date null, dikirim date null, selesai date null, diupdate timestamp not null default current_timestamp on update current_timestamp, primary key (store_id, order_id), index (store_id, tanggal))");

@@ -23,6 +23,7 @@ export async function saveClient(_p: R | null, f: FormData): Promise<R> {
   const tabs = f.getAll("tab_klien").map(String).filter((t) => TABK.includes(t)), tk = f.get("tab_set") ? tabs.join(",") : null;
   if (id) {
     await exec("update clients set nama = ?, modul = ?, target_roas = ?, stok_selalu_ada = ?, tab_klien = ? where id = ?", [nama, modul.join(","), target, ssa, tk, id]);
+    if (f.get("lap_set")) { const lt = String(f.get("lap_temuan") || "").trim().slice(0, 2000) || null, ll = String(f.get("lap_langkah") || "").trim().slice(0, 2000) || null; await exec("update clients set lap_waktu = if(coalesce(lap_temuan, '') <> coalesce(?, '') or coalesce(lap_langkah, '') <> coalesce(?, ''), now(), lap_waktu), lap_temuan = ?, lap_langkah = ? where id = ?", [lt, ll, lt, ll, id]); }
     await logAct(me, "ubah klien", id, `${nama} · modul ${modul.join(", ")} · target ROAS ${target ?? "–"}`);
     return done("Klien disimpan.");
   }

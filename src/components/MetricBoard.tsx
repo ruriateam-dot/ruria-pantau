@@ -2,7 +2,7 @@
 import { useState } from "react";
 
 /* Kartu metrik ala Seller Centre: klik kartu untuk menampilkan/menyembunyikan garisnya di grafik (maks. 4). */
-export type Metric = { k: string; l: string; f: "rp" | "n" | "pct" | "x" | "jam"; v: number; p?: number | null; s: number[]; ps?: number[]; inv?: boolean; note?: string; d?: number | null; g?: string };
+export type Metric = { k: string; l: string; f: "rp" | "n" | "pct" | "x" | "jam"; v: number; p?: number | null; s: number[]; ps?: number[]; inv?: boolean; note?: string; d?: number | null; g?: string; ex?: string };
 /* Penjelasan istilah (ikon ⓘ di label kartu) */
 export const GLOS: Record<string, string> = {
   ROAS: "Return on ad spend: GMV dari iklan dibagi biaya iklan. ROAS 10 = setiap Rp1 iklan menghasilkan Rp10 penjualan.",
@@ -38,8 +38,8 @@ export default function MetricBoard({ metrics, labels, sub, init, dec = 1, fresh
       {fresh?.w && <p className="fresh w" style={{ margin: "0 0 8px" }}>⚠ {fresh.w}. Angka periode ini belum lengkap untuk toko tersebut.</p>}
       <div className="grps">{[...new Set(metrics.map((m) => m.g ?? ""))].map((grp) => { const nG = metrics.filter((m) => (m.g ?? "") === grp).length; return <div key={grp} className="grp" style={{ flex: nG }}>{grp && <h3 className="mbgh">{grp}</h3>}<div className="mbg" style={{ gridTemplateColumns: `repeat(${nG}, minmax(0, 1fr))` }}>{metrics.filter((m) => (m.g ?? "") === grp).map((m) => { const i = sel.indexOf(m.k), d = m.d !== undefined ? (m.d != null && isFinite(m.d) ? m.d : null) : m.p != null && m.p !== 0 && isFinite(m.p) ? ((m.v - m.p) / Math.abs(m.p)) * 100 : null, good = d == null ? true : m.inv ? d <= 0 : d >= 0;
         return <button type="button" key={m.k} className={"mbc" + (i >= 0 ? " on" : "")} style={i >= 0 ? { borderTopColor: COL[i] } : undefined} onClick={() => toggle(m.k)} aria-pressed={i >= 0}>
-          <span className="mbl">{m.l}{GLOS[m.l] && <span role="button" tabIndex={0} className="ii" aria-label={"Penjelasan " + m.l} aria-expanded={pop === m.k} onClick={(e) => { e.stopPropagation(); setPop(pop === m.k ? null : m.k); }} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); setPop(pop === m.k ? null : m.k); } }}>i</span>}</span>
-          {pop === m.k && <span className="mpop" role="note"><b>{m.l}</b><br />{GLOS[m.l]}{fresh?.src && <><br /><br />Sumber: {fresh.src}.</>}{fresh?.w && <><br />Belum lengkap: {fresh.w}.</>}</span>}<b>{fmtV(m.f, m.v, dec)}</b>
+          <span className="mbl">{m.l}{(GLOS[m.l] || m.ex) && <span role="button" tabIndex={0} className="ii" aria-label={"Penjelasan " + m.l} aria-expanded={pop === m.k} onClick={(e) => { e.stopPropagation(); setPop(pop === m.k ? null : m.k); }} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); setPop(pop === m.k ? null : m.k); } }}>i</span>}</span>
+          {pop === m.k && <span className="mpop" role="note"><b>{m.l}</b><br />{GLOS[m.l]}{m.ex && <><br /><br /><b>{m.ex}</b></>}{fresh?.src && <><br /><br />Sumber: {fresh.src}.</>}{fresh?.w && <><br />Belum lengkap: {fresh.w}.</>}</span>}<b>{fmtV(m.f, m.v, dec)}</b>
           <span className={"mbd " + (d == null ? "muted" : good ? "up" : "dn")}>{d == null ? (m.note ?? sub) : `${d >= 0 ? "▲" : "▼"} ${Math.abs(d).toFixed(dec).replace(".", ",")}% ${sub}`}</span>
           {fresh && <span className={"fresh" + (fresh.w ? " w" : "")}>{fresh.w ? "⚠ sebagian data tertinggal" : fresh.l}</span>}
         </button>; })}</div></div>; })}</div>

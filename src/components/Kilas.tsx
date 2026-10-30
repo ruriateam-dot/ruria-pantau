@@ -62,7 +62,7 @@ export function Verdict({ tab, k, R, href }: { tab: string; k: KilasData; R: Ran
   return <div className={"verdict v-" + tone} role="status"><span className="vic" aria-hidden>{ic}</span><div><b>{title}</b>{sub && <><br /><span className="muted small">{sub}</span></>} {link && <a href={link[0]}>{link[1]}</a>}</div></div>;
 }
 
-export function LaporanKlien({ k, R, nama, last }: { k: KilasData; R: Range; nama: string; last?: string | null }) {
+export function LaporanKlien({ k, R, nama, last, tem: tm, lang: lg, waktu }: { k: KilasData; R: Range; nama: string; last?: string | null; tem?: string | null; lang?: string | null; waktu?: string | null }) {
   if (!k.G && !k.S) return null;
   const dG = k.cmp && k.Gp ? pct(k.G, k.Gp) : null;
   const tem: string[] = [], lang: string[] = [];
@@ -75,11 +75,15 @@ export function LaporanKlien({ k, R, nama, last }: { k: KilasData; R: Range; nam
   if (k.bad.length) lang.push(`Evaluasi ${k.bad.length} iklan boros / tanpa penjualan (${fmt(k.badS)}).`);
   if (low && pct(low.n, low.o) < 0) lang.push(`Cari penyebab penurunan di ${k.nm.get(low.id)} (stok, harga, iklan).`);
   lang.push("Lanjutkan follow-up kreator affiliate prioritas P1–P2.");
+  const lines = (x?: string | null) => (x ?? "").split("\n").map((y) => y.replace(/^\s*[-•\d.)]+\s*/, "").trim()).filter(Boolean);
+  const manT = lines(tm), manL = lines(lg);
+  if (manT.length) tem.splice(0, tem.length, ...manT);
+  if (manL.length) lang.splice(0, lang.length, ...manL);
   return <div className="card lapk">
     <div className={"verdict v-" + (dG != null && dG < -10 ? "bad" : dG != null && dG < 0 ? "warn" : "good")}><div><b>{R.label}: GMV {fmt(k.G)}{dG != null ? ` (${dG >= 0 ? "▲" : "▼"} ${Math.abs(dG).toFixed(1).replace(".", ",")}%)` : ""}</b><br />
       <span className="muted small">{nama}{k.S ? ` · ROAS iklan ${rs(k.roas)}` : ""}{last ? ` · data s.d. ${last}` : ""}</span></div></div>
-    <div className="lapk2"><div><h3>Temuan</h3><ol>{tem.slice(0, 3).map((x) => <li key={x}>{x}</li>)}</ol></div>
-      <div><h3>Langkah tim Ruria</h3><ol>{lang.slice(0, 3).map((x) => <li key={x}>{x}</li>)}</ol></div></div>
-    <p className="muted small">Temuan dan langkah disusun otomatis dari data periode ini. Detail ada di tab di bawah.</p>
+    <div className="lapk2"><div><h3>Temuan</h3><ol>{tem.slice(0, manT.length ? 6 : 3).map((x) => <li key={x}>{x}</li>)}</ol></div>
+      <div><h3>Langkah tim Ruria</h3><ol>{lang.slice(0, manL.length ? 6 : 3).map((x) => <li key={x}>{x}</li>)}</ol></div></div>
+    <p className="muted small">{manT.length || manL.length ? `Ditulis tim Ruria${waktu ? `, ${waktu}` : ""}.` : "Temuan dan langkah disusun otomatis dari data periode ini."} Detail ada di tab di bawah.</p>
   </div>;
 }
