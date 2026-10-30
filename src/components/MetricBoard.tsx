@@ -51,7 +51,7 @@ export default function MetricBoard({ metrics, labels, sub, init, dec = 1, fresh
               <path d={path(m.s)} fill="none" stroke={COL[j]} strokeWidth="2.2" strokeLinejoin="round" />
               {hov != null && <circle cx={x(hov)} cy={y(m.s[hov])} r="3.5" fill={COL[j]} />}
               {(() => { let li = Math.min(n, m.s.length) - 1; while (li > 0 && !isFinite(m.s[li])) li--; if (li < 0 || !isFinite(m.s[li])) return null;
-                return <><circle cx={x(li)} cy={y(m.s[li])} r="4" fill={COL[j]} /><text x={W - R} y={T + 12 + j * 16} textAnchor="end" style={{ fontSize: 12, fontWeight: 700, fill: COL[j] }}>{fmtV(m.f, m.s[li], dec)}</text></>; })()}</g>; })}
+                return <><circle cx={x(li)} cy={y(m.s[li])} r="4" fill={COL[j]} /><text x={W - R} y={T + 12 + j * 16} textAnchor="end" style={{ fontSize: 10, fontWeight: 700, fill: COL[j] }}>{fmtV(m.f, m.s[li], dec)}</text></>; })()}</g>; })}
           {hov != null && <line x1={x(hov)} x2={x(hov)} y1={T} y2={H - B} stroke="var(--muted)" strokeDasharray="3 3" />}
           {labels.map((l, i) => ((i % step === 0 && (n - 1 - i >= step * 0.6 || i === n - 1)) || i === n - 1) && <text key={i} x={x(i)} y={H - 8} textAnchor={i === 0 ? "start" : i === n - 1 ? "end" : "middle"} style={{ fontSize: 11, fill: "var(--muted)" }}>{l}</text>)}
           {labels.map((_, i) => <rect key={i} x={x(i) - (W - L - R) / Math.max(1, n - 1) / 2} y={0} width={(W - L - R) / Math.max(1, n - 1)} height={H} fill="transparent" onMouseEnter={() => setHov(i)} onTouchStart={() => setHov(i)} />)}

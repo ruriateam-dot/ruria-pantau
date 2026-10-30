@@ -609,3 +609,5 @@ div.rk:has(> .rkc){display:grid;width:auto;height:auto;place-items:stretch;borde
 .pbtn2 .ptx small.pwarn{color:var(--warn);font-weight:600}
 .pand details{border-top:1px solid var(--line);padding:8px 2px}.pand details:first-child{border-top:0}.pand summary{cursor:pointer}.pand p{margin:6px 0 0 14px}
 .ksec{margin:18px 0 8px;font-size:14px;color:var(--accent);border-top:1px solid var(--line);padding-top:12px}
+/* cegah konten melebar keluar layar */
+main.dv{grid-template-columns:minmax(0,1fr)!important}main.dv>*{min-width:0}.grid2c>*,.rk2>*,.two>*{min-width:0}
