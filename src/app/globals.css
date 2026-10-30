@@ -606,3 +606,4 @@ div.rk:has(> .rkc){display:grid;width:auto;height:auto;place-items:stretch;borde
 .sk-title{height:26px;width:40%}.sk-bar{height:44px;width:60%}.sk-verdict{height:80px}.sk-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.sk-card{height:90px}.sk-chart{height:220px}.sk-table{height:260px}
 @keyframes skm{0%{background-position:200% 0}100%{background-position:-200% 0}}
 @media(max-width:760px){.sk-row{grid-template-columns:1fr 1fr}}
+.pbtn2 .ptx small.pwarn{color:var(--warn);font-weight:600}

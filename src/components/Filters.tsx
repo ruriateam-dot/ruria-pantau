@@ -5,7 +5,7 @@ import { useNav } from "./Nav";
 import Period from "./Period";
 
 type C = { id: string; nama: string; modul: string[] };
-export default function Filters({ base = "/dashboard", clients, brands, platforms, label, hideClient, rng, cmp, last }: { base?: string; clients: C[]; brands: string[]; platforms: string[]; label: string; hideClient?: boolean; rng?: [string, string]; cmp?: string; last?: string | null }) {
+export default function Filters({ base = "/dashboard", clients, brands, platforms, label, hideClient, rng, cmp, last, warn }: { warn?: string; base?: string; clients: C[]; brands: string[]; platforms: string[]; label: string; hideClient?: boolean; rng?: [string, string]; cmp?: string; last?: string | null }) {
   const sp = useSearchParams();
   const get = (k: string, d: string) => sp.get(k) ?? d;
   const { pending, go } = useNav();
@@ -21,7 +21,7 @@ export default function Filters({ base = "/dashboard", clients, brands, platform
       {!hideClient && clients.length > 1 && <select aria-label="Klien" value={get("c", clients[0]?.id ?? "")} onChange={(e) => set({ c: e.target.value, b: "", p: "" })}>
         {clients.map((c) => <option key={c.id} value={c.id}>{c.nama}</option>)}
       </select>}
-      <Period per={per} label={label} rng={rng} cmp={cmp} last={last} onPick={(p) => set({ per: p })} />
+      <Period per={per} label={label} rng={rng} cmp={cmp} last={last} warn={warn} onPick={(p) => set({ per: p })} />
       {(brands.length > 1 || platforms.length > 1) && <button type="button" className={"fbtn" + (fo ? " on" : "") + (get("b", "") || get("p", "") ? " act" : "")} aria-expanded={fo} onClick={() => setFo(!fo)}>Filter{get("b", "") || get("p", "") ? " •" : ""}</button>}
       <span className={"fsel" + (fo ? " open" : "")}>
       {brands.length > 1 && <select aria-label="Toko" className={get("b", "") ? "act" : ""} value={get("b", "")} onChange={(e) => set({ b: e.target.value })}><option value="">Semua toko</option>{brands.map((b) => <option key={b}>{b}</option>)}</select>}

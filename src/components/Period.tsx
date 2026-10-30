@@ -10,7 +10,7 @@ const DOW = ["S", "S", "R", "K", "J", "S", "M"];
 const mondayOf = (d: string) => addDays(d, -((new Date(d + "T00:00:00Z").getUTCDay() + 6) % 7));
 const shiftYM = (ym: string, n: number) => { let [y, m] = ym.split("-").map(Number); m += n; while (m > 12) { m -= 12; y++; } while (m < 1) { m += 12; y--; } return `${y}-${String(m).padStart(2, "0")}`; };
 
-export default function Period({ per, label, onPick, rng, cmp, last }: { per: string; label: string; onPick: (per: string) => void; rng?: [string, string]; cmp?: string; last?: string | null }) {
+export default function Period({ per, label, onPick, rng, cmp, last, warn }: { per: string; label: string; onPick: (per: string) => void; rng?: [string, string]; cmp?: string; last?: string | null; warn?: string }) {
   const fd = (d: string, y = true) => `${+d.slice(8)} ${BLN[+d.slice(5, 7) - 1]}${y ? " " + d.slice(0, 4) : ""}`;
   const title = label.replace(/\s*\(s\.d\.[^)]*\)/, "").replace(/,\s*\d+ \w+$/, "");
   const span = rng ? (rng[0] === rng[1] ? fd(rng[0]) : `${fd(rng[0], rng[0].slice(0, 4) !== rng[1].slice(0, 4))} – ${fd(rng[1])}`) : "";
@@ -71,7 +71,7 @@ export default function Period({ per, label, onPick, rng, cmp, last }: { per: st
     <div className="pwrap" ref={box}>
       <button type="button" className={"pbtn2" + (open ? " open" : "")} aria-expanded={open} aria-label={`Periode: ${label}`} onClick={() => { setOpen(!open); setMode(null); setYm(T.slice(0, 7)); setYear(+T.slice(0, 4)); }}>
         <span className="pic" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></svg></span>
-        <span className="ptx"><b>{title}</b>{span && <small>{span}{cmp ? <span className="pcmp"> · {cmp}</span> : null}</small>}</span>
+        <span className="ptx"><b>{title}</b>{span && <small>{span}{cmp ? <span className="pcmp"> · {cmp}</span> : null}</small>}{warn && <small className="pwarn">⚠ {warn}</small>}</span>
         <span className="pcv" aria-hidden="true">{open ? "▴" : "▾"}</span>
       </button>
       {open && (
