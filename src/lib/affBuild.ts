@@ -165,7 +165,7 @@ export async function rebuildAff(clientId: string): Promise<string> {
     TT = [...agg("T").values()].map((a) => {
       const [kt, kv] = top(a.kont), t = TA.get(a.u.toLowerCase()); const [pr, ak] = prio("T", a);
       const tip = TTPF.test(a.u.toLowerCase()) ? 18 : a.gk ? (KONTEN[kt] ?? 0) : 4, samp = +(t?.sampel ?? 0);
-      return [a.u, tip, ...a.g.map(Math.round), +(t?.video ?? 0), +(t?.live ?? 0), a.gk ? +(a.gx / a.gk).toFixed(3) : 0, samp, catOf(a, samp ? `Sampel ${samp}x` : ""), pr, ak, Math.round(a.gk), Math.round(a.gk - a.gx), Math.round(a.gx), 0, a.gk ? Math.round((kv / a.gk) * 100) : 0];
+      return [a.u, tip, ...a.g.map(Math.round), +(t?.video ?? 0), +(t?.live ?? 0), a.gk ? +(a.gx / a.gk).toFixed(3) : 0, samp, catOf(a, samp ? `Sampel ${samp}x` : ""), pr, ak, Math.round(a.gk), Math.round(a.gk - a.gx), Math.round(a.gx), 0, a.gk ? Math.round((kv / a.gk) * 100) : 0, Math.round(a.l30)];
     });
     // Kreator yang sudah dapat sampel tapi belum punya pesanan: tetap masuk daftar (P5, GMV 0)
     const ada = new Set(TT.map((r) => String(r[0]).toLowerCase()));
@@ -182,7 +182,7 @@ export async function rebuildAff(clientId: string): Promise<string> {
     SH = [...SA.values()].map((a) => {
       const [kt, kv] = top(a.kont); const [pr, ak] = prio("S", a); const isNet = NETS.has(a.u.toLowerCase()) || AGACC.has(a.u.toLowerCase());
       const tip = isNet ? 18 : a.gk ? (KANAL[kt] ?? 16) : 17; const [mc] = top(a.mcn);
-      return [a.u, a.nama || a.u, tip, tip === 6 ? "Shopeelive-Shopee" : "", ...a.g.map(Math.round), PB.get(a.u.toLowerCase()) ?? 0, a.n ? +(a.batal / a.n).toFixed(3) : 0, 0, catOf(a, mc ? `Anggota agency ${mc}` : ""), pr, ak, Math.round(a.gk), Math.round(a.gk - a.gx), Math.round(a.gx), 0, a.gk ? Math.round((kv / a.gk) * 100) : 0];
+      return [a.u, a.nama || a.u, tip, tip === 6 ? "Shopeelive-Shopee" : "", ...a.g.map(Math.round), PB.get(a.u.toLowerCase()) ?? 0, a.n ? +(a.batal / a.n).toFixed(3) : 0, 0, catOf(a, mc ? `Anggota agency ${mc}` : ""), pr, ak, Math.round(a.gk), Math.round(a.gk - a.gx), Math.round(a.gx), 0, a.gk ? Math.round((kv / a.gk) * 100) : 0, Math.round(a.l30)];
     });
     // Affiliate yang tercatat di AMS tapi belum punya pesanan: tetap masuk daftar (P5, GMV 0)
     const adaS = new Set(SH.map((r) => String(r[0]).toLowerCase()));

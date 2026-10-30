@@ -83,7 +83,7 @@ export function LaporanKlien({ k, R, nama, last, tem: tm, lang: lg, waktu }: { k
   if (k.best.length) lang.push(`Tambah budget ${k.best.length} iklan dengan ROAS tertinggi.`);
   if (k.bad.length) lang.push(`Evaluasi ${k.bad.length} iklan boros / tanpa penjualan (${fmt(k.badS)}).`);
   if (low && pct(low.n, low.o) < 0) lang.push(`Cari penyebab penurunan di ${k.nm.get(low.id)} (stok, harga, iklan).`);
-  lang.push("Lanjutkan follow-up kreator affiliate prioritas P1–P2.");
+  lang.push("Lanjutkan follow-up affiliate prioritas P1–P2.");
   const lines = (x?: string | null) => (x ?? "").split("\n").map((y) => y.replace(/^\s*[-•\d.)]+\s*/, "").trim()).filter(Boolean);
   const manT = lines(tm), manL = lines(lg);
   if (manT.length) tem.splice(0, tem.length, ...manT);

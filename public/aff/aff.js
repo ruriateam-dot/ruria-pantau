@@ -10,12 +10,12 @@ const PAGE = 50;
 
 /* ---------- rows ---------- */
 const TT = D.tt.map(r => {
-  const g = r.slice(2,2+NT); return {k:'tt', key:r[0], u:r[0], tipe:D.tip[r[1]], g, okt:g[NT-1], tot:g.reduce((a,b)=>a+b,0), bln:g.filter(v=>v>0).length,
-    vid:r[8+oT], live:r[9+oT], gagal:r[10+oT], samp:r[11+oT], cat:r[12+oT], pr:r[13+oT], aksi:D.aks[r[14+oT]], gk:r[15+oT]||0, gb:r[16+oT]||0, gx:r[17+oT]||0, gest:r[18+oT]?1:0, tp:r[19+oT]};
+  const g = r.slice(2,2+NT); return {k:'tt', key:r[0], u:r[0], tipe:D.tip[r[1]], g, okt:(r[20+oT] ?? g[NT-1]), tot:g.reduce((a,b)=>a+b,0), bln:g.filter(v=>v>0).length,
+    vid:r[8+oT], live:r[9+oT], gagal:r[10+oT], samp:r[11+oT], cat:r[12+oT], pr:r[13+oT], aksi:D.aks[r[14+oT]], gk:r[15+oT]||0, gb:r[16+oT]||0, gx:r[17+oT]||0, gest:r[18+oT]?1:0, tp:r[19+oT], l30:r[20+oT]};
 });
 const SH = D.sh.map(r => {
-  const g = r.slice(4,4+NS); return {k:'sh', key:r[0], u:r[0], nama:r[1], tipe:D.tip[r[2]], ch:r[3], g, okt:g[NS-1], tot:g.reduce((a,b)=>a+b,0), bln:g.filter(v=>v>0).length,
-    pb:r[10+oS], batal:r[11+oS], samp:r[12+oS], cat:r[13+oS], pr:r[14+oS], aksi:D.aks[r[15+oS]], gk:r[16+oS]||0, gb:r[17+oS]||0, gx:r[18+oS]||0, gest:r[19+oS]?1:0, tp:r[20+oS]};
+  const g = r.slice(4,4+NS); return {k:'sh', key:r[0], u:r[0], nama:r[1], tipe:D.tip[r[2]], ch:r[3], g, okt:(r[21+oS] ?? g[NS-1]), tot:g.reduce((a,b)=>a+b,0), bln:g.filter(v=>v>0).length,
+    pb:r[10+oS], batal:r[11+oS], samp:r[12+oS], cat:r[13+oS], pr:r[14+oS], aksi:D.aks[r[15+oS]], gk:r[16+oS]||0, gb:r[17+oS]||0, gx:r[18+oS]||0, gest:r[19+oS]?1:0, tp:r[20+oS], l30:r[21+oS]};
 });
 /* bulan aktif: penyebut = bulan yang ada datanya, plus bulan kontribusi terbesar */
 const availOf = rows => { const n = rows[0] ? rows[0].g.length : 0; const t = Array(n).fill(0); rows.forEach(r => r.g.forEach((v,i) => { t[i] += v||0; })); return t.map(v => v > 0); };
@@ -145,7 +145,7 @@ function renderSummary(){
   const cTT = contacted(need(TT)), cSH = contacted(need(SH)), cAG = contacted(need([...AGA,...AGB]));
   const pTT = countBy(TT, r=>r.pr), pSH = countBy(SH, r=>r.pr);
   const tTT = countBy(TT, r=>r.tipe), tSH = countBy(SH, r=>r.tipe);
-  const tipeArti = D.tipArti || {'Kreator konten':'Kreator individu yang jualan lewat video/LIVE','Agency/Platform':'Kumpulan banyak kreator (mis. YouTube Shopping, Involve Asia). Tidak bisa dirinci per kreator','Jaringan/website':'Shopee: jualan lewat link website/aplikasi luar','Product card / iklan':'TikTok: jualan dari kartu produk tanpa konten','Belum diketahui':'Shopee: affiliate baru, channel belum tercatat','Akun internal':'Akun JustFluff sendiri'};
+  const tipeArti = D.tipArti || {'Affiliate konten':'Affiliate individu yang jualan lewat video/LIVE','Agency/Platform':'Kumpulan banyak affiliate (mis. YouTube Shopping, Involve Asia). Tidak bisa dirinci per affiliate','Jaringan/website':'Shopee: jualan lewat link website/aplikasi luar','Product card / iklan':'TikTok: jualan dari kartu produk tanpa konten','Belum diketahui':'Shopee: affiliate baru, channel belum tercatat','Akun internal':'Akun JustFluff sendiri'};
   const mt = (blk) => `<div class="tscroll"><table class="mini"><thead><tr><th>Metrik</th>${blk.cols.map(c=>`<th class="num">${esc(c)}</th>`).join('')}<th class="num">Total</th></tr></thead><tbody>${
     blk.rows.map(([n,v,t]) => `<tr><td>${esc(n)}</td>${v.map(x=>`<td class="num">${x===null?'–':(t==='rp'?rpShort(x):nf.format(x))}</td>`).join('')}<td class="num"><b>${t==='nt'?'–':(t==='rp'?rpShort(v.reduce((a,b)=>a+b,0)):nf.format(v.reduce((a,b)=>a+b,0)))}</b></td></tr>`).join('')}</tbody></table></div>`;
   const K = (window.__sampelKpi && window.__sampelKpi()) || {};
@@ -155,19 +155,19 @@ function renderSummary(){
   <section class="panel">
     <h2>Angka kunci</h2>
     <div class="stat-row">
-      <div class="stat"><b>${nf.format(cTT+cSH+cAG)}</b><span>sudah dihubungi dari ${nf.format(nTT+nSH+nAG)} kreator, affiliate &amp; agency yang perlu dihubungi (P1–P3)</span></div>
+      <div class="stat"><b>${nf.format(cTT+cSH+cAG)}</b><span>sudah dihubungi dari ${nf.format(nTT+nSH+nAG)} affiliate &amp; agency yang perlu dihubungi (P1–P3)</span></div>
       <div class="stat"><b>${nf.format(sTT+sSH+sAG)}</b><span>tidak perlu dihubungi dulu (P4 tahan/evaluasi, P5 tidak perlu)</span></div>
       <div class="stat hot"><b>${dueTT+dueSH+dueAG}</b><span>perlu di-follow-up (belum respon ≥3 hari)</span></div>
       <div class="stat"><b>${esc(kv(K.sampelBulan))}</b><span>sampel terkirim ${esc(K.bulanLbl || 'sejak Mei 2026')}${K.sampelWeb ? ' · ' + esc(K.sampelWeb) + ' dari form' : ''}</span></div>
       <div class="stat"><b>${esc(kv(K.laku))}</b><span>sampel yang menghasilkan order dalam 30 hari (${esc(K.efPer || 'semua sampel')}, TikTok &amp; Shopee)</span></div>
       <div class="stat"><b>${esc(kv(K.roi))}</b><span>GMV per Rp1 biaya sampel</span></div>
     </div>
-    <p class="note">Data penjualan: TikTok s.d. 21 Okt (kreator) dan 30 Sep (efektivitas sampel), Shopee s.d. 21 Okt. Rekap dan efektivitas sampel lengkap ada di bawah halaman ini.</p>
+    <p class="note">Data penjualan: TikTok s.d. 21 Okt (affiliate) dan 30 Sep (efektivitas sampel), Shopee s.d. 21 Okt. Rekap dan efektivitas sampel lengkap ada di bawah halaman ini.</p>
   </section>
   <section class="panel">
     <h2>Progres follow-up</h2>
     <div class="stat-row">
-      <div class="stat"><b>${nf.format(cTT)}</b><span>dari ${nf.format(nTT)} kreator TikTok P1–P3 sudah dihubungi</span><span class="muted">+${nf.format(sTT)} P4–P5 tidak perlu dihubungi</span></div>
+      <div class="stat"><b>${nf.format(cTT)}</b><span>dari ${nf.format(nTT)} affiliate TikTok P1–P3 sudah dihubungi</span><span class="muted">+${nf.format(sTT)} P4–P5 tidak perlu dihubungi</span></div>
       <div class="stat"><b>${nf.format(cSH)}</b><span>dari ${nf.format(nSH)} affiliate Shopee P1–P3 sudah dihubungi</span><span class="muted">+${nf.format(sSH)} P4–P5 tidak perlu dihubungi</span></div>
       <div class="stat"><b>${cAG}</b><span>dari ${nAG} agency/jaringan P1–P3 sudah dihubungi</span><span class="muted">+${sAG} P4–P5 tidak perlu dihubungi</span></div>
       <div class="stat hot"><b>${dueTT+dueSH+dueAG}</b><span>perlu di-follow-up: belum ada respon dan sudah ≥3 hari</span>
@@ -200,7 +200,7 @@ function renderSummary(){
   <section class="panel"><h2>Shopee per bulan</h2>${mt(D.M.sh)}
     <p class="note">GMV Shopee sudah tanpa pesanan batal. Sumber: laporan validasi komisi Shopee (Mei–Jul, pesanan selesai) dan AMS Affiliate Performance (Agu, Sep, 1–21 Okt). Pembeli baru tidak tersedia di laporan validasi.</p></section>
   <section class="panel"><h2>Cara pakai</h2>
-    <p class="note">Buka tab TikTok Kreator atau Shopee Affiliate (Agency &amp; MCN ada di bagian bawah tab Shopee), lalu klik satu baris untuk mencatat kontak, tanggal dihubungi, respon, dan status. Kalau status diubah jadi "Produk dikirim", form Input Sampel langsung terbuka dengan username kreatornya; sebaliknya, setiap sampel yang diinput otomatis mengubah status kreator itu jadi "Produk dikirim". Catatan tersimpan otomatis dan langsung terlihat oleh semua orang yang membuka halaman ini. Tombol "Download Excel" mengunduh semua tab beserta catatan follow-up terbaru.</p></section>`;
+    <p class="note">Buka tab TikTok Affiliate atau Shopee Affiliate (Agency &amp; MCN ada di bagian bawah tab Shopee), lalu klik satu baris untuk mencatat kontak, tanggal dihubungi, respon, dan status. Kalau status diubah jadi "Produk dikirim", form Input Sampel langsung terbuka dengan username kreatornya; sebaliknya, setiap sampel yang diinput otomatis mengubah status affiliate itu jadi "Produk dikirim". Catatan tersimpan otomatis dan langsung terlihat oleh semua orang yang membuka halaman ini. Tombol "Download Excel" mengunduh semua tab beserta catatan follow-up terbaru.</p></section>`;
   { const mw = document.getElementById('meet-wrap'); const rt = document.getElementById('sampel-root'); if (rt && mw.nextElementSibling === rt) rt.after(mw); mw.innerHTML = halPanel() + meetPanel(); }
   wireToday();
   wireMeet({cTT, cSH, cAG, nTT, nSH, nAG, sTT, sSH, sAG, due: dueTT+dueSH+dueAG, stTT, stSH, stAG, rTT, rSH, rAG, pTT, pSH, tTT, tSH, K});
@@ -305,7 +305,7 @@ function renderList(which){
     <span class="flabel">Urutkan</span>
     <select id="${which}-sort" aria-label="Urutkan menurut">${sortOpts(defs, f.sort)}</select>
     <button class="btn sm" id="${which}-dir" aria-label="Balik urutan">${dir === 'asc' ? '▲ ' + SORT_TXT[sd.t][1] : '▼ ' + SORT_TXT[sd.t][0]}</button>
-    <span class="count">${nf.format(list.length)} dari ${nf.format(rows.length)} ${isTT?'kreator':'affiliate'} · klik judul kolom untuk mengurutkan, klik baris untuk mencatat</span>
+    <span class="count">${nf.format(list.length)} dari ${nf.format(rows.length)} ${isTT?'affiliate':'affiliate'} · klik judul kolom untuk mengurutkan, klik baris untuk mencatat</span>
   </div>
   <div class="tscroll"><table>
     <thead><tr>${th('pr','Prio')}${th('u', isTT?'Username':'Affiliate')}<th>Tipe</th>${th('okt',mLbl,'num')}${th('tot',tLbl,'num')}${th('bln','Bulan aktif','num')}${th('sn','Sampel (all time)','num')}${th('sroi','Efektivitas sampel (all time)','num')}<th>${aksiLbl()}</th>${th('st','Status')}${th('resp','Respon')}${th('last','Terakhir dihubungi')}</tr></thead>
@@ -319,7 +319,7 @@ function renderList(which){
       <td>${esc(fuOf(r)?.respon || '') || '<span class="muted">–</span>'}</td>
       <td>${lastCell(r)}</td></tr>`).join('') : `<tr><td colspan="12" class="muted">Tidak ada yang cocok dengan filter ini.</td></tr>`}</tbody>
   </table></div>
-  <div class="pager"><span>Halaman ${f.page+1} dari ${pages}</span><span class="legend"><span class="chip ag">Agency/Platform</span> = kumpulan banyak kreator, data tidak bisa dirinci</span><span class="btns">
+  <div class="pager"><span>Halaman ${f.page+1} dari ${pages}</span><span class="legend"><span class="chip ag">Agency/Platform</span> = kumpulan banyak affiliate, data tidak bisa dirinci</span><span class="btns">
     <button class="btn sm" id="${which}-prev"${f.page===0?' disabled':''}>Sebelumnya</button>
     <button class="btn sm" id="${which}-next"${f.page>=pages-1?' disabled':''}>Berikutnya</button></span></div>`;
   const bind = (id, key, ev='change', get = el => el.value) => { const el = document.getElementById(which+'-'+id); el.addEventListener(ev, () => { f[key] = get(el); f.page = 0; saveFilters(); rerenderSoon(); }); };
@@ -451,7 +451,7 @@ function renderDb(){
     <thead><tr>${th('pr','Prio')}${th('u','Username')}<th>Tipe</th>${th('okt','GMV 30 hari terakhir','num')}${th('gb','GMV bersih','num')}${th('bln','Bulan aktif','num')}${th('sn','Sampel (all time)','num')}${th('sroi','Efektivitas sampel (all time)','num')}<th>${aksiLbl()}</th>${th('st','Status')}${th('resp','Respon')}${th('last','Terakhir dihubungi')}</tr></thead>
     <tbody>${slice.length ? slice.map((r,i) => `<tr class="click" tabindex="0" data-i="${f.page*PAGE+i}">
       <td>${prioChip(r.pr)}</td>
-      <td class="u">${esc(r.u)}${liveChip(r)}${andalan(r) ? ' <span class="chip p1" title="Kreator andalan: jualan ≥5 dari 6 bulan, GMV bersih ≥Rp3 jt, masih jualan bulan terakhir. Pertahankan dengan komisi khusus/prioritas produk baru">Andalan</span>' : ''}${halOf(r) ? ` <span class="chip" title="Peserta acara Haluan ClickConnect Semarang (${esc(halOf(r))}), dapat 1 sampel">Haluan</span>` : ''}${r.k==='sh' && r.nama && r.nama !== r.u ? `<small>${esc(r.nama)}</small>` : ''}${ptags(r)}${fuOf(r)?.kontak ? `<br>${kontakHtml(fuOf(r).kontak, r)}`:''}</td>
+      <td class="u">${esc(r.u)}${liveChip(r)}${andalan(r) ? ' <span class="chip p1" title="Affiliate andalan: jualan ≥5 dari 6 bulan, GMV bersih ≥Rp3 jt, masih jualan bulan terakhir. Pertahankan dengan komisi khusus/prioritas produk baru">Andalan</span>' : ''}${halOf(r) ? ` <span class="chip" title="Peserta acara Haluan ClickConnect Semarang (${esc(halOf(r))}), dapat 1 sampel">Haluan</span>` : ''}${r.k==='sh' && r.nama && r.nama !== r.u ? `<small>${esc(r.nama)}</small>` : ''}${ptags(r)}${fuOf(r)?.kontak ? `<br>${kontakHtml(fuOf(r).kontak, r)}`:''}</td>
       <td class="t">${tipeR(r)}</td>
       <td class="num">${rpShort(r.okt)}</td><td class="num"><b>${rpShort(r.gb)}</b>${est(r)}<small class="${r.gk && r.gx/r.gk>=.4?'late':'muted'}">kotor ${rpShort(r.gk)} · batal ${r.gk ? pct(r.gx/r.gk) : '0%'}</small></td>
       <td class="num">${blnCell(r)}</td><td class="num wrapn">${sampCell(r)}</td><td class="num wrapn">${hasilCell(r)}</td>
@@ -463,7 +463,7 @@ function renderDb(){
   <div class="pager"><span>Halaman ${f.page+1} dari ${pages}</span><span class="btns">
     <button class="btn sm" id="${W}-prev"${f.page===0?' disabled':''}>Sebelumnya</button>
     <button class="btn sm" id="${W}-next"${f.page>=pages-1?' disabled':''}>Berikutnya</button></span></div>
-  <details class="srcnote"><summary class="note">Sumber data <i class="ii">i</i></summary>  <p class="note">GMV kotor, bersih dan batal & retur: periode Mei–21 Okt. <b>TikTok</b>: GMV kotor dari laporan performa kreator; bersih dan batal & retur dihitung dari porsi batal & retur tiap kreator di export pesanan (Mei–Sep). <b>Shopee</b>: GMV bersih = omzet tanpa pesanan batal (validasi komisi Mei–Jul, AMS Agu–Okt); batal hanya bisa dihitung untuk Agu–Okt. <sup>*</sup> = perkiraan: TikTok memakai rata-rata 36% batal & retur karena kreator tidak punya data order sendiri; Shopee berarti batal Mei–Jul tidak tercatat. Efektivitas sampel dihitung dari GMV bersih. <span class="chip ag">Agency/Platform</span> = kumpulan banyak kreator, data tidak bisa dirinci.</p></details>`;
+  <details class="srcnote"><summary class="note">Sumber data <i class="ii">i</i></summary>  <p class="note">GMV kotor, bersih dan batal & retur: periode Mei–21 Okt. <b>TikTok</b>: GMV kotor dari laporan performa affiliate; bersih dan batal & retur dihitung dari porsi batal & retur tiap affiliate di export pesanan (Mei–Sep). <b>Shopee</b>: GMV bersih = omzet tanpa pesanan batal (validasi komisi Mei–Jul, AMS Agu–Okt); batal hanya bisa dihitung untuk Agu–Okt. <sup>*</sup> = perkiraan: TikTok memakai rata-rata 36% batal & retur karena affiliate tidak punya data order sendiri; Shopee berarti batal Mei–Jul tidak tercatat. Efektivitas sampel dihitung dari GMV bersih. <span class="chip ag">Agency/Platform</span> = kumpulan banyak affiliate, data tidak bisa dirinci.</p></details>`;
   const np = document.getElementById('navplat');
   if (np) { np.innerHTML = `<span class="seg" role="radiogroup" aria-label="Platform">${[['','Semua',TT.length+SH.length],['TikTok','TikTok',TT.length],['Shopee','Shopee',SH.length]].map(([p,l,n]) => `<button class="db-pl${(S.dbpl||'')===p?' on':''}" data-pl="${p}" role="radio" aria-checked="${(S.dbpl||'')===p}">${p ? `<i class="pdot ${p==='TikTok'?'tt':'sh'}"></i>` : ''}${l} <span class="n">${nf.format(n)}</span></button>`).join('')}</span>`;
     if (D.BRANDS && D.BRANDS.length > 1) { const opts = ['Shopee','TikTok'].flatMap(pl => D.BRANDS.map(b => [pl + '|' + b, pl + ' · ' + b]));
@@ -509,13 +509,13 @@ function renderAgency(host){
     <button class="btn" id="agency-xl">Download Excel</button></div>
   <section class="panel">
     <h2>A. Agency/MCN Shopee dengan anggota yang sudah jualan</h2>
-    <p class="note">Dari kolom "MCN Terhubung" di laporan konversi Shopee (1 Agu–12 Okt). GMV anggota dihitung sampai 21 Okt. Data TikTok tidak mencatat agency/MCN kreator. Klik baris untuk melihat anggota dan mencatat follow-up.</p>
+    <p class="note">Dari kolom "MCN Terhubung" di laporan konversi Shopee (1 Agu–12 Okt). GMV anggota dihitung sampai 21 Okt. Data TikTok tidak mencatat agency/MCN affiliate. Klik baris untuk melihat anggota dan mencatat follow-up.</p>
     <div class="tscroll"><table><thead><tr><th>Prio</th><th>Platform</th><th>Agency / MCN</th><th class="num">Anggota jualan</th><th class="num">GMV anggota</th><th class="num">Pesanan berhasil</th><th class="num">Batal</th><th>Anggota terlaris</th><th>Saran aksi</th><th>Status</th><th>Terakhir dihubungi</th></tr></thead>
-    <tbody>${A.map(r => `<tr class="click" tabindex="0" data-g="A" data-n="${esc(r.nama)}"><td>${prioChip(r.pr)}</td><td>${agPl(r).map(plChip).join(' ')}</td><td class="u">${esc(r.nama)}${fuOf(r)?.kontak?`<small>${esc(fuOf(r).kontak)}</small>`:''}</td><td class="num">${r.mem.length}</td><td class="num">${rpShort(r.om)}</td><td class="num">${nf.format(r.ok)}</td><td class="num ${r.batal>=.5?'late':''}">${pct(r.batal)}</td><td>${esc(r.top)}</td>${aksiTd(r)}<td>${statChip(dispStatus(r))}</td><td>${lastCell(r)}</td></tr>`).join('') || `<tr><td colspan="11" class="muted">${pf === 'TikTok' ? 'Laporan TikTok tidak mencatat agency/MCN kreator, jadi bagian ini hanya berisi data Shopee.' : 'Tidak ada yang cocok.'}</td></tr>`}</tbody></table></div>
+    <tbody>${A.map(r => `<tr class="click" tabindex="0" data-g="A" data-n="${esc(r.nama)}"><td>${prioChip(r.pr)}</td><td>${agPl(r).map(plChip).join(' ')}</td><td class="u">${esc(r.nama)}${fuOf(r)?.kontak?`<small>${esc(fuOf(r).kontak)}</small>`:''}</td><td class="num">${r.mem.length}</td><td class="num">${rpShort(r.om)}</td><td class="num">${nf.format(r.ok)}</td><td class="num ${r.batal>=.5?'late':''}">${pct(r.batal)}</td><td>${esc(r.top)}</td>${aksiTd(r)}<td>${statChip(dispStatus(r))}</td><td>${lastCell(r)}</td></tr>`).join('') || `<tr><td colspan="11" class="muted">${pf === 'TikTok' ? 'Laporan TikTok tidak mencatat agency/MCN affiliate, jadi bagian ini hanya berisi data Shopee.' : 'Tidak ada yang cocok.'}</td></tr>`}</tbody></table></div>
   </section>
   <section class="panel">
     <h2>B. Jaringan affiliate / platform (TikTok &amp; Shopee)</h2>
-    <p class="note">Akun yang jualan atas nama banyak kreator, jadi datanya tidak bisa dirinci per kreator. YouTube Shopping dan Shopee Media Network tidak dimasukkan karena program milik platform. GMV TikTok masih kotor.</p>
+    <p class="note">Akun yang jualan atas nama banyak affiliate, jadi datanya tidak bisa dirinci per affiliate. YouTube Shopping dan Shopee Media Network tidak dimasukkan karena program milik platform. GMV TikTok masih kotor.</p>
     <div class="tscroll"><table><thead><tr><th>Prio</th><th>Platform</th><th>Jaringan</th><th class="num">GMV TikTok</th><th class="num">GMV Shopee</th><th class="num">Total</th><th>Akun</th><th>Saran aksi</th><th>Status</th><th>Terakhir dihubungi</th></tr></thead>
     <tbody>${B.map(r => `<tr class="click" tabindex="0" data-g="B" data-n="${esc(r.nama)}"><td>${prioChip(r.pr)}</td><td style="white-space:nowrap">${agPl(r).map(plChip).join(' ')}</td><td class="u">${esc(r.nama)}${r.cat?`<small>${esc(r.cat)}</small>`:''}</td><td class="num">${rpShort(r.gt)}</td><td class="num">${rpShort(r.gs)}</td><td class="num"><b>${rpShort(r.tot)}</b></td><td style="min-width:180px;font-size:12.5px">${esc([r.att,r.ash].filter(Boolean).join(', '))}</td>${aksiTd(r)}<td>${statChip(dispStatus(r))}</td><td>${lastCell(r)}</td></tr>`).join('') || `<tr><td colspan="10" class="muted">Tidak ada yang cocok.</td></tr>`}</tbody></table></div>
   </section>`;
@@ -664,7 +664,7 @@ function goInputSampel(r){
   if (window.__sampelPrefill) window.__sampelPrefill(r.k === 'sh' ? 'Shopee' : 'TikTok', r.u);
 }
 
-/* ---------- sampel per kreator ---------- */
+/* ---------- sampel per affiliate ---------- */
 const sampStat = r => {
   const st = window.__sampelStat ? window.__sampelStat(r.k === 'sh' ? 'Shopee' : 'TikTok', r.u) : null;
   return st || {n: r.samp ? 1 : 0, last: '', has: false, gmv: 0, biaya: 0, ord: 0, bef: 0, blk: false};
@@ -681,7 +681,7 @@ const hasilCell = r => { const st = sampStat(r); if (!st.n) return '<span class=
   return `<span class="${roi > ROI_MIN ? 'kt' : (tot ? '' : 'late')}"><b>${roi == null ? 'biaya Rp0' : roi.toLocaleString('id-ID',{maximumFractionDigits:1}) + '×'}</b> · ${tot ? rpShort(tot) : 'Rp0'}</span><br><small class="muted">sebelum ${rpShort(st.bef) === '–' ? 'Rp0' : rpShort(st.bef)} · sesudah ${rpShort(st.gmv) === '–' ? 'Rp0' : rpShort(st.gmv)} · biaya ${rpShort(st.biaya)}</small>`; };
 
 /* ---------- log aktivitas ---------- */
-const LOGTYPE = {kontak:'Kontak', followup:'Follow-up', status:'Status kreator', sampel:'Input sampel', sampel_hapus:'Hapus sampel', posting:'Status posting', blokir:'Blokir sampel'};
+const LOGTYPE = {kontak:'Kontak', followup:'Follow-up', status:'Status affiliate', sampel:'Input sampel', sampel_hapus:'Hapus sampel', posting:'Status posting', blokir:'Blokir sampel'};
 const LOG = {}; const LOGSUB = {}; const NAMES = {};
 const platOf = r => r.k === 'tt' ? 'TikTok' : r.k === 'sh' ? 'Shopee' : 'Agency';
 const wibDay = (d = new Date()) => new Date(d.getTime() + 7*3600e3).toISOString().slice(0,10);
@@ -779,7 +779,7 @@ function renderLog(){
   </section>
   <section class="panel">
     <h2>Rincian <span class="count">${nf.format(rows.length)} aktivitas</span></h2>
-    <div class="tscroll" style="max-height:34rem;overflow:auto"><table><thead><tr><th>Waktu (WIB)</th><th>Orang</th><th>Jenis</th><th>Platform</th><th>Kreator</th><th>Detail</th></tr></thead><tbody>
+    <div class="tscroll" style="max-height:34rem;overflow:auto"><table><thead><tr><th>Waktu (WIB)</th><th>Orang</th><th>Jenis</th><th>Platform</th><th>Affiliate</th><th>Detail</th></tr></thead><tbody>
       ${rows.slice(0, 1000).map(e => `<tr><td class="t">${esc(tm(e.at))}</td><td>${esc(whoOf(e))}</td><td><span class="chip">${esc(LOGTYPE[e.type]||e.type)}</span></td><td>${e.platform==='TikTok'||e.platform==='Shopee' ? plChip(e.platform) : esc(e.platform||'')}</td><td class="u">${esc(e.target||'')}</td><td>${esc(e.detail||'')}</td></tr>`).join('') || `<tr><td colspan="6" class="muted">Tidak ada aktivitas.</td></tr>`}
     </tbody></table></div>
   </section>`;
@@ -796,7 +796,7 @@ function renderLog(){
   document.getElementById('log-xl').onclick = async () => {
     let XLSX; try { XLSX = await loadXlsx(); } catch(e) { toast('Gagal memuat pembuat Excel. Coba lagi.'); return; }
     const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet([['Waktu (WIB)','Orang','Jenis','Platform','Kreator','Detail'], ...rows.map(e => [tm(e.at), whoOf(e), LOGTYPE[e.type]||e.type, e.platform||'', e.target||'', e.detail||''])]);
+    const ws = XLSX.utils.aoa_to_sheet([['Waktu (WIB)','Orang','Jenis','Platform','Affiliate','Detail'], ...rows.map(e => [tm(e.at), whoOf(e), LOGTYPE[e.type]||e.type, e.platform||'', e.target||'', e.detail||''])]);
     ws['!cols'] = [18,20,16,10,24,70].map(w => ({wch:w})); XLSX.utils.book_append_sheet(wb, ws, 'Log aktivitas');
     const dl = await claude.use('downloads'); if (!dl) { toast('Download tidak tersedia di tampilan ini.'); return; }
     try { await dl.save({filename:`log aktivitas ${L.from}${L.to!==L.from?' sd '+L.to:''}.xlsx`, data: new Blob([XLSX.write(wb, {bookType:'xlsx', type:'array'})])}); } catch(e) {}
@@ -849,17 +849,17 @@ function renderWeekly(){
     <p class="note">Aktivitas follow-up hanya tercatat sejak Log Aktivitas dipasang (23 Okt 2026). GMV per minggu belum bisa ditampilkan karena data penjualan yang ada masih per bulan; upload export pesanan mingguan kalau ingin GMV ikut masuk.</p>
     <div class="kpis">
       ${kpi('Sampel dikirim', nf.format(samp.length), `TikTok ${cnt(samp, r => r.platform === 'TikTok')} · Shopee ${cnt(samp, r => r.platform === 'Shopee')}`)}
-      ${kpi('Kreator dapat sampel', nf.format(kreator))}
+      ${kpi('Affiliate dapat sampel', nf.format(kreator))}
       ${kpi('Biaya sampel', rp(totB), 'HPP + ongkir')}
       ${kpi('Kontak baru diisi', nf.format(cnt(logs, e => e.type === 'kontak')))}
-      ${kpi('Kreator di-follow-up', nf.format(ditarget))}
+      ${kpi('Affiliate di-follow-up', nf.format(ditarget))}
       ${kpi('Total aktivitas', nf.format(logs.length))}
     </div>
   </section>
   <section class="panel"><h2>Per hari</h2><div class="tscroll"><table class="mini"><thead><tr><th>Hari</th><th class="num">Sampel TikTok</th><th class="num">Sampel Shopee</th><th class="num">Kontak diisi</th><th class="num">Follow-up/status</th><th class="num">Semua aktivitas</th></tr></thead><tbody>
     ${daily.map(r => `<tr><td>${esc(fmtD(r[0]))}</td>${r.slice(1).map(v => `<td class="num">${v}</td>`).join('')}</tr>`).join('')}
   </tbody></table></div></section>
-  <section class="panel"><h2>Hasil follow-up</h2><p class="note">Jumlah perubahan status kreator ke status ini selama minggu tersebut.</p><div class="tscroll"><table class="mini"><thead><tr><th>Status baru</th><th class="num">Jumlah</th></tr></thead><tbody>
+  <section class="panel"><h2>Hasil follow-up</h2><p class="note">Jumlah perubahan status affiliate ke status ini selama minggu tersebut.</p><div class="tscroll"><table class="mini"><thead><tr><th>Status baru</th><th class="num">Jumlah</th></tr></thead><tbody>
     ${stRows.map(r => `<tr><td><span class="chip ${statClass(r[0])}">${esc(r[0])}</span></td><td class="num">${r[1]}</td></tr>`).join('')}
   </tbody></table></div></section>
   <section class="panel"><h2>Sampel per produk</h2><div class="tscroll"><table class="mini"><thead><tr><th>Produk</th><th class="num">Sampel</th><th class="num">Biaya</th></tr></thead><tbody>
@@ -868,7 +868,7 @@ function renderWeekly(){
   <section class="panel"><h2>Per petugas</h2><div class="tscroll"><table class="mini"><thead><tr><th>Petugas</th>${types.map(t => `<th class="num">${esc(LOGTYPE[t])}</th>`).join('')}<th class="num">Total</th></tr></thead><tbody>
     ${Object.keys(perPic).length ? Object.entries(perPic).map(([n, c]) => `<tr><td>${esc(n)}</td>${types.map(t => `<td class="num">${c[t]||0}</td>`).join('')}<td class="num"><b>${Object.values(c).reduce((a,b)=>a+b,0)}</b></td></tr>`).join('') : `<tr><td colspan="${types.length+2}" class="muted">Belum ada aktivitas tercatat.</td></tr>`}
   </tbody></table></div></section>
-  <section class="panel"><h2>Daftar sampel <span class="count">${nf.format(samp.length)}</span></h2><div class="tscroll" style="max-height:30rem;overflow:auto"><table><thead><tr><th>Tanggal</th><th>Platform</th><th>Kreator</th><th>Produk</th><th>SKU</th><th class="num">Biaya</th><th>Posting</th></tr></thead><tbody>
+  <section class="panel"><h2>Daftar sampel <span class="count">${nf.format(samp.length)}</span></h2><div class="tscroll" style="max-height:30rem;overflow:auto"><table><thead><tr><th>Tanggal</th><th>Platform</th><th>Affiliate</th><th>Produk</th><th>SKU</th><th class="num">Biaya</th><th>Posting</th></tr></thead><tbody>
     ${samp.map(r => `<tr><td class="t">${esc(r.tgl.slice(0,10))}</td><td>${plChip(r.platform)}</td><td class="u">${esc(r.username)}</td><td>${esc(r.produk||'')}</td><td>${esc(r.sku||'')}</td><td class="num">${rp(biaya(r))}</td><td>${esc(r.status||'')}</td></tr>`).join('') || '<tr><td colspan="7" class="muted">Tidak ada sampel minggu ini.</td></tr>'}
   </tbody></table></div></section>`;
   const go = (f, t) => { if (t < f) [f, t] = [t, f]; W.from = f; W.to = t; render(); };
@@ -884,7 +884,7 @@ function renderWeekly(){
     g.fillStyle = '#ffffff'; g.fillRect(0, 0, Wd, H);
     g.fillStyle = '#1f2430'; g.font = `bold 40px ${F}`; g.fillText('Reporting Affiliate JustFluff', 60, 80);
     g.fillStyle = '#6b7280'; g.font = `24px ${F}`; g.fillText(`${fmtD(from)} – ${fmtD(to)}  ·  ${span} hari`, 60, 120);
-    const K = [['Sampel dikirim', nf.format(samp.length), `TikTok ${cnt(samp, r => r.platform === 'TikTok')} · Shopee ${cnt(samp, r => r.platform === 'Shopee')}`], ['Kreator dapat sampel', nf.format(kreator), ''], ['Biaya sampel', rp(totB), 'HPP + ongkir'], ['Kontak baru', nf.format(cnt(logs, e => e.type === 'kontak')), ''], ['Kreator di-follow-up', nf.format(ditarget), ''], ['Total aktivitas', nf.format(logs.length), '']];
+    const K = [['Sampel dikirim', nf.format(samp.length), `TikTok ${cnt(samp, r => r.platform === 'TikTok')} · Shopee ${cnt(samp, r => r.platform === 'Shopee')}`], ['Affiliate dapat sampel', nf.format(kreator), ''], ['Biaya sampel', rp(totB), 'HPP + ongkir'], ['Kontak baru', nf.format(cnt(logs, e => e.type === 'kontak')), ''], ['Affiliate di-follow-up', nf.format(ditarget), ''], ['Total aktivitas', nf.format(logs.length), '']];
     K.forEach(([l, v, sub], i) => { const x = 60 + i * 252, y = 160; g.fillStyle = '#f4f5f8'; g.fillRect(x, y, 232, 150); g.fillStyle = '#6b7280'; g.font = `20px ${F}`; g.fillText(l, x + 18, y + 38); g.fillStyle = '#1f2430'; g.font = `bold ${v.length > 8 ? 32 : 44}px ${F}`; g.fillText(v, x + 18, y + 95); if (sub) { g.fillStyle = '#6b7280'; g.font = `17px ${F}`; g.fillText(sub, x + 18, y + 130); } });
     const table = (x, y, title, head, rows, ws) => { g.fillStyle = '#1f2430'; g.font = `bold 24px ${F}`; g.fillText(title, x, y); y += 40; g.font = `bold 18px ${F}`; g.fillStyle = '#6b7280'; let cx = x; head.forEach((h, i) => { g.textAlign = i ? 'right' : 'left'; g.fillText(h, i ? cx + ws[i] : cx, y); cx += ws[i] + 14; }); g.textAlign = 'left'; g.font = `18px ${F}`; g.fillStyle = '#1f2430'; rows.forEach(r => { y += 32; cx = x; r.forEach((v, i) => { g.textAlign = i ? 'right' : 'left'; let t = String(v); while (i === 0 && g.measureText(t).width > ws[0] && t.length > 3) t = t.slice(0, -2) + '…'; g.fillText(t, i ? cx + ws[i] : cx, y); cx += ws[i] + 14; }); g.textAlign = 'left'; }); };
     const dRows = span <= 14 ? daily.map(r => [fmtD(r[0]), r[1], r[2], r[3], r[4]]) : (() => { const o = []; for (let i = 0; i < daily.length; i += 7) { const ch = daily.slice(i, i + 7); o.push([ch[0][0].slice(5) + ' s.d. ' + ch[ch.length-1][0].slice(5), ...[1,2,3,4].map(j => ch.reduce((a, r) => a + r[j], 0))]); } return o.slice(0, 14); })();
@@ -901,13 +901,13 @@ function renderWeekly(){
     const wb = XLSX.utils.book_new();
     const add = (name, aoa, w) => { const ws = XLSX.utils.aoa_to_sheet(aoa); ws['!cols'] = w.map(x => ({wch:x})); XLSX.utils.book_append_sheet(wb, ws, name); };
     add('Ringkasan', [['Reporting affiliate JustFluff'], ['Periode', `${from} s.d. ${to}`], [],
-      ['Sampel dikirim', samp.length], ['  TikTok', cnt(samp, r => r.platform === 'TikTok')], ['  Shopee', cnt(samp, r => r.platform === 'Shopee')], ['Kreator dapat sampel', kreator], ['Biaya sampel (HPP + ongkir)', Math.round(totB)],
-      ['Kontak baru diisi', cnt(logs, e => e.type === 'kontak')], ['Kreator di-follow-up', ditarget], ['Total aktivitas', logs.length], [],
+      ['Sampel dikirim', samp.length], ['  TikTok', cnt(samp, r => r.platform === 'TikTok')], ['  Shopee', cnt(samp, r => r.platform === 'Shopee')], ['Affiliate dapat sampel', affiliate], ['Biaya sampel (HPP + ongkir)', Math.round(totB)],
+      ['Kontak baru diisi', cnt(logs, e => e.type === 'kontak')], ['Affiliate di-follow-up', ditarget], ['Total aktivitas', logs.length], [],
       ['Status baru', 'Jumlah'], ...stRows, [], ['Produk', 'Sampel', 'Biaya'], ...prodRows.map(([k, o]) => [k, o.n, Math.round(o.b)]), [],
       ['Hari', 'Sampel TikTok', 'Sampel Shopee', 'Kontak diisi', 'Follow-up/status', 'Semua aktivitas'], ...daily], [30,16,14,14,16,16]);
     add('Sampel', [['Tanggal','Platform','Toko','Username','Produk','SKU','HPP','Ongkir','Biaya','ID pesanan','Ekspedisi','Status posting'], ...samp.map(r => [r.tgl.slice(0,10), r.platform, r.toko||'', r.username, r.produk||'', r.sku||'', Math.round(r.hpp||0), Number(r.ongkir)||0, Math.round(biaya(r)), r.id||'', r.ekspedisi||'', r.status||''])], [12,10,14,22,18,20,10,10,10,22,12,16]);
     add('Per petugas', [['Petugas', ...types.map(t => LOGTYPE[t]), 'Total'], ...Object.entries(perPic).map(([n, c]) => [n, ...types.map(t => c[t]||0), Object.values(c).reduce((a,b)=>a+b,0)])], [26,10,10,12,12,12,12,12,10]);
-    add('Aktivitas', [['Waktu (WIB)','Petugas','Jenis','Platform','Kreator','Detail'], ...logs.map(e => [tm(e.at), whoOf(e), LOGTYPE[e.type]||e.type, e.platform||'', e.target||'', e.detail||''])], [20,22,16,10,24,70]);
+    add('Aktivitas', [['Waktu (WIB)','Petugas','Jenis','Platform','Affiliate','Detail'], ...logs.map(e => [tm(e.at), whoOf(e), LOGTYPE[e.type]||e.type, e.platform||'', e.target||'', e.detail||''])], [20,22,16,10,24,70]);
     const dl = await claude.use('downloads'); if (!dl) { toast('Download tidak tersedia di tampilan ini.'); return; }
     try { await dl.save({filename:`reporting affiliate ${from} sd ${to}.xlsx`, data: new Blob([XLSX.write(wb, {bookType:'xlsx', type:'array'})])}); }
     catch (e) { if (e && e.code !== 'declined') toast('Download gagal.'); }
@@ -920,18 +920,18 @@ function renderWeekly(){
 /* ---------- template WA ---------- */
 const WATPL = {
   '': ['Tanpa pesan', ''],
-  ajak: ['Ajak campaign', 'Halo kak {nama}! Aku {pic} dari JustFluff. Kami lagi buka campaign affiliate Okt–Des dengan komisi spesial untuk kreator yang sudah pernah jualan JustFluff. Boleh aku kirim info lengkapnya, kak?'],
+  ajak: ['Ajak campaign', 'Halo kak {nama}! Aku {pic} dari JustFluff. Kami lagi buka campaign affiliate Okt–Des dengan komisi spesial untuk affiliate yang sudah pernah jualan JustFluff. Boleh aku kirim info lengkapnya, kak?'],
   fu: ['Follow-up', 'Halo kak {nama}, aku {pic} dari JustFluff, mau follow-up pesan sebelumnya ya. Kakak masih tertarik kerja sama affiliate dengan JustFluff? Kalau ada pertanyaan soal komisi atau produk, tanya aja kak.'],
   tagih: ['Tagih konten', 'Halo kak {nama}, aku {pic} dari JustFluff. Sampel {produk} yang kami kirim sudah sampai kan, kak? Kami tunggu videonya ya. Kalau ada kendala atau butuh brief, kabari aku aja.'],
-  launch: ['Info launching', 'Halo kak {nama}! Aku {pic} dari JustFluff. Kami baru launching The Worst Marshmallow Ever dan lagi cari kreator untuk One Cube Challenge. Kakak mau ikutan dan dapat produknya? Balas ya kak, nanti aku kirim detailnya.'],
-  andalan: ['Kreator andalan', 'Halo kak {nama}! Aku {pic} dari JustFluff. Terima kasih sudah rutin jualan JustFluff tiap bulan. Kami mau tawarkan komisi khusus dan prioritas produk baru untuk kakak. Boleh aku jelaskan detailnya?']
+  launch: ['Info launching', 'Halo kak {nama}! Aku {pic} dari JustFluff. Kami baru launching The Worst Marshmallow Ever dan lagi cari affiliate untuk One Cube Challenge. Kakak mau ikutan dan dapat produknya? Balas ya kak, nanti aku kirim detailnya.'],
+  andalan: ['Affiliate andalan', 'Halo kak {nama}! Aku {pic} dari JustFluff. Terima kasih sudah rutin jualan JustFluff tiap bulan. Kami mau tawarkan komisi khusus dan prioritas produk baru untuk kakak. Boleh aku jelaskan detailnya?']
 };
 let WA_SEL = ''; try { WA_SEL = localStorage.getItem('jf-watpl') || ''; } catch(e) {}
 if (!WATPL[WA_SEL]) WA_SEL = '';
 const waText = (r, tp, extra) => { const t = WATPL[tp ?? WA_SEL]; if (!t || !t[1] || !r) return ''; const nama = (r.k === 'sh' && r.nama ? r.nama : r.u) || ''; const msg = t[1].replace('{nama}', nama).replace('{pic}', (typeof PIC !== 'undefined' && PIC) || 'tim affiliate').replace('{produk}', (extra && extra.produk) || 'JustFluff'); return '?text=' + encodeURIComponent(msg); };
 (() => { const sel = document.getElementById('watpl'); if (!sel) return; Object.entries(WATPL).forEach(([k, v]) => sel.append(new Option(v[0], k))); sel.value = WA_SEL; sel.onchange = () => { WA_SEL = sel.value; try { localStorage.setItem('jf-watpl', WA_SEL); } catch(e) {} rerenderSoon(); }; })();
-/* ---------- kreator andalan ---------- */
-const andalan = r => r.k !== 'ag' && (D.tipArti ? true : r.tipe === 'Kreator konten') && r.bln >= 5 && r.gb >= 3e6 && r.okt > 0 && r.pr <= 3;
+/* ---------- affiliate andalan ---------- */
+const andalan = r => r.k !== 'ag' && (D.tipArti ? true : r.tipe === 'Affiliate konten') && r.bln >= 5 && r.gb >= 3e6 && r.okt > 0 && r.pr <= 3;
 /* penjelasan istilah (ikon ⓘ) */
 function GLOS_AFF_F(){ return { 'Prio': 'P1: GMV bersih 30 hari > Rp3 jt · P2: GMV bersih 90 hari > Rp1 jt · P3: ≤ Rp1 jt · P4: tidak jualan 60 hari / sampel belum efektif · P5: GMV 0 atau akun platform',
   'GMV bersih': 'Penjualan setelah dikurangi pesanan batal / tidak memenuhi syarat dan dana yang dikembalikan.',
@@ -999,14 +999,14 @@ function todayPanel(){
     <div class="stat-row">
       ${btn('td-due', due, 'perlu di-follow-up (belum respon ≥3 hari)')}
       ${btn('td-tagih', ready ? tg.length : 0, ready ? 'sampel perlu ditagih kontennya' : 'sampel perlu ditagih (memuat…)', 'dikirim 14–45 hari lalu, belum SESUAI, belum jualan bulan terakhir')}
-      ${btn('td-andalan', an.length, 'kreator andalan', `${anBelum} belum dihubungi · jualan ≥5 dari 6 bulan, GMV bersih ≥Rp3 jt, masih jualan bulan terakhir`)}
+      ${btn('td-andalan', an.length, 'affiliate andalan', `${anBelum} belum dihubungi · jualan ≥5 dari 6 bulan, GMV bersih ≥Rp3 jt, masih jualan bulan terakhir`)}
     </div>
     <p class="note" style="${syncBad ? 'color:var(--bad)' : ''}">${esc(syncTxt)}${syncBad ? ' · cek jadwal sinkron' : ''}</p>
     <div id="td-tagih-list" ${S.f.tagihOpen ? '' : 'hidden'}>${S.f.tagihOpen ? tagihTable(tg) : ''}</div>
   </section>`;
 }
 function tagihTable(tg){
-  return `<h3 style="margin:12px 0 8px">Sampel perlu ditagih kontennya <span class="count">${tg.length}</span></h3><div class="tscroll" style="max-height:28rem;overflow:auto"><table class="mini"><thead><tr><th>Dikirim</th><th>Platform</th><th>Kreator</th><th>Produk</th><th class="num">Hari</th><th>Status posting</th><th>Kontak</th></tr></thead><tbody>
+  return `<h3 style="margin:12px 0 8px">Sampel perlu ditagih kontennya <span class="count">${tg.length}</span></h3><div class="tscroll" style="max-height:28rem;overflow:auto"><table class="mini"><thead><tr><th>Dikirim</th><th>Platform</th><th>Affiliate</th><th>Produk</th><th class="num">Hari</th><th>Status posting</th><th>Kontak</th></tr></thead><tbody>
     ${tg.map(({x, r, hari}) => { const k = r && fuOf(r)?.kontak; return `<tr><td>${esc(x.tgl.slice(0,10))}</td><td>${plChip(x.platform)}</td><td class="u">${esc(x.username)}</td><td>${esc(x.produk || '')}</td><td class="num">${hari ?? ''}</td><td>${esc(x.status || 'belum dicek')}</td><td>${k ? kontakHtml(k, r, 'tagih').replace(encodeURIComponent('Sampel JustFluff'), encodeURIComponent('Sampel ' + (x.produk || 'JustFluff'))) : '<small class="muted">belum ada kontak</small>'}</td></tr>`; }).join('') || '<tr><td colspan="7" class="muted">Tidak ada.</td></tr>'}
   </tbody></table></div><p class="note">Tombol WA di daftar ini otomatis memakai template "Tagih konten". Ubah status posting jadi SESUAI di tab Input Sampel kalau videonya sudah ada.</p>`;
 }
@@ -1098,7 +1098,7 @@ function wireMeet(Z){
       ['ANGKA KUNCI (posisi saat ini)'], ['Sudah dihubungi (P1–P3)', Z.cTT+Z.cSH+Z.cAG, 'dari', Z.nTT+Z.nSH+Z.nAG], ['Tidak perlu dihubungi dulu (P4–P5)', Z.sTT+Z.sSH+Z.sAG], ['Perlu di-follow-up (≥3 hari belum respon)', Z.due],
       ['Sampel terkirim ' + (Z.K.bulanLbl || 'bulan ini'), kvs(Z.K.sampelBulan)], ['Sampel yang menghasilkan order', kvs(Z.K.laku)], ['GMV per Rp1 biaya sampel', kvs(Z.K.roi)], [],
       ['PROGRES FOLLOW-UP', 'Sudah dihubungi', 'Perlu dihubungi (P1–P3)', 'P4–P5'], ['TikTok', Z.cTT, Z.nTT, Z.sTT], ['Shopee', Z.cSH, Z.nSH, Z.sSH], ['Agency', Z.cAG, Z.nAG, Z.sAG], [],
-      ['PERIODE ' + W.from + ' s.d. ' + W.to], ['Sampel dikirim', R.samp.length], ['  TikTok', R.tt], ['  Shopee', R.sh], ['Kreator dapat sampel', R.kreator], ['Biaya sampel (HPP + ongkir)', Math.round(R.totB)], ['Kontak baru diisi', R.kontak], ['Kreator di-follow-up', R.ditarget], ['Total aktivitas', R.logs.length]], [42,16,22,10]);
+      ['PERIODE ' + W.from + ' s.d. ' + W.to], ['Sampel dikirim', R.samp.length], ['  TikTok', R.tt], ['  Shopee', R.sh], ['Affiliate dapat sampel', R.kreator], ['Biaya sampel (HPP + ongkir)', Math.round(R.totB)], ['Kontak baru diisi', R.kontak], ['Affiliate di-follow-up', R.ditarget], ['Total aktivitas', R.logs.length]], [42,16,22,10]);
     add('Status & respon', [['Status', 'TikTok', 'Shopee', 'Agency'], ...STAT_ALL().map(x => [x, Z.stTT[x]||0, Z.stSH[x]||0, Z.stAG[x]||0]), [], ['Respon', 'TikTok', 'Shopee', 'Agency'], ...RESP.map(x => [x, Z.rTT[x]||0, Z.rSH[x]||0, Z.rAG[x]||0]), [], ['Status baru selama periode', 'Jumlah'], ...R.stRows], [30,10,10,10]);
     add('Prioritas & tipe', [['Prioritas', 'Arti', 'TikTok', 'Ada no. HP', 'Shopee', 'Ada no. HP'], ...[1,2,3,4,5].map(p => ['P' + p, PRIO[p], Z.pTT[p]||0, TT.filter(r => r.pr === p && hasPhone(r)).length, Z.pSH[p]||0, SH.filter(r => r.pr === p && hasPhone(r)).length]), [], ['Tipe akun', 'TikTok', 'Shopee'], ...[...new Set([...Object.keys(Z.tTT), ...Object.keys(Z.tSH)])].map(t => [t, Z.tTT[t]||0, Z.tSH[t]||0])], [16,32,10,12,10,12]);
     const mtab = blk => [['Metrik', ...blk.cols, 'Total'], ...blk.rows.map(([n, v, t]) => [n, ...v.map(x => x === null ? '' : Math.round(x)), t === 'nt' ? '' : Math.round(v.reduce((a, b) => a + (b||0), 0))])];
@@ -1106,7 +1106,7 @@ function wireMeet(Z){
     add('Shopee per bulan', mtab(D.M.sh), [30,14,14,14,14,14,14,16]);
     add('Per hari', [['Hari', 'Sampel TikTok', 'Sampel Shopee', 'Kontak diisi', 'Follow-up/status', 'Semua aktivitas'], ...R.daily], [12,14,14,12,16,16]);
     add('Sampel', [['Tanggal','Platform','Toko','Username','Produk','SKU','HPP','Ongkir','Biaya','ID pesanan','Ekspedisi','Status posting'], ...R.samp.map(r => [r.tgl.slice(0,10), r.platform, r.toko||'', r.username, r.produk||'', r.sku||'', Math.round(r.hpp||0), Number(r.ongkir)||0, Math.round(R.biaya(r)), r.id||'', r.ekspedisi||'', r.status||''])], [12,10,14,22,18,20,10,10,10,22,12,16]);
-    add('Aktivitas', [['Waktu (WIB)','Petugas','Jenis','Platform','Kreator','Detail'], ...R.logs.map(e => [new Date(e.at).toLocaleString('id-ID', {timeZone:'Asia/Jakarta'}), whoOf(e), LOGTYPE[e.type]||e.type, e.platform||'', e.target||'', e.detail||''])], [20,22,16,10,24,70]);
+    add('Aktivitas', [['Waktu (WIB)','Petugas','Jenis','Platform','Affiliate','Detail'], ...R.logs.map(e => [new Date(e.at).toLocaleString('id-ID', {timeZone:'Asia/Jakarta'}), whoOf(e), LOGTYPE[e.type]||e.type, e.platform||'', e.target||'', e.detail||''])], [20,22,16,10,24,70]);
     await save(fn('xlsx'), new Blob([XLSX.write(wb, {bookType:'xlsx', type:'array'})]));
   };
   document.getElementById('mt-png').onclick = async () => {
@@ -1127,7 +1127,7 @@ function wireMeet(Z){
     table(g2, 60, 560, 'Shopee', ['Metrik', ...D.M.sh.cols], mrow(D.M.sh), [330, ...D.M.sh.cols.map(() => 110)], 17);
     // slide 3: periode
     const [c3, g3] = mk('Reporting Affiliate JustFluff — Aktivitas periode');
-    kpis(g3, [['Sampel dikirim', nf.format(R.samp.length), `TikTok ${R.tt} · Shopee ${R.sh}`], ['Kreator dapat sampel', nf.format(R.kreator), ''], ['Biaya sampel', rp(R.totB), 'HPP + ongkir'], ['Kontak baru', nf.format(R.kontak), ''], ['Kreator di-follow-up', nf.format(R.ditarget), ''], ['Total aktivitas', nf.format(R.logs.length), '']], 160);
+    kpis(g3, [['Sampel dikirim', nf.format(R.samp.length), `TikTok ${R.tt} · Shopee ${R.sh}`], ['Affiliate dapat sampel', nf.format(R.kreator), ''], ['Biaya sampel', rp(R.totB), 'HPP + ongkir'], ['Kontak baru', nf.format(R.kontak), ''], ['Affiliate di-follow-up', nf.format(R.ditarget), ''], ['Total aktivitas', nf.format(R.logs.length), '']], 160);
     const dRows = R.span <= 14 ? R.daily.map(r => [fmtD(r[0]), r[1], r[2], r[3], r[4]]) : (() => { const o = []; for (let i = 0; i < R.daily.length; i += 7) { const ch = R.daily.slice(i, i + 7); o.push([ch[0][0].slice(5) + ' s.d. ' + ch[ch.length-1][0].slice(5), ...[1,2,3,4].map(j => ch.reduce((a, r) => a + r[j], 0))]); } return o.slice(0, 14); })();
     table(g3, 60, 380, R.span <= 14 ? 'Per hari' : 'Per 7 hari', [R.span <= 14 ? 'Hari' : 'Periode', 'TikTok', 'Shopee', 'Kontak', 'Follow-up'], dRows, [230, 80, 80, 80, 100]);
     const pr = R.prodRows.slice(0, 10).map(([k, o]) => [k, o.n, rp(o.b)]);
@@ -1148,7 +1148,7 @@ async function exportXlsx(){
   try { XLSX = await loadXlsx(); } catch(e) { toast('Gagal memuat pembuat Excel. Coba lagi.'); return; }
   const wb = XLSX.utils.book_new();
   const add = (name, aoa, widths) => { const ws = XLSX.utils.aoa_to_sheet(aoa); ws['!cols'] = widths.map(w => ({wch:w})); XLSX.utils.book_append_sheet(wb, ws, name); };
-  add('TikTok Kreator', [['Username','Link profil','Tipe',...TT_M.map(m=>'GMV '+m),'GMV total','Bulan aktif','Video','LIVE','Porsi batal & retur','GMV kotor','GMV bersih','GMV batal & retur','GMV bersih/batal perkiraan','Jumlah sampel (all time)','Sampel terakhir','GMV sebelum sampel pertama','GMV sejak sampel pertama','Order sejak sampel pertama','Total biaya sampel','GMV per biaya','Diblokir dari sampel','Boleh sampel lagi (>'+ROI_MIN+'×)','Catatan data','Prioritas','Saran aksi',...FUH],
+  add('TikTok Affiliate', [['Username','Link profil','Tipe',...TT_M.map(m=>'GMV '+m),'GMV total','Bulan aktif','Video','LIVE','Porsi batal & retur','GMV kotor','GMV bersih','GMV batal & retur','GMV bersih/batal perkiraan','Jumlah sampel (all time)','Sampel terakhir','GMV sebelum sampel pertama','GMV sejak sampel pertama','Order sejak sampel pertama','Total biaya sampel','GMV per biaya','Diblokir dari sampel','Boleh sampel lagi (>'+ROI_MIN+'×)','Catatan data','Prioritas','Saran aksi',...FUH],
     ...TT.map(r => [r.u,'https://www.tiktok.com/@'+r.u,r.tipe,...r.g,r.tot,r.bln,r.vid,r.live,r.gagal??'',...sampXl(r),r.cat,r.pr,r.aksi,...fuCols(r)])], [22,30,18,12,12,12,12,12,12,13,8,8,8,10,8,12,8,8,12,12,8,10,16,8,55,20,12,12,10,20,16,30]);
   add('Shopee Affiliate', [['Username','Nama affiliate','Tipe','Channel utama',...SH_M.map(m=>'GMV '+m),'GMV total','Bulan aktif','Pembeli baru','Porsi batal','GMV kotor','GMV bersih','GMV batal & retur','GMV bersih/batal perkiraan','Jumlah sampel (all time)','Sampel terakhir','GMV sebelum sampel pertama','GMV sejak sampel pertama','Order sejak sampel pertama','Total biaya sampel','GMV per biaya','Diblokir dari sampel','Boleh sampel lagi (>'+ROI_MIN+'×)','Catatan data','Prioritas','Saran aksi',...FUH],
     ...SH.map(r => [r.u,r.nama,r.tipe,r.ch,...r.g,r.tot,r.bln,r.pb,r.batal??'',...sampXl(r),r.cat,r.pr,r.aksi,...fuCols(r)])], [22,22,18,18,12,12,12,13,8,10,10,8,12,8,8,12,12,8,10,16,8,55,20,12,12,10,20,16,30]);
@@ -1261,7 +1261,7 @@ const syncDot = document.getElementById('syncdot'), syncTxt = document.getElemen
     if (isBlocked(platform, v('username')) || notEligible) {
       if (overrideKey !== bk) {
         overrideKey = bk; clearTimeout(overrideT); overrideT = setTimeout(() => { overrideKey = null; }, 10000);
-        msg((isBlocked(platform, v('username')) ? 'Kreator ini diblokir dari sampel karena belum pernah menghasilkan order.' : 'Kreator ini sudah pernah dapat sampel dan GMV sebelum + sesudah sampelnya belum lebih dari 10× biaya sampel (syarat finance).') + ' Kalau tetap mau kirim sebagai pengecualian, tekan Simpan sampel sekali lagi dalam 10 detik.', 'bad');
+        msg((isBlocked(platform, v('username')) ? 'Affiliate ini diblokir dari sampel karena belum pernah menghasilkan order.' : 'Affiliate ini sudah pernah dapat sampel dan GMV sebelum + sesudah sampelnya belum lebih dari 10× biaya sampel (syarat finance).') + ' Kalau tetap mau kirim sebagai pengecualian, tekan Simpan sampel sekali lagi dalam 10 detik.', 'bad');
         return;
       }
       exception = true; overrideKey = null;
@@ -1281,7 +1281,7 @@ const syncDot = document.getElementById('syncdot'), syncTxt = document.getElemen
       try { if (typeof logActivity === 'function') logActivity({ type: 'sampel', platform: data.platform, target: data.username, detail: `${data.produk} · ${data.sku}` + (data.id_pesanan ? ` · ID ${data.id_pesanan}` : '') + ` · ongkir Rp${nf.format(data.ongkir || 0)}` + (exception ? (isBlocked(data.platform, data.username) ? ' · PENGECUALIAN BLOKIR' : ' · PENGECUALIAN SYARAT >10×') : '') }); } catch (e3) {}
       let linked = false;
       try { if (typeof markSampleSent === 'function') linked = await markSampleSent(data.platform, data.username); } catch (e2) {}
-      msg(`Tersimpan: ${data.username} (${data.produk}).` + (linked ? ' Status follow-up kreator ini diubah jadi "Produk dikirim".' : ''), 'ok');
+      msg(`Tersimpan: ${data.username} (${data.produk}).` + (linked ? ' Status follow-up affiliate ini diubah jadi "Produk dikirim".' : ''), 'ok');
       ['username', 'sku', 'id_pesanan', 'kode', 'ongkir'].forEach((id) => { $(id).value = ''; });
       $('u-info').textContent = ''; $('u-info').className = 'uinfo';
       $('username').focus();
@@ -1391,7 +1391,7 @@ const syncDot = document.getElementById('syncdot'), syncTxt = document.getElemen
     const nWeb = rows.filter((r) => r.src === 'web').length;
     $('k-sampel').textContent = nf.format(n);
     $('k-baru').textContent = nWeb ? `${nf.format(nWeb)} dari form web` : 'belum ada dari form web';
-    $('k-kreator').textContent = nf.format(new Set(rows.map((r) => r.platform + '|' + r.user_n)).size);
+    $('k-affiliate').textContent = nf.format(new Set(rows.map((r) => r.platform + '|' + r.user_n)).size);
     const hpp = rows.reduce((s, r) => s + (hppOf(r.produk, r.sku, r.pack) || 0), 0);
     $('k-hpp').textContent = rpc(hpp);
     const ong = rows.reduce((s, r) => s + (Number(r.ongkir) || 0), 0);
@@ -1483,7 +1483,7 @@ const syncDot = document.getElementById('syncdot'), syncTxt = document.getElemen
     $('n-cek').textContent = '· ' + nf.format(rows.filter((r) => r.cat).length) + ' baris';
     if (!tc.children.length) { const tr = document.createElement('tr'); const c = td(tr, 'Tidak ada baris bermasalah untuk filter ini.'); c.colSpan = 7; c.className = 'note'; tc.append(tr); }
 
-    // kreator berulang
+    // affiliate berulang
     const byU = d3group(rows, (r) => r.platform + '|' + r.user_n);
     const rep = [];
     byU.forEach((rs) => {
@@ -1534,7 +1534,7 @@ const syncDot = document.getElementById('syncdot'), syncTxt = document.getElemen
     const akt = efAgg(R.filter((r) => r.akt), 'Sudah jualan 30 hari sebelumnya'), baru = efAgg(R.filter((r) => !r.akt), 'Belum jualan 30 hari sebelumnya');
     let take = `Sampel ${plLbl} ${per} kembali ${rx(T.gmv / T.biaya)} biayanya dalam 30 hari; ${pf(1 - T.laku / T.kiriman)} kiriman tidak menghasilkan order.`;
     if (al && bz) take += ` Mix Alpha ${rx(al.gmv / al.biaya)}, Poppin Boozled ${rx(bz.gmv / bz.biaya)}.`;
-    if (akt.kiriman) take += ` Kreator yang sudah jualan sebelumnya ${rx(akt.gmv / akt.biaya)}, kreator baru ${rx(baru.gmv / (baru.biaya || 1))}.`;
+    if (akt.kiriman) take += ` Affiliate yang sudah jualan sebelumnya ${rx(akt.gmv / akt.biaya)}, affiliate baru ${rx(baru.gmv / (baru.biaya || 1))}.`;
     $('ef-take').textContent = take;
     const ong = R.reduce((s, r) => s + r.ong, 0), ongE = R.filter((r) => r.est).reduce((s, r) => s + r.ong, 0);
     $('ef-per').textContent = ef.periode + '. ' + pf(ong ? ongE / ong : 0) + ' biaya ongkir masih perkiraan.';
@@ -1545,7 +1545,7 @@ const syncDot = document.getElementById('syncdot'), syncTxt = document.getElemen
     fill('et-produk', prodG.filter((d) => d.kiriman >= 3));
     fill('et-grup', [baru, akt, efAgg(R.filter((r) => r.ke === 1), 'Sampel pertama'), efAgg(R.filter((r) => r.ke > 1), 'Sampel ke-2 dst.')].filter((d) => d.kiriman));
     const A = R.filter((r) => r.akt);
-    $('ef-prepost').textContent = A.length ? `Catatan: ${A.length} kiriman ke kreator yang sudah jualan menghasilkan ${rpc(A.reduce((s, r) => s + r.gmv, 0))} setelah sampel, dibanding ${rpc(A.reduce((s, r) => s + r.pre, 0))} pada 30 hari sebelumnya.` : '';
+    $('ef-prepost').textContent = A.length ? `Catatan: ${A.length} kiriman ke affiliate yang sudah jualan menghasilkan ${rpc(A.reduce((s, r) => s + r.gmv, 0))} setelah sampel, dibanding ${rpc(A.reduce((s, r) => s + r.pre, 0))} pada 30 hari sebelumnya.` : '';
     const bins = [[-1, 0, 'Rp0'], [0, 1e5, '≤Rp100 rb'], [1e5, 5e5, 'Rp100–500 rb'], [5e5, 2e6, 'Rp500 rb–2 jt'], [2e6, 1e13, '>Rp2 jt']];
     const sb = bins.map(([lo, hi, l]) => ({ l, n: R.filter((r) => r.gmv > lo && r.gmv <= hi).length }));
     const se = $('et-sebaran'); se.replaceChildren();
@@ -1554,7 +1554,7 @@ const syncDot = document.getElementById('syncdot'), syncTxt = document.getElemen
     const tp = $('et-top'); tp.replaceChildren();
     cr.filter((d) => d.gmv > 0).sort((a, b) => b.gmv - a.gmv).slice(0, 25).forEach((d) => { const tr = document.createElement('tr'); td(tr, d.username); td(tr, nf.format(d.kiriman), 'n'); td(tr, d.produk); td(tr, nf.format(d.order), 'n'); td(tr, rpc(d.gmv), 'n'); td(tr, rpc(d.biaya), 'n'); td(tr, rx(d.gmv / d.biaya), 'n'); tp.append(tr); });
     const nol = cr.filter((d) => d.gmv === 0), nolU = nol.filter((d) => d.kiriman > 1).sort((a, b) => b.biaya - a.biaya);
-    $('ef-nol').textContent = `${nf.format(nol.length)} kreator belum menghasilkan order dari sampel ${per} (biaya ${rpc(nol.reduce((s, d) => s + d.biaya, 0))}). ${nf.format(nolU.length)} di antaranya dikirimi lebih dari sekali${bm ? ' di bulan ini' : ''}.`;
+    $('ef-nol').textContent = `${nf.format(nol.length)} affiliate belum menghasilkan order dari sampel ${per} (biaya ${rpc(nol.reduce((s, d) => s + d.biaya, 0))}). ${nf.format(nolU.length)} di antaranya dikirimi lebih dari sekali${bm ? ' di bulan ini' : ''}.`;
     const tn = $('et-nol'); tn.replaceChildren();
     nolU.forEach((d) => { const tr = document.createElement('tr'); td(tr, d.username); td(tr, nf.format(d.kiriman), 'n'); td(tr, d.produk); td(tr, rpc(d.biaya), 'n'); tn.append(tr); });
   };
@@ -1574,7 +1574,7 @@ const syncDot = document.getElementById('syncdot'), syncTxt = document.getElemen
   const drawBlok = () => {
     const q = $('q-blok').value.trim().toLowerCase();
     const all = [...BLK.entries()];
-    $('n-blok').textContent = '· ' + nf.format(all.filter(([k]) => !UNB[bid(k)]).length) + ' kreator';
+    $('n-blok').textContent = '· ' + nf.format(all.filter(([k]) => !UNB[bid(k)]).length) + ' affiliate';
     const tb = $('tb-blok'); tb.replaceChildren();
     all.filter(([, b]) => !q || b.username.toLowerCase().includes(q)).sort((a, b) => b[1].n - a[1].n || a[1].username.localeCompare(b[1].username)).forEach(([k, b]) => {
       const tr = document.createElement('tr'); const un = !!UNB[bid(k)]; if (un) tr.className = 'unblocked';
@@ -1597,7 +1597,7 @@ const syncDot = document.getElementById('syncdot'), syncTxt = document.getElemen
     setPlatform(plat); $('username').value = user; userInfo(); $('sku').focus();
     msg(`Mengisi sampel untuk ${user}. Lengkapi SKU, ID pesanan dan ongkir.`, '');
   };
-  // ---------- Info kreator saat mengetik username ----------
+  // ---------- Info affiliate saat mengetik username ----------
   const userInfo = () => {
     const el = $('u-info');
     const u = $('username').value.trim().replace(/^@+/, '').toLowerCase();
@@ -1653,7 +1653,7 @@ const syncDot = document.getElementById('syncdot'), syncTxt = document.getElemen
     }
     return o;
   };
-  // ---------- Statistik sampel per kreator (dipakai tab TikTok/Shopee) ----------
+  // ---------- Statistik sampel per affiliate (dipakai tab TikTok/Shopee) ----------
   let statCache = null; let HASIL = null;
   fetch(window.AFF_SRC('sampel_hasil.json')).then((r) => r.json()).then((d) => { HASIL = d; kickLists(); }).catch(() => {});
   const buildStat = () => {

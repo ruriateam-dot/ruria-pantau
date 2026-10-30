@@ -30,7 +30,7 @@ import { resolvePeriod, buckets, fmt, pct, jm, tgl, addDays, dayDiff, todayWIB, 
 type SPv = Record<string, string | undefined>;
 type Cl = { id: string; nama: string; modul: string[]; target_roas: number | null; tab_klien?: string[] | null; lap_temuan?: string | null; lap_langkah?: string | null; lap_waktu?: string | null; brand?: string };
 
-const TABS: [string, string][] = [["sum", "Dashboard"], ["lapor", "Laporan"], ["ringkas", "Ringkasan"], ["toko", "Penjualan"], ["iklan", "Iklan"], ["affiliate", "Kreator"], ["live", "Livestream"], ["forecast", "Stok"]];
+const TABS: [string, string][] = [["sum", "Dashboard"], ["lapor", "Laporan"], ["ringkas", "Ringkasan"], ["toko", "Penjualan"], ["iklan", "Iklan"], ["affiliate", "Affiliate"], ["live", "Livestream"], ["forecast", "Stok"]];
 
 /* Dipakai oleh /dashboard (login) dan /lihat/[token] (klien tanpa login, hanya lihat) */
 export default async function DashboardView({ sp, profile, clients: all, base, share, shareLabel, token }: { sp: SPv; profile: User | null; clients: Cl[]; base: string; share?: boolean; shareLabel?: string; token?: string }) {
@@ -601,7 +601,7 @@ function LaporTab({ R, c, K, stores, sales, prod, aff, last, detail }: { R: Rang
     </div>
     <div className="grid2c">
       <div className="card"><h2>Top 5 produk</h2>{top.length ? <div className="tbl"><table><tbody>{top.map((p) => <tr key={p.grup}><td>{p.nama ?? p.grup}</td><td className="n">{fmt(+p.gmv)}</td></tr>)}</tbody></table></div> : <p className="muted small">Belum ada data produk untuk periode ini.</p>}</div>
-      <div className="card"><h2>Iklan &amp; kreator</h2><div className="lapkv">
+      <div className="card"><h2>Iklan &amp; affiliate</h2><div className="lapkv">
         <div><span>Biaya iklan</span><b>{K.S ? fmt(K.S) : "–"}</b></div><div><span>ROAS iklan</span><b>{K.S ? K.roas.toFixed(2).replace(".", ",") : "–"}</b></div>
         <div><span>GMV dari affiliate</span><b>{aff ? fmt(aff) : "–"}</b></div><div><span>Porsi affiliate</span><b>{K.G && aff ? ((aff / K.G) * 100).toFixed(1).replace(".", ",") + "%" : "–"}</b></div>
       </div></div>

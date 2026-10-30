@@ -352,3 +352,4 @@
 #aff-root .btn.pri:hover{background:var(--accent-ink,#26328A)!important;color:#fff!important}
 #aff-root .btn.sm{min-height:28px;font-size:12px!important}
 #aff-root h1,#aff-root h2,#aff-root .stat b{font-family:inherit}
+#aff-root header.top{position:static!important}

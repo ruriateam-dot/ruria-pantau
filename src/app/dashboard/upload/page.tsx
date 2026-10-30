@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 const PANDUAN: [string, string, string][] = [
   ["Penjualan · Shopee", "Statistik toko (file …shopee-shop-stats…xlsx)", "Seller Centre → Data → Ringkasan Toko → Ekspor. GMV memakai \"Pesanan Siap Dikirim\"."],
   ["Penjualan · TikTok", "Key metrics / Overview Business Performance (xlsx)", "Seller Center → Analitik → Ringkasan → Ekspor data harian."],
-  ["Analisa Produk", "Ekspor pesanan (Shopee Order.all…xlsx, TikTok Semua pesanan…csv)", "Pesanan Saya → Ekspor. Pesanan batal tidak dihitung."],
+  ["Penjualan · Produk & pesanan", "Ekspor pesanan (Shopee Order.all…xlsx, TikTok Semua pesanan…csv)", "Pesanan Saya → Ekspor. Pesanan batal tidak dihitung."],
   ["Iklan · Shopee", "Data Keseluruhan Iklan (csv)", "Iklan Shopee → Laporan → Unduh semua iklan untuk satu periode."],
   ["Iklan · TikTok", "Campaign overview data (xlsx, per hari)", "Iklan GMV Max → Ekspor ringkasan kampanye per hari."],
   ["Livestream", "Laporan live (format Draft Livestream atau laporan host)", "Satu file bisa berisi Shopee dan TikTok; sesi yang bersamaan digabung otomatis."],
