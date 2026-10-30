@@ -543,3 +543,18 @@ html:not([data-theme="dark"]),html:not([data-theme="dark"]) body{background:#F6F
 :root:not([data-theme="dark"]) .tab.on{background:var(--accent-soft);color:var(--accent)}
 .empty{border-color:#C9D0F0;background:#FAFBFF}
 .verdict a,.crumb a:hover{color:var(--accent)}
+
+/* Tombol periode baru */
+.pbtn2{display:inline-flex;align-items:center;gap:10px;background:var(--panel)!important;color:var(--fg)!important;border:1px solid var(--line)!important;border-radius:10px;padding:5px 12px 5px 6px;text-align:left;font-weight:400;min-height:44px}
+.pbtn2:hover,.pbtn2.open{border-color:var(--accent)!important;box-shadow:0 0 0 3px var(--accent-soft,#EEF0FB)}
+.pbtn2 .pic{width:30px;height:30px;border-radius:8px;background:var(--accent-soft,#EEF0FB);color:var(--accent);display:grid;place-items:center;flex:none}
+.pbtn2 .ptx b{display:block;font-size:14px;font-weight:600;line-height:1.2}.pbtn2 .ptx small{display:block;font-size:12px;color:var(--muted);line-height:1.3}
+.pbtn2 .pcv{color:var(--muted);margin-left:2px}
+.pre2{padding:10px 12px;width:min(460px,calc(100vw - 32px))}
+.plbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:4px 2px 6px}
+.pgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px}
+.po{background:var(--panel)!important;color:var(--fg)!important;border:1px solid var(--line)!important;border-radius:8px;padding:8px 6px;font-size:13px;font-weight:500;min-height:36px}
+.po:hover{border-color:var(--accent)!important}.po.on{background:var(--accent)!important;border-color:var(--accent)!important;color:#fff!important;font-weight:600}
+.po.sel{background:var(--accent-soft,#EEF0FB)!important;color:var(--accent)!important;border-color:var(--accent)!important}.po.w2{grid-column:span 2}
+.pft{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:8px;margin-top:4px;font-size:12px;color:var(--muted)}
+@media(max-width:760px){.pwrap{flex:1 1 100%!important}.pbtn2{width:100%}.pbtn2 .pcv{margin-left:auto}.pbtn2 .pcmp{display:none}.pgrid{grid-template-columns:repeat(2,1fr)}.filters{flex-wrap:wrap!important}}

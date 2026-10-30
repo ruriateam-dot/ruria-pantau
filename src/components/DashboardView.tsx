@@ -128,7 +128,7 @@ export default async function DashboardView({ sp, profile, clients: all, base, s
         {share ? <><span className="brandc"><RuriaWord height={20} /></span><b>Report</b><span className="muted">{c?.nama} · tampilan klien, hanya lihat</span></>
           : tab === "sum" ? <h1>Dashboard</h1> : <div><nav className="crumb small muted" aria-label="Breadcrumb"><a href={base + "?m=sum"}>Dashboard</a> › <span>{c?.nama}</span> › <span>{tabName}</span></nav><h1>{tabName} · {c?.nama}</h1></div>}
       </div>
-      {tab !== "forecast" && <div className="wrap fbar"><Filters base={base} clients={share ? clients : []} hideClient={!share || clients.length < 2} brands={tab === "sum" ? [] : brands} platforms={tab === "sum" ? [] : platforms} label={R.label} />{tab !== "affiliate" && <ExportBar title={title} client={tab === "sum" ? null : c?.id ?? null} token={token} />}</div>}
+      {tab !== "forecast" && <div className="wrap fbar"><Filters rng={[R.from, R.to]} cmp={R.key === "all" ? undefined : R.sub.replace(/^vs /, "dibanding ")} last={lastData ?? null} base={base} clients={share ? clients : []} hideClient={!share || clients.length < 2} brands={tab === "sum" ? [] : brands} platforms={tab === "sum" ? [] : platforms} label={R.label} />{tab !== "affiliate" && <ExportBar title={title} client={tab === "sum" ? null : c?.id ?? null} token={token} />}</div>}
       {tab !== "sum" && tabs}
     </header>
   );

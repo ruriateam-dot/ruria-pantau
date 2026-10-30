@@ -4,7 +4,7 @@ import { useNav } from "./Nav";
 import Period from "./Period";
 
 type C = { id: string; nama: string; modul: string[] };
-export default function Filters({ base = "/dashboard", clients, brands, platforms, label, hideClient }: { base?: string; clients: C[]; brands: string[]; platforms: string[]; label: string; hideClient?: boolean }) {
+export default function Filters({ base = "/dashboard", clients, brands, platforms, label, hideClient, rng, cmp, last }: { base?: string; clients: C[]; brands: string[]; platforms: string[]; label: string; hideClient?: boolean; rng?: [string, string]; cmp?: string; last?: string | null }) {
   const sp = useSearchParams();
   const get = (k: string, d: string) => sp.get(k) ?? d;
   const { pending, go } = useNav();
@@ -19,11 +19,9 @@ export default function Filters({ base = "/dashboard", clients, brands, platform
       {!hideClient && clients.length > 1 && <select aria-label="Klien" value={get("c", clients[0]?.id ?? "")} onChange={(e) => set({ c: e.target.value, b: "", p: "" })}>
         {clients.map((c) => <option key={c.id} value={c.id}>{c.nama}</option>)}
       </select>}
-      {[["7d", "7 hari"], ["30d", "30 hari"], ["mtd", "Bulan ini"]].map(([k, l]) => <button type="button" key={k} className={"fchip" + (per === k ? " on" : "")} aria-pressed={per === k} onClick={() => set({ per: k })}>{l}</button>)}
-      {brands.length > 1 && (brands.length <= 4 ? <span className="fgrp" role="group" aria-label="Toko"><button type="button" className={"fchip" + (!get("b", "") ? " on" : "")} onClick={() => set({ b: "" })}>Semua toko</button>{brands.map((b) => <button type="button" key={b} className={"fchip" + (get("b", "") === b ? " on" : "")} aria-pressed={get("b", "") === b} onClick={() => set({ b })}>{b}</button>)}</span>
-        : <select aria-label="Toko" value={get("b", "")} onChange={(e) => set({ b: e.target.value })}><option value="">Semua toko</option>{brands.map((b) => <option key={b}>{b}</option>)}</select>)}
-      {platforms.length > 1 && <span className="fgrp" role="group" aria-label="Platform"><button type="button" className={"fchip" + (!get("p", "") ? " on" : "")} onClick={() => set({ p: "" })}>Semua platform</button>{platforms.map((p) => <button type="button" key={p} className={"fchip" + (get("p", "") === p ? " on" : "")} aria-pressed={get("p", "") === p} onClick={() => set({ p })}>{p}</button>)}</span>}
-      <span className="fmore"><Period per={per} label={label} onPick={(p) => set({ per: p })} /></span>
+      <Period per={per} label={label} rng={rng} cmp={cmp} last={last} onPick={(p) => set({ per: p })} />
+      {brands.length > 1 && <select aria-label="Toko" className={get("b", "") ? "act" : ""} value={get("b", "")} onChange={(e) => set({ b: e.target.value })}><option value="">Semua toko</option>{brands.map((b) => <option key={b}>{b}</option>)}</select>}
+      {platforms.length > 1 && <select aria-label="Platform" className={get("p", "") ? "act" : ""} value={get("p", "")} onChange={(e) => set({ p: e.target.value })}><option value="">Semua platform</option>{platforms.map((p) => <option key={p}>{p}</option>)}</select>}
     </div>
   );
 }
